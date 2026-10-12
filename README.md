@@ -74,6 +74,24 @@ sequenceDiagram
 
 If a renderer does not support Mermaid, the dependency and sequence diagrams above are still represented by the text flow and the module guides.
 
+### Package-size rule
+
+The source is intentionally split so that one namespace/package contains no more
+than eight direct (top-level) types. This keeps navigation, ownership and
+dependency review practical without creating artificial projects:
+
+| Area | Packages |
+|---|---|
+| Configuration | Atf.Core.Configuration, Atf.Core.Configuration.Models |
+| HTTP | Atf.Core.Http, Atf.Core.Http.Execution, Atf.Core.Http.Routing, Atf.Core.Http.Transport |
+| Reporting | Atf.Core.Reporting, .Artifacts, .Evidence, .Inventory, .Lifecycle, .Phases, .Theme |
+| Internal tests | Atf.Core.Tests.Architecture, .Configuration, .Http, .Reporting |
+
+The root package keeps only the public orchestration contracts; specialized
+concerns live in the corresponding subpackage. Nested private test doubles do
+not count as package members because they are implementation details of their
+own test type.
+
 ### Report tree
 
 ```mermaid

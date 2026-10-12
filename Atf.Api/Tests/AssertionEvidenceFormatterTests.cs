@@ -74,9 +74,6 @@ public sealed class AssertionEvidenceFormatterTests
         Assert.Contains("<th scope='row'>METHOD</th><td data-field='method'>GET</td>", html);
         Assert.Contains("<th scope='row'>ENDPOINT</th><td data-field='url'>https://api.test/public/v2/users</td>", html);
         Assert.Contains("<th scope='row'>ROUTE TEMPLATE</th><td data-field='route.path.template'>/public/v2/users/{id}</td>", html);
-        Assert.Contains("<th scope='row'>ROUTE AUTH TYPE</th><td data-field='route.auth.type'>none</td>", html);
-        Assert.Contains("<th scope='row'>ROUTE AUTH ACCESS</th><td data-field='route.auth.requirement'>optional</td>", html);
-        Assert.Contains("<th scope='row'>ROUTE AUTH PROFILE</th><td data-field='route.auth.profile'>anonymous</td>", html);
         Assert.Contains("<th scope='row'>AUTHENTICATION</th><td data-field='auth.profile'>anonymous</td>", html);
         Assert.Contains("<th scope='row'>ATTEMPT</th><td data-field='attempt'>1</td>", html);
         Assert.Contains("<th scope='row'>RESPONSE STATUS</th><td data-field='response.status'>200</td>", html);
@@ -87,6 +84,9 @@ public sealed class AssertionEvidenceFormatterTests
         Assert.DoesNotContain("AUTH MODE", html);
         Assert.DoesNotContain("TOKEN STATE", html);
         Assert.DoesNotContain("TOTAL DURATION", html);
+        Assert.DoesNotContain("ROUTE AUTH TYPE", html);
+        Assert.DoesNotContain("ROUTE AUTH ACCESS", html);
+        Assert.DoesNotContain("ROUTE AUTH PROFILE", html);
     }
 
     [Fact(DisplayName = "Technical trace retains only meaningful retry diagnostics")]

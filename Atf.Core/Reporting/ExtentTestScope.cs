@@ -172,7 +172,7 @@ public sealed class ExtentTestScope : IAtfReporter, IDisposable
             frame.Details.Select(detail => new KeyValuePair<string, string>(detail.Key, detail.Value)).ToArray());
         var body = evidence.IsAssertion
             ? evidence.BodyHtml
-            : $"<div class='helm-api-classification'><span class='helm-api-classification-label'>{(evidence.Kind == "request-details" ? "REQUEST" : "RESPONSE")}</span></div>" + evidence.BodyHtml;
+            : "<div class='helm-api-classification technical'><span class='helm-api-classification-label'>TECHNICAL TRACE</span></div>" + evidence.BodyHtml;
         frame.Node.Info(_evidence.Build(evidence.Title, body, evidence.Kind));
         frame.Details.Clear();
     }

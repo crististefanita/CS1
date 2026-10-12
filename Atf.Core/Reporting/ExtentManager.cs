@@ -117,7 +117,7 @@ public static class ExtentManager
             _reports?.Flush();
             if (_reportPath is not null)
             {
-                new ExtentReportDocumentComposer().Compose(_reportPath, _testAssembly);
+                new ExtentReportDocumentComposer().Compose(_reportPath, _testAssembly, _settings!);
             }
 
             _finalized = true;
