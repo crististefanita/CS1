@@ -35,6 +35,8 @@ public sealed class CoreArchitectureTests
         Assert.Contains(".atf-tag-card .card-header", css, StringComparison.Ordinal);
         Assert.Contains("background: var(--atf-panel-2) !important", css, StringComparison.Ordinal);
         Assert.Contains("background: rgba(255,255,255,.018) !important", css, StringComparison.Ordinal);
+        Assert.Contains(".test-view .test-content-detail .card > .card-header .card-title .node", css, StringComparison.Ordinal);
+        Assert.Contains("color: var(--atf-text) !important", css, StringComparison.Ordinal);
         Assert.DoesNotContain("Extent's native nested API cards", css, StringComparison.Ordinal);
     }
 

@@ -482,6 +482,13 @@ public static class AtfReportTheme
         box-shadow: none !important;
         margin: 0 !important;
       }
+      /* Extent applies a muted status colour to container nodes. API
+         scenario and lifecycle titles are primary navigation, not metadata;
+         keep them readable and consistent with request titles. */
+      .test-view .test-content-detail .card > .card-header .card-title .node {
+        color: var(--atf-text) !important;
+        font-family: var(--atf-font-sans) !important;
+      }
     
       /* Lifecycle phases are containers, not ordinary API steps. Give
          SETUP / TEST BODY / TEARDOWN a visible frame and indent their
