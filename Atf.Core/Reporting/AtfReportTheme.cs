@@ -435,7 +435,7 @@ public static class AtfReportTheme
       .atf-tag-audit-heading p { margin: 0 !important; color: var(--atf-secondary-audit-text) !important; }
       .atf-tag-grid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; align-items: start !important; width: 100% !important; }
       .atf-tag-card { min-width: 0 !important; border: 1px solid var(--atf-border) !important; border-radius: 8px !important; background: var(--atf-panel) !important; box-shadow: none !important; overflow: hidden !important; }
-      .atf-tag-card .card-header { min-height: 0 !important; padding: 10px 12px !important; border-bottom: 1px solid var(--atf-border) !important; background: var(--atf-panel-2) !important; }
+      .atf-tag-card .card-header { min-height: 0 !important; padding: 10px 12px !important; border-bottom: 1px solid var(--atf-border) !important; background: var(--atf-panel-2) !important; color: var(--atf-secondary-audit-text) !important; }
       .atf-tag-card .card-header p { margin: 0 !important; color: var(--atf-text) !important; font-size: var(--atf-overview-font-size) !important; font-weight: 550 !important; line-height: 1.35 !important; }
       .atf-tag-card .card-body { padding: 0 !important; background: var(--atf-panel) !important; }
       .atf-tag-scroll { max-height: 340px !important; overflow-x: hidden !important; overflow-y: auto !important; }

@@ -16,6 +16,8 @@ public sealed class ReportingComponentTests
         Assert.Contains("--atf-secondary-heading-text: var(--atf-accent)", css, StringComparison.Ordinal);
         Assert.Contains($"--atf-secondary-audit-text: {AtfReportColors.SecondaryAuditDescriptionText}", css, StringComparison.Ordinal);
         Assert.Contains("atf-tag-card .card-header", css, StringComparison.Ordinal);
+        Assert.Contains(".atf-tag-card .card-header", css, StringComparison.Ordinal);
+        Assert.Contains("background: var(--atf-panel-2) !important; color: var(--atf-secondary-audit-text) !important", css, StringComparison.Ordinal);
         Assert.Contains(".atf-tag-audit-heading p", css, StringComparison.Ordinal);
         Assert.Contains("color: var(--atf-muted) !important", css, StringComparison.Ordinal);
         Assert.Contains("color: var(--atf-secondary-audit-text) !important", css, StringComparison.Ordinal);
