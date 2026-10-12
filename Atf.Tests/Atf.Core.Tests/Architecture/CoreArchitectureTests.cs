@@ -22,6 +22,17 @@ public sealed class CoreArchitectureTests
         Assert.NotEqual("Status", statusParameter.FullName);
     }
 
+    [Fact(DisplayName = "Report session exposes a renderer-neutral scenario scope")]
+    public void ReportSessionUsesScenarioPort()
+    {
+        var returnType = typeof(IAtfReportSession)
+            .GetMethod(nameof(IAtfReportSession.StartTest))!
+            .ReturnType;
+
+        Assert.Equal(typeof(IAtfScenarioScope), returnType);
+        Assert.DoesNotContain("AventStack", returnType.AssemblyQualifiedName ?? string.Empty, StringComparison.Ordinal);
+    }
+
     [Fact(DisplayName = "Report theme uses one central font family and central report colors")]
     public void ReportThemeUsesCentralTypographyAndPalette()
     {

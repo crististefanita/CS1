@@ -80,23 +80,28 @@ internal sealed class ApiExecutionReporter
 
         Detail("rate-limit.retry.delay.ms", retryEvent.Delay.TotalMilliseconds.ToString("F0"));
         Detail("rate-limit.retry.reason", retryEvent.Reason);
+        Try(() => _reporter.Info(_redactor.RedactText(
+            $"Attempt {retryEvent.Attempt} → HTTP {retryEvent.StatusCode} → retry in {retryEvent.Delay.TotalMilliseconds:F0} ms ({retryEvent.Reason})")));
     }
 
     /// <summary>
-    /// Ends the request-owned evidence node before the caller starts the
-    /// response-owned validation group. This lifecycle boundary prevents a
-    /// validation table from becoming a child of GET/POST.
+    /// Marks transport completion without closing the request node. The
+    /// response-owned contract validation is intentionally attached below the
+    /// request; the next request or phase closes the request after validation.
     /// </summary>
     public void Completed() => Try(() =>
     {
         _reporter.Info("HTTP exchange completed; contract validation pending.");
-        _reporter.CompleteStep(AtfReportStatus.Info);
     });
 
     public void Failed(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
-        Try(() => _reporter.Fail("HTTP exchange failed.", exception));
+        // Exception.ToString() can contain a URL, header value or server
+        // payload. The caller still receives the original exception; only the
+        // copy sent to the reporting port is sanitized.
+        var safeException = new Exception(_redactor.RedactText(exception.ToString()));
+        Try(() => _reporter.Fail("HTTP exchange failed.", safeException));
         Try(() => _reporter.CompleteStep(AtfReportStatus.Fail));
     }
 

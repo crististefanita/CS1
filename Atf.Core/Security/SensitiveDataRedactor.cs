@@ -11,6 +11,15 @@ namespace Atf.Core.Security;
 /// </summary>
 public sealed class SensitiveDataRedactor
 {
+    private static readonly Regex EmailPattern = new(
+        @"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?![\w.-])",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex AuthorizationPattern = new(
+        @"(?<prefix>\b(?:Bearer|Basic|Token|Api[- ]?Key)\s+)[^\s,;]+",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    private static readonly Regex HeaderPattern = new(
+        @"(?<prefix>\b(?:Authorization|Proxy-Authorization|X-Api-Key|Api-Key|Cookie|Set-Cookie)\s*[:=]\s*)[^\r\n,;]+",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private readonly RedactionSettings _settings;
     private readonly HashSet<string> _sensitiveKeys;
 
@@ -31,7 +40,24 @@ public sealed class SensitiveDataRedactor
             return value;
         }
 
-        return IsSensitiveField(field) ? _settings.Replacement : RedactQueryString(value);
+        return IsSensitiveField(field) ? _settings.Replacement : RedactText(RedactQueryString(value));
+    }
+
+    /// <summary>
+    /// Redacts free-form diagnostics as a final safety net. This is used for
+    /// exception text and retry messages where no structured field name exists.
+    /// </summary>
+    public string RedactText(string? value)
+    {
+        value ??= string.Empty;
+        if (!_settings.Enabled || value.Length == 0)
+        {
+            return value;
+        }
+
+        var redacted = AuthorizationPattern.Replace(value, match => match.Groups["prefix"].Value + _settings.Replacement);
+        redacted = HeaderPattern.Replace(redacted, match => match.Groups["prefix"].Value + _settings.Replacement);
+        return EmailPattern.Replace(redacted, _settings.Replacement);
     }
 
     public string RedactJson(string? json)
@@ -54,7 +80,9 @@ public sealed class SensitiveDataRedactor
         }
         catch (JsonException)
         {
-            return json;
+            // A malformed or plain-text body still belongs to the evidence
+            // boundary; never bypass redaction just because it is not JSON.
+            return RedactText(json);
         }
     }
 
@@ -68,6 +96,10 @@ public sealed class SensitiveDataRedactor
                 {
                     obj[property.Key] = _settings.Replacement;
                 }
+                else if (property.Value is JsonValue value && value.TryGetValue<string>(out var text))
+                {
+                    obj[property.Key] = RedactText(text);
+                }
                 else if (property.Value is not null)
                 {
                     RedactNode(property.Value);
@@ -76,11 +108,19 @@ public sealed class SensitiveDataRedactor
         }
         else if (node is JsonArray array)
         {
-            foreach (var item in array)
+            for (var index = 0; index < array.Count; index++)
             {
+                var item = array[index];
                 if (item is not null)
                 {
-                    RedactNode(item);
+                    if (item is JsonValue value && value.TryGetValue<string>(out var text))
+                    {
+                        array[index] = RedactText(text);
+                    }
+                    else
+                    {
+                        RedactNode(item);
+                    }
                 }
             }
         }
@@ -96,11 +136,12 @@ public sealed class SensitiveDataRedactor
         }
 
         var keyPattern = string.Join("|", _sensitiveKeys.Select(Regex.Escape));
-        return Regex.Replace(
+        var redacted = Regex.Replace(
             value,
             $"(?<prefix>[?&](?:{keyPattern})=)[^&]*",
             $"${{prefix}}{_settings.Replacement}",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        return RedactText(redacted);
     }
 
     private static string Normalize(string value) =>

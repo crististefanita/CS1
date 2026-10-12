@@ -92,8 +92,8 @@ public sealed class ReportingStructureTests
         Assert.DoesNotContain(request.Logs, log => log.Details.Contains("COMBINATION RESOURCE", StringComparison.OrdinalIgnoreCase));
     }
 
-    [Fact(DisplayName = "Validation evidence is a sibling of the API request under the phase")]
-    public void ValidationIsPhaseSiblingOfRequest()
+    [Fact(DisplayName = "Validation evidence is owned by the API request that produced the response")]
+    public void ValidationIsRequestOwned()
     {
         var reports = new ExtentReports();
         var scenario = reports.CreateTest("PostsApiTests").CreateNode("GET posts");
@@ -117,13 +117,12 @@ public sealed class ReportingStructureTests
         var phase = Assert.Single(scenario.Model.Children);
         Assert.Equal(ApiScenarioPhaseLayout.TestBody, phase.Name);
         Assert.Equal(
-            ["GET /public/v2/posts/999999999", "Validate: status=404"],
+            ["GET /public/v2/posts/999999999"],
             phase.Children.Select(child => child.Name).ToArray());
 
         var request = phase.Children[0];
         Assert.Equal("GET /public/v2/posts/999999999", request.Name);
-        Assert.Empty(request.Children);
-        var validation = phase.Children[1];
+        var validation = request.Children.Single();
         Assert.Equal("Validate: status=404", validation.Name);
         Assert.Empty(validation.Children);
         Assert.Contains(request.Logs, log => log.Details.Contains("Response details", StringComparison.Ordinal));

@@ -62,11 +62,11 @@ The following are different facts and must not be conflated:
 HTTP exchange completed  !=  contract satisfied  !=  scenario passed
 ```
 
-`ApiExecutor` owns transport facts and leaves the HTTP node open. The validator
-then opens an aggregate validation node as a child of that request, and the phase
-closes the request only after all contract evidence is published. This is why the
-final report is `phase → request → evidence + validation`, while assertions for the
-same response remain rows in one table.
+`ApiExecutor` owns transport facts and leaves the HTTP execution context open while
+its evidence is published. The validator then opens an aggregate validation node as
+a sibling of that request under the same phase. This is why the final report is
+`phase → request + validation`, with `request → evidence` and `validation → table`,
+while assertions for the same response remain rows in one table.
 
 ## 3. Route and configuration vocabulary
 
@@ -148,11 +148,11 @@ flowchart TD
     Scenario --> Teardown[TEARDOWN\ncollapsed phase shell]
     Setup --> SetupRequest[API request]
     SetupRequest --> SetupTrace[trace + JSON evidence]
-    SetupRequest --> SetupValidation[aggregate contract validation]
+    Setup --> SetupValidation[aggregate contract validation]
     SetupValidation --> SetupTable[one assertion table]
     Body --> BodyRequest[API request]
     BodyRequest --> BodyTrace[trace + JSON evidence]
-    BodyRequest --> BodyValidation[aggregate contract validation]
+    Body --> BodyValidation[aggregate contract validation]
     BodyValidation --> BodyTable[one assertion table]
     Teardown --> Cleanup[cleanup / verification]
 ```
@@ -162,8 +162,8 @@ The visual rules are intentional:
 1. The composite scenario does not render a redundant parent `Scenario passed`
    event table. Its verdict is already visible in the scenario header.
 2. `SETUP`, `TEST BODY` and `TEARDOWN` are compact, collapsed phase shells.
-3. An API request owns its transport/response evidence and one aggregate
-   validation child; the validation owns the assertion table for that response.
+3. An API request owns its transport/response evidence. Its aggregate validation
+   is a sibling under the same phase and owns the assertion table for that response.
 4. Request details, response details, JSON and assertion evidence are collapsed
    evidence blocks; opening a node reveals forensic information on demand.
 5. Empty phases are not manufactured.
@@ -274,9 +274,9 @@ Use the cheapest proof that can detect the defect:
 
 | Concern | Test location | Proof |
 |---|---|---|
-| phase vocabulary/order | `Atf.Api/Tests/ApiScenarioPhaseLayoutTests.cs` | canonical labels and request-owned tree |
+| phase vocabulary/order | `Atf.Api/Tests/ApiScenarioPhaseLayoutTests.cs` | canonical labels and request/validation sibling tree |
 | automatic phase closure | same test class | starting a new phase closes the prior frame |
-| HTTP/validation ownership semantics | API/Core reporting structure tests | validation is request-owned; phase closes the request after aggregate evidence |
+| HTTP/validation ownership semantics | API/Core reporting structure tests | validation is phase-owned and request-associated; phase closes after aggregate evidence |
 | collapse and summary behaviour | `ReportingComponentTests` | generated client contract contains the browser rules |
 | final artifact | `ReportArtifactInspectorTests` | embedded theme, no asset folder, phase contract |
 | JSON and evidence safety | reporting/evidence tests | escaping, wrapping, one assertion table |
@@ -293,7 +293,7 @@ dotnet test .\Atf.Api\Atf.Api.csproj --no-build --no-restore
 
 After a live run, inspect the generated file rather than relying only on the
 runner summary. Verify the left class grouping, one scenario tree, collapsed
-phase shells, request-owned aggregate validation, JSON scroll behaviour, dark
+phase shells, phase-owned aggregate validation, JSON scroll behaviour, dark
 surfaces, assertion table and absence of `artifacts/reports/extent`.
 
 ## 9. Adding a new API module

@@ -163,7 +163,7 @@ public sealed class ReportingLifecycleComponentTests
             InitializeCount++;
         }
 
-        public ExtentTestScope StartTest(
+        public IAtfScenarioScope StartTest(
             string testClassName,
             string scenarioName,
             string description,

@@ -153,19 +153,20 @@ public sealed class ReportingComponentTests
         Assert.DoesNotContain("<details class='step-detail' open", script, StringComparison.Ordinal);
     }
 
-    [Fact(DisplayName = "Client behaviour preserves phase request-validation siblings")]
+    [Fact(DisplayName = "Client behaviour marks response-owned request validation")]
     public void ClientBehaviourMarksExecutionRoles()
     {
         var script = ExtentReportClientBehaviour.Build();
 
         Assert.Contains("function configureExecutionHierarchy()", script, StringComparison.Ordinal);
         Assert.Contains("data-atf-node-role', 'phase", script, StringComparison.Ordinal);
-        Assert.Contains("stepCard.setAttribute('data-atf-node-role', role)", script, StringComparison.Ordinal);
-        Assert.Contains("const role = /^validate\\s*:/i.test(titleText) ? 'validation' : 'request'", script, StringComparison.Ordinal);
+        Assert.Contains("stepCard.setAttribute('data-atf-node-role', 'request')", script, StringComparison.Ordinal);
+        Assert.Contains("validationCard.setAttribute('data-atf-node-role', 'validation')", script, StringComparison.Ordinal);
+        Assert.Contains("function ownedAccordion(card)", script, StringComparison.Ordinal);
         Assert.Contains("/^validate\\s*:/i.test(titleText)", script, StringComparison.Ordinal);
         Assert.Contains("data-atf-parent-node', 'phase", script, StringComparison.Ordinal);
         Assert.DoesNotContain("data-atf-node-group', 'validations", script, StringComparison.Ordinal);
-        Assert.DoesNotContain("data-atf-parent-node', 'request", script, StringComparison.Ordinal);
+        Assert.Contains("data-atf-parent-node', 'request", script, StringComparison.Ordinal);
         Assert.Contains("configureExecutionHierarchy();", script, StringComparison.Ordinal);
     }
 
@@ -198,7 +199,7 @@ public sealed class ReportingComponentTests
         Assert.Contains(".helm-trace-table thead th:first-child", css, StringComparison.Ordinal);
     }
 
-    [Fact(DisplayName = "Report theme visually separates request and validation siblings")]
+    [Fact(DisplayName = "Report theme visually separates request and response-owned validation")]
     public void ReportThemeUsesPhaseExecutionFrames()
     {
         var css = AtfReportTheme.BuildCss();
@@ -206,7 +207,7 @@ public sealed class ReportingComponentTests
         Assert.Contains("card[data-atf-node-role=\"request\"]", css, StringComparison.Ordinal);
         Assert.Contains("card[data-atf-node-role=\"validation\"]", css, StringComparison.Ordinal);
         Assert.DoesNotContain("content: \"CONTRACT VALIDATION\"", css, StringComparison.Ordinal);
-        Assert.Contains("contract validations are sibling steps", css, StringComparison.Ordinal);
+        Assert.Contains("data-atf-node-role=\"request\"] > .collapse > .card-body > .accordion", css, StringComparison.Ordinal);
         Assert.Contains("data-atf-parent-phase", ExtentReportClientBehaviour.Build(), StringComparison.Ordinal);
     }
 

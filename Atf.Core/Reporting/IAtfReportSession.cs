@@ -19,7 +19,7 @@ public interface IAtfReportSession
 
     void Initialize(ReportingSettings settings, ApiSettings? api = null);
 
-    ExtentTestScope StartTest(
+    IAtfScenarioScope StartTest(
         string testClassName,
         string scenarioName,
         string description,
@@ -92,7 +92,7 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
         }
     }
 
-    public ExtentTestScope StartTest(
+    public IAtfScenarioScope StartTest(
         string testClassName,
         string scenarioName,
         string description,

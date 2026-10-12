@@ -48,7 +48,7 @@ public sealed class ApiExecutorReportingTests
         Assert.Equal("not applicable", reporter.Details["auth.token.state"]);
         Assert.Equal("502", reporter.Details["response.status"]);
         Assert.Contains("exchange.duration.ms", reporter.Details.Keys);
-        Assert.Equal(["start:GET /items", "complete:Info"], reporter.StepEvents);
+        Assert.Equal(["start:GET /items"], reporter.StepEvents);
     }
 
     private sealed class StubHandler(Func<HttpResponseMessage> responseFactory) : HttpMessageHandler

@@ -60,8 +60,8 @@ public sealed class ApiScenarioPhaseLayoutTests
         Assert.Empty(scenario.Model.Children[2].Children);
     }
 
-    [Fact(DisplayName = "Contract validations are sibling steps beneath the HTTP phase")]
-    public void Request_and_validations_are_phase_siblings()
+    [Fact(DisplayName = "One response contract is an aggregate child of its HTTP request")]
+    public void Request_owns_one_aggregate_validation()
     {
         var reports = new ExtentReports();
         var classTest = reports.CreateTest("ApiLifecycleAndCombinationsTests");
@@ -80,32 +80,18 @@ public sealed class ApiScenarioPhaseLayoutTests
         ]);
         scope.Pass("2 validations passed.");
         scope.CompleteStep(AtfReportStatus.Pass);
-
-        scope.StartStep("Validate: content-type contains application/json");
-        scope.AssertionTable(
-        [
-            new AtfAssertion("Content-Type", "contains application/json", "application/json", true)
-        ]);
-        scope.Pass("1 validation passed.");
-        scope.CompleteStep(AtfReportStatus.Pass);
         scope.CompletePhase(ApiScenarioPhaseLayout.TestBody, AtfReportStatus.Pass);
         scope.CompleteScenario(AtfReportStatus.Pass);
 
         var testBody = scenario.Model.Children.Single();
         Assert.Equal(
-            [
-                "GET /public/v2/users",
-                "Validate: user collection contract",
-                "Validate: content-type contains application/json"
-            ],
+            ["GET /public/v2/users"],
             testBody.Children.Select(child => child.Name).ToArray());
 
         var request = testBody.Children[0];
         Assert.Equal("GET /public/v2/users", request.Name);
-        Assert.Empty(request.Children);
-        Assert.Equal(
-            ["Validate: user collection contract", "Validate: content-type contains application/json"],
-            testBody.Children.Skip(1).Select(child => child.Name).ToArray());
+        Assert.Equal(["Validate: user collection contract"], request.Children.Select(child => child.Name).ToArray());
+        Assert.Contains("Assertions · 2", request.Children[0].Info.Keys);
     }
 
     [Fact(DisplayName = "Starting a new lifecycle phase closes the previous phase before creating the sibling")]
@@ -137,9 +123,7 @@ public sealed class ApiScenarioPhaseLayoutTests
         Assert.Equal("GET /public/v2/posts", scenario.Model.Children[0].Children.Single().Name);
         var testBody = scenario.Model.Children[1];
         Assert.Equal("GET /public/v2/posts/1", testBody.Children[0].Name);
-        Assert.Empty(testBody.Children[0].Children);
-        Assert.Equal("Validate: status=200", testBody.Children[1].Name);
-        Assert.Empty(testBody.Children[1].Children);
+        Assert.Equal("Validate: status=200", testBody.Children[0].Children.Single().Name);
         Assert.Empty(scenario.Model.Children[2].Children);
     }
 }

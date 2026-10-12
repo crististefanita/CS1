@@ -7,7 +7,7 @@ namespace Atf.Core.Reporting;
 /// Scenario-scoped adapter over Extent. It owns the execution tree and keeps
 /// report evidence attached to the currently active API step.
 /// </summary>
-public sealed class ExtentTestScope : IAtfReporter, IDisposable
+public sealed class ExtentTestScope : IAtfScenarioScope
 {
     private readonly ExtentTest _test;
     private readonly string _testClassName;
@@ -64,11 +64,9 @@ public sealed class ExtentTestScope : IAtfReporter, IDisposable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
 
-        // Lifecycle phases are the direct children of a scenario. An API
-        // request and each validation are separate executable steps beneath
-        // the phase. This mirrors the Extent UI contract: TEST BODY contains
-        // a request step followed by validation step siblings, while the
-        // request itself owns only its response evidence.
+        // Lifecycle phases are the direct children of a scenario. A request
+        // owns its technical trace, response JSON and the one aggregate
+        // contract validation for that response.
         if (ApiScenarioPhaseLayout.Classify(title) is not null)
         {
             while (Current is not null)
@@ -76,18 +74,6 @@ public sealed class ExtentTestScope : IAtfReporter, IDisposable
                 FlushPendingDetails();
                 PopStep();
             }
-        }
-        else if (IsValidationStepTitle(title) && TryGetCurrentPhase(out var phase))
-        {
-            // Validation is intentionally attached to the phase rather than
-            // to the request currently on the stack. Keeping the request
-            // frame alive preserves the defensive close-on-next-request
-            // behaviour, while the Extent model remains phase -> request +
-            // validation siblings.
-            FlushPendingDetails();
-            var validationNode = phase.Node.CreateNode(WebUtility.HtmlEncode(title), string.Empty);
-            (_frames.Value ??= new Stack<StepFrame>()).Push(new StepFrame(validationNode, title));
-            return;
         }
         else if (IsHttpStepTitle(title))
         {
@@ -264,24 +250,6 @@ public sealed class ExtentTestScope : IAtfReporter, IDisposable
     {
         var verb = title.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries)[0];
         return verb is "GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS" or "TRACE";
-    }
-
-    private static bool IsValidationStepTitle(string title) =>
-        title.StartsWith("Validate:", StringComparison.OrdinalIgnoreCase);
-
-    private bool TryGetCurrentPhase(out StepFrame phase)
-    {
-        if (_frames.Value is { Count: > 0 } frames)
-        {
-            phase = frames.FirstOrDefault(frame => ApiScenarioPhaseLayout.Classify(frame.Title) is not null)!;
-            if (phase is not null)
-            {
-                return true;
-            }
-        }
-
-        phase = null!;
-        return false;
     }
 
     public sealed class StepFrame

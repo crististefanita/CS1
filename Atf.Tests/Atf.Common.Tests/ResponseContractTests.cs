@@ -40,6 +40,21 @@ public sealed class ResponseContractTests
         Assert.Throws<InvalidOperationException>(() => contract.ExpectJsonPath("$.id"));
     }
 
+    [Fact(DisplayName = "Pre-composed response contract uses the same single evidence table")]
+    public void PreComposedContractUsesOneTable()
+    {
+        var reporter = new RecordingReporter();
+        var contract = new ResponseContract()
+            .ExpectStatus(HttpStatusCode.OK)
+            .ExpectJsonPath("$.id");
+
+        ApiAssertions.Contract(reporter, Response("{\"id\":42}"), "Validate: reusable contract", contract);
+
+        Assert.Single(reporter.Tables);
+        Assert.Equal(["HTTP status", "JSONPath exists: $.id"], reporter.Tables[0].Select(row => row.Name));
+        Assert.Equal(["start:Validate: reusable contract", "complete:Pass"], reporter.StepEvents);
+    }
+
     private static ApiResponse Response(string body) => new(
         HttpStatusCode.OK,
         body,

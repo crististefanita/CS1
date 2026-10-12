@@ -26,6 +26,14 @@ internal static class ExtentReportClientBehaviour
               return null;
             }
 
+            function ownedAccordion(card) {
+              const direct = directChild(card, 'accordion');
+              if (direct) return direct;
+              const collapse = directChild(card, 'collapse');
+              const body = collapse && directChild(collapse, 'card-body');
+              return body && directChild(body, 'accordion');
+            }
+
             function cardBodies(card) {
               if (!card) return [];
               const header = directChild(card, 'card-header');
@@ -113,9 +121,9 @@ internal static class ExtentReportClientBehaviour
 
             function configureExecutionHierarchy() {
               // Mark the semantic levels explicitly so CSS and interaction
-              // tests preserve the contract: phase -> request + validation
-              // siblings. Response evidence remains inside the request;
-              // validation evidence remains inside its own validation step.
+              // tests preserve the contract: phase -> request -> validation.
+              // Response evidence and the single aggregate validation belong
+              // to the request that produced the response.
               document.querySelectorAll('.test-view .test-content-detail .card[data-atf-phase]').forEach(function (phaseCard) {
                 phaseCard.setAttribute('data-atf-node-role', 'phase');
                 const phaseAccordion = directChild(phaseCard, 'accordion');
@@ -129,10 +137,22 @@ internal static class ExtentReportClientBehaviour
                   const titleText = stepTitle && stepTitle.textContent ? stepTitle.textContent.trim() : '';
                   if (!stepTitle || phaseKey(titleText)) return;
 
-                  const role = /^validate\s*:/i.test(titleText) ? 'validation' : 'request';
-                  stepCard.setAttribute('data-atf-node-role', role);
+                  stepCard.setAttribute('data-atf-node-role', 'request');
                   stepCard.setAttribute('data-atf-parent-phase', phaseCard.getAttribute('data-atf-phase') || '');
                   stepCard.setAttribute('data-atf-parent-node', 'phase');
+
+                  const requestAccordion = ownedAccordion(stepCard);
+                  if (!requestAccordion) return;
+                  Array.from(requestAccordion.children).forEach(function (validationCard) {
+                    if (!validationCard.classList.contains('card')) return;
+                    const validationHeader = directChild(validationCard, 'card-header');
+                    const validationTitle = validationHeader && validationHeader.querySelector('.card-title .node');
+                    const validationText = validationTitle && validationTitle.textContent ? validationTitle.textContent.trim() : '';
+                    if (!validationTitle || !/^validate\s*:/i.test(validationText)) return;
+                    validationCard.setAttribute('data-atf-node-role', 'validation');
+                    validationCard.setAttribute('data-atf-parent-node', 'request');
+                    validationCard.setAttribute('data-atf-parent-phase', phaseCard.getAttribute('data-atf-phase') || '');
+                  });
                 });
               });
             }

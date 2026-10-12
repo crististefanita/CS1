@@ -57,14 +57,15 @@ flowchart TD
     Phase --> Request[HTTP request]
     Request --> Trace[TECHNICAL TRACE]
     Request --> Json[REQUEST / RESPONSE JSON]
-    Request --> Validation[Validation node]
+    Phase --> Validation[Validation node]
     Validation --> Table[One aggregated assertion table]
-    Validation --> More[Additional validation sibling]
+    Phase --> More[Additional validation sibling]
 ```
 
-The invariant is `phase → request → validation`, not a flat list and not one
-child node per assertion. The request stays open after the HTTP response so the
-caller can attach contract validation to the response it actually verifies.
+The invariant is `phase → request + validation siblings`, not a flat list and not one
+child node per assertion. The request remains the active execution context while
+response evidence is published; the validation is then created under the same phase
+and is associated with that response by execution order and contract title.
 Each validation closes itself in `finally`, preventing validation A from
 swallowing validation B as its child. Composite validators should therefore
 combine status, headers, schema and JSON-path checks into one table whenever
@@ -78,7 +79,7 @@ The current deterministic suite covers:
 - URL/query construction and injected transport/authenticator boundaries;
 - bounded rate-limit retries and server/fallback delay selection;
 - JSON pretty printing and configurable assertion previews;
-- phase sibling layout and request-owned validation nodes;
+- phase sibling layout and request-associated validation nodes;
 - collapsed report evidence, nested card click delegation and JSON overflow;
 - central typography/color tokens and absence of horizontal page overflow;
 - self-contained HTML, no external `extent` folder and no open evidence nodes;
@@ -109,7 +110,7 @@ dotnet test C:\work\ex\.net\.tmp\Atf\Atf.Api\Atf.Api.csproj --configuration Rele
    as the original exception while the report is best-effort.
 4. **Keep the final artifact as a gate.** Every report-rendering change needs
    structural Extent tests, static artifact inspection and one browser smoke
-   run that expands phase → request → validation and evidence blocks.
+   run that expands phase → request + validation siblings and evidence blocks.
 
 ### P1 — improve maintainability and OOP
 

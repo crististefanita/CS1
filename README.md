@@ -108,14 +108,15 @@ flowchart TD
     G --> K[Request / response JSON]
     H --> L[Contract validation]
     H --> M[Retry / diagnostic evidence]
-    G --> N[Validation owned by request]
+    E --> N[Validation sibling]
     N --> O[One aggregate assertion table]
 ```
 
 The three lifecycle phases are direct siblings below the scenario. The request owns
-its transport evidence and the validation that verifies the same response, so the
-report reads as `phase → request → evidence + aggregate validation` and keeps each HTTP
-exchange with its contract evidence. The
+its transport/response evidence, while the validation is a sibling under the same
+phase and verifies the response associated with that request. The report therefore
+reads as `phase → request + validation`, with `request → evidence` and
+`validation → aggregate table`. The
 scenario verdict is carried by its header; composite lifecycle scenarios do not repeat
 it in a redundant parent event table. Phase shells, request/response details, JSON and
 assertion evidence remain collapsed by default so the report is scannable before it
@@ -156,7 +157,7 @@ flowchart TD
     V1 --> T1[One aggregate assertion table]
 ```
 
-This request-owned hierarchy is covered offline in `ApiScenarioPhaseLayoutTests` and
+This request/validation sibling hierarchy is covered offline in `ApiScenarioPhaseLayoutTests` and
 `ReportingStructureTests`; the final HTML is then inspected separately because
 an in-memory Extent tree cannot prove browser hydration, collapsed state or overflow.
 

@@ -33,6 +33,8 @@ public sealed class HttpExecutorComponentTests
         Assert.Equal(2, transport.Calls);
         Assert.Equal("2", reporter.Details["attempt"]);
         Assert.Contains("rate-limit.retry.reason", reporter.Details.Keys);
+        Assert.Contains(reporter.Infos, info => info.Contains("Attempt 1", StringComparison.Ordinal));
+        Assert.Contains(reporter.Infos, info => info.Contains("HTTP 429", StringComparison.Ordinal));
     }
 
     [Fact(DisplayName = "Executor returns a single non-retryable response without a retry event")]
@@ -204,12 +206,13 @@ public sealed class HttpExecutorComponentTests
     {
         public Dictionary<string, string> Details { get; } = new(StringComparer.OrdinalIgnoreCase);
         public List<(string Label, string Json)> JsonPayloads { get; } = [];
+        public List<string> Infos { get; } = [];
 
         public void StartStep(string title) { }
         public void Detail(string key, string value) => Details[key] = value;
         public void Json(string label, string json) => JsonPayloads.Add((label, json));
         public void AssertionTable(IReadOnlyCollection<AtfAssertion> assertions) { }
-        public void Info(string message) { }
+        public void Info(string message) => Infos.Add(message);
         public void Pass(string message) { }
         public void Fail(string message, Exception? exception = null) { }
         public void Warning(string message) { }

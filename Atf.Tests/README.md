@@ -143,7 +143,7 @@ flowchart TD
 
 Unit tests prove the close/open protocol, component tests prove the node hierarchy,
 and the browser check proves that Extent's hydrated DOM preserves the intended
-collapsed phase → request → evidence + aggregate validation layout. The three layers are complementary, not substitutes.
+collapsed phase → request + validation sibling layout, with evidence under the request and the aggregate table under validation. The three layers are complementary, not substitutes.
 
 Ordinea este intenționată: un defect de configurare, routing sau reporting trebuie să eșueze în testele offline, înainte de a consuma timp și date pe serviciul live.
 

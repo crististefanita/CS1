@@ -57,7 +57,8 @@ public sealed class RedactionSettings
     public string[] SensitiveKeys { get; init; } =
     [
         "access_token", "api_key", "apikey", "authorization", "client_secret",
-        "password", "refresh_token", "secret", "token"
+        "password", "refresh_token", "secret", "token", "email", "email_address",
+        "phone", "phone_number"
     ];
 
     public RedactionSettings Snapshot() => new()

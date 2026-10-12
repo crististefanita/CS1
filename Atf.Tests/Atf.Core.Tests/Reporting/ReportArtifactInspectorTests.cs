@@ -21,7 +21,7 @@ public sealed class ReportArtifactInspectorTests
             Assert.True(inspection.Satisfies("inner-phase-rail-removed"));
             Assert.True(inspection.Satisfies("composite-summary-cleanup"));
             Assert.True(inspection.Satisfies("phase-shells-collapsed"));
-            Assert.True(inspection.Satisfies("sibling-execution-hierarchy"));
+            Assert.True(inspection.Satisfies("response-owned-execution-hierarchy"));
         }
         finally
         {
@@ -90,6 +90,7 @@ public sealed class ReportArtifactInspectorTests
       <body>
         <script id="atf-custom-behaviour">
           function configureExecutionHierarchy() {}
+          stepCard.setAttribute('data-atf-parent-node', 'request');
           function removeCompositeScenarioSummary() {}
           body.classList.remove('show');
           header.setAttribute('aria-expanded', 'false');

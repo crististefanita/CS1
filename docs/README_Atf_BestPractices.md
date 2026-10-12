@@ -217,23 +217,24 @@ Cele trei verificări sunt corecte semantic, dar produc evidence fragmentată ș
 Separă mesele doar când există responses diferite sau o limită reală de
 contract: de exemplu request-ul de creare și request-ul ulterior de read-back.
 
-### 2.6 Request-ul rămâne deschis până la validarea lui
+### 2.6 Request-ul rămâne contextul activ până la validarea lui
 
 Raportul trebuie să fie lizibil ca structură:
 
 ```text
 TEST BODY
-└── GET /users
-    ├── TECHNICAL TRACE
-    ├── RESPONSE JSON
-    └── Validate: user collection contract
-        └── ASSERTION TABLE
+├── GET /users
+│   ├── TECHNICAL TRACE
+│   └── RESPONSE JSON
+└── Validate: user collection contract
+    └── ASSERTION TABLE
 ```
 
 Executorul publică evidence-ul tehnic, dar nu închide request-ul înainte ca
-validatorul să-și publice rezultatul. Validatorul își închide propriul nod,
-apoi faza închide request-ul. Această regulă previne validări afișate ca frați
-ai request-ului sau atașate unui request greșit.
+validatorul să-și publice rezultatul. Validatorul își închide propriul nod, iar
+faza închide contextul execuției după ce requestul și validarea au fost publicate.
+Această regulă previne validări afișate ca descendenți ai requestului sau atașate
+unui request greșit.
 
 ### 2.7 Scenariile nu controlează infrastructura
 
@@ -358,7 +359,7 @@ Un test live care trece nu compensează lipsa acestor dovezi offline.
 | test body are validare? | contract/business validation vizibilă | doar request + cleanup |
 | response-ul are o masă agregată? | un validator, un tabel | status/header/json în noduri separate |
 | teardown-ul este suplimentar? | cleanup/read-back best effort | singura dovadă a testului |
-| raportul păstrează ownership-ul? | phase → request → evidence + validation | validation mutată sub request greșit |
+| raportul păstrează ownership-ul? | phase → request + validation; evidence sub request, tabel sub validation | validation mutată sub request greșit |
 | secretele sunt protejate? | redaction central, testată | token în trace/JSON/exception |
 | README-ul explică fluxul? | diagramă + contract + failure path | descriere de fișiere fără model |
 

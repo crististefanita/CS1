@@ -846,9 +846,8 @@ public static class AtfReportTheme
         margin-bottom: 0 !important;
       }
 
-      /* Execution hierarchy contract: TEST BODY is the phase shell; HTTP
-         requests and contract validations are sibling steps, matching the
-         reference Extent report. The request owns response evidence only. */
+      /* Execution hierarchy contract: TEST BODY is the phase shell; each HTTP
+         request owns its response evidence and one aggregate validation. */
       .test-view .test-content-detail .card[data-atf-node-role="phase"] > .accordion[data-atf-node-group="phase-children"] {
         display: block !important;
         margin: 6px 12px 8px !important;
@@ -885,6 +884,16 @@ public static class AtfReportTheme
         padding: 7px 10px !important;
         background: var(--atf-panel-2) !important;
         border-bottom: 1px solid var(--atf-border) !important;
+      }
+      .test-view .test-content-detail .card[data-atf-node-role="request"] > .collapse > .card-body > .accordion {
+        margin: 8px 0 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+      }
+      .test-view .test-content-detail .card[data-atf-node-role="request"] > .collapse > .card-body > .accordion > .card[data-atf-node-role="validation"] {
+        margin: 8px 0 0 !important;
+        box-shadow: none !important;
+        border-color: var(--atf-border) !important;
       }
     
       @media (max-width: 900px) {

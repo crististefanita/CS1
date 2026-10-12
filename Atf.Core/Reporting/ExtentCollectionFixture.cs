@@ -25,7 +25,7 @@ public sealed class ExtentCollectionFixture : IDisposable
 
     public AtfConfiguration Configuration { get; }
 
-    public ExtentTestScope StartTest(
+    public IAtfScenarioScope StartTest(
         string testClassName,
         string scenarioName,
         string description,

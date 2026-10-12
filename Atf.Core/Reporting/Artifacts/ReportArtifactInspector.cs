@@ -39,10 +39,10 @@ public sealed class ReportArtifactInspector
             ["timestamp-column-hidden"] = html.Contains("timestamp-col", StringComparison.Ordinal)
                 && html.Contains("display: none !important", StringComparison.Ordinal),
             ["inner-phase-rail-removed"] = html.Contains("border-left: 0 !important", StringComparison.Ordinal),
-            ["sibling-execution-hierarchy"] = html.Contains("configureExecutionHierarchy", StringComparison.Ordinal)
+            ["response-owned-execution-hierarchy"] = html.Contains("configureExecutionHierarchy", StringComparison.Ordinal)
                 && html.Contains("data-atf-node-role=\"request\"", StringComparison.Ordinal)
                 && html.Contains("data-atf-node-role=\"validation\"", StringComparison.Ordinal)
-                && html.Contains("data-atf-parent-phase", StringComparison.Ordinal)
+                && html.Contains("data-atf-parent-node', 'request", StringComparison.Ordinal)
         };
 
         return new ReportArtifactInspection(fullPath, checks);

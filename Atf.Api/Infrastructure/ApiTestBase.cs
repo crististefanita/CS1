@@ -128,7 +128,7 @@ public abstract class ApiTestBase(ITestOutputHelper output, ExtentCollectionFixt
     }
 
     private static async Task RunPhaseAsync(
-        ExtentTestScope scope,
+        IAtfScenarioScope scope,
         string phase,
         ApiScenarioContext context,
         Func<ApiScenarioContext, Task> action)
