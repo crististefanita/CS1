@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ATF API — cerințe de recreare .NET | Extent-only</title>
+  <style>
+    :root{
+      --bg:#0b0f14;--panel:#111826;--panel2:#0f1724;--panel3:#0a0f18;
+      --text:#e6edf3;--muted:#a8b3cf;--border:#243044;--accent:#7aa2ff;
+      --accent2:#6ee7b7;--warn:#fbbf24;--bad:#fb7185;--good:#34d399;
+      --shadow:rgba(0,0,0,.35);--mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+      --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif
+    }
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;min-height:100vh;
+      color:var(--text);background:radial-gradient(1200px 800px at 10% 0%,#142038 0%,var(--bg) 48%) fixed;
+      font:14px/1.58 var(--sans)}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+    .wrap{max-width:1240px;margin:0 auto;padding:26px 18px 64px}.hero,.card,details,header{border:1px solid var(--border);
+      border-radius:18px;background:rgba(17,24,38,.76);box-shadow:0 10px 26px var(--shadow)}
+    .hero{padding:24px 24px 20px;margin-bottom:14px}.eyebrow{color:var(--accent2);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+    h1{font-size:29px;line-height:1.2;margin:5px 0 7px;letter-spacing:.1px}h2{font-size:20px;margin:0 0 10px}h3{font-size:16px;margin:0 0 8px}h4{font-size:14px;margin:14px 0 6px}
+    .sub{color:var(--muted);max-width:980px}.meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:14px}.pill,.badge{display:inline-block;padding:3px 9px;border-radius:999px;border:1px solid var(--border);background:rgba(15,23,36,.8);color:var(--muted);font-size:12px}.pill.good{color:var(--good);border-color:#1b6b55}.pill.warn{color:var(--warn);border-color:#775d18}.pill.bad{color:var(--bad);border-color:#793143}
+    .toolbar{position:sticky;top:10px;z-index:5;display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:9px 11px;margin:0 0 14px;border:1px solid var(--border);border-radius:14px;background:rgba(10,15,24,.9);backdrop-filter:blur(10px)}
+    button,input{font:inherit;color:var(--text);border:1px solid var(--border);border-radius:9px;background:var(--panel2);padding:7px 10px}button{cursor:pointer}button:hover{border-color:var(--accent);color:#fff}input{min-width:250px;outline:none}input:focus{border-color:var(--accent)}
+    .layout{display:grid;grid-template-columns:245px minmax(0,1fr);gap:14px}.toc{position:sticky;top:68px;align-self:start;padding:14px;border:1px solid var(--border);border-radius:16px;background:rgba(15,23,36,.72);max-height:calc(100vh - 85px);overflow:auto}.toc h3{color:var(--muted);font-size:12px;letter-spacing:.1em;text-transform:uppercase}.toc a{display:block;padding:5px 7px;border-radius:8px;color:var(--muted);font-size:13px}.toc a:hover{background:rgba(122,162,255,.1);color:var(--text);text-decoration:none}.content{min-width:0}.card{padding:17px;margin:0 0 14px}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:12px}.split{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mini{padding:13px;border:1px solid var(--border);border-radius:13px;background:rgba(15,23,36,.52)}
+    details{padding:10px 12px;margin:11px 0;background:rgba(15,23,36,.55)}details.details-tight{margin:7px 0;padding:8px 10px}summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:700;padding:4px 2px}summary::-webkit-details-marker{display:none}.summary-title{display:inline-flex;align-items:center;gap:8px}.summary-title:before{content:'›';color:var(--accent);font-size:21px;line-height:12px;transition:transform .15s}details[open]>summary .summary-title:before{transform:rotate(90deg)}.sumhint{font-size:12px;font-weight:400;color:var(--muted);text-align:right}.details-body{padding-top:8px}
+    p{margin:7px 0 10px}ul,ol{margin:7px 0 9px 20px;padding:0}li{margin:4px 0}.muted{color:var(--muted)}.small{font-size:12px}.kvs{display:grid;grid-template-columns:190px 1fr;gap:6px 12px}.k{color:var(--muted)}
+    .note,.rule,.warn,.danger{padding:10px 12px;border-left:3px solid;border-radius:11px;margin:10px 0}.note{border-color:var(--accent2);background:rgba(16,185,129,.08)}.rule{border-color:var(--accent);background:rgba(122,162,255,.08)}.warn{border-color:var(--warn);background:rgba(251,191,36,.08)}.danger{border-color:var(--bad);background:rgba(251,113,133,.08)}
+    code,.inline{font-family:var(--mono);font-size:12px;background:rgba(10,15,24,.76);border:1px solid var(--border);border-radius:6px;padding:1px 5px;color:#dbe7ff}pre{overflow:auto;background:rgba(10,15,24,.92);border:1px solid var(--border);border-radius:13px;padding:12px;margin:9px 0 4px}pre code{display:block;border:0;background:transparent;padding:0;white-space:pre;color:#dbe7ff;font-size:12px;line-height:1.52}
+    table{width:100%;border-collapse:collapse;margin:8px 0 3px;font-size:13px}th,td{border:1px solid var(--border);padding:8px 9px;vertical-align:top;text-align:left}th{color:#cbd8f4;background:rgba(36,48,68,.46)}tr:nth-child(even) td{background:rgba(15,23,36,.25)}.status{white-space:nowrap;font-weight:800}.status.good{color:var(--good)}.status.warn{color:var(--warn)}.status.bad{color:var(--bad)}.status.info{color:var(--accent)}
+    .flow{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;align-items:center;margin:10px 0}.node{padding:11px 8px;text-align:center;border:1px solid var(--border);border-radius:11px;background:rgba(15,23,36,.78);font-weight:700}.arrow{text-align:center;color:var(--accent);font-size:19px}.matrix td:first-child{font-family:var(--mono);font-size:12px}.req{color:var(--accent2);font-weight:800}.decision{color:var(--warn);font-weight:800}
+    .checklist{display:grid;grid-template-columns:repeat(2,1fr);gap:7px}.check{padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:rgba(15,23,36,.45)}.check:before{content:'☐';color:var(--accent);margin-right:7px}.footer{color:var(--muted);font-size:12px;text-align:center;padding-top:12px}.hidden{display:none!important}
+    @media(max-width:960px){.layout{grid-template-columns:1fr}.toc{position:static;max-height:none}.grid,.split{grid-template-columns:1fr}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}.checklist{grid-template-columns:1fr}}
+    @media print{body{background:#fff;color:#111}.toolbar,.toc{display:none}.layout{display:block}.card,details{box-shadow:none;border-color:#bbb;background:#fff}details{break-inside:avoid}details:not([open])>.details-body{display:block}a{color:#034da2}pre{background:#f5f5f5;color:#111}pre code{color:#111}}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero" id="top">
+    <div class="eyebrow">ATF • analiză de arhitectură și cerințe de recreare</div>
+    <h1>API testing pentru servicii — specificație configurabilă pentru .NET</h1>
+    <div class="sub">Document de bază în limba română pentru reconstruirea comportamentului API al framework-ului analizat într-un alt limbaj/platformă. Soluția de reporting impusă pentru noul ATF este <strong>Extent-only</strong>, cu temă dark și pași colapsabili.</div>
+    <div class="meta"><span class="pill good">scop: cerințe reimplementabile</span><span class="pill">arie: API testing servicii</span><span class="pill">model: config-driven</span><span class="pill">platformă exemplu: .NET</span><span class="pill warn">reporting: Extent-only</span></div>
+  </section>
+
+  <div class="toolbar">
+    <button id="openAll">Deschide toate</button><button id="closeAll">Închide toate</button>
+    <input id="filter" type="search" placeholder="Filtrează secțiunile…" aria-label="Filtrează documentul">
+    <span class="muted small">Document autonom; nu depinde de CSS extern.</span>
+  </div>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Cuprins">
+      <h3>Cuprins</h3>
+      <a href="#rezumat">0. Rezumat executiv</a><a href="#metoda">1. Metodă și surse</a><a href="#harta">2. Harta arhitecturii curente</a><a href="#contracte">3. Contracte funcționale</a><a href="#suprafata">4. Suprafața de servicii</a><a href="#executie">5. Execuție HTTP și retry</a><a href="#validare">6. Validare și polling</a><a href="#date">7. Date, modele și cleanup</a><a href="#lifecycle">8. Lifecycle și organizarea testelor</a><a href="#extent">9. Reporting Extent-only</a><a href="#config">10. Model configurabil de cerințe</a><a href="#dotnet">11. Blueprint .NET</a><a href="#nefunctional">12. Cerințe non-funcționale</a><a href="#goluri">13. Goluri, riscuri și decizii</a><a href="#acceptare">14. Criterii de acceptare</a><a href="#trasabilitate">15. Trasabilitate</a>
+    </nav>
+
+    <main class="content">
+      <section class="card searchable" id="rezumat">
+        <h2>0. Rezumat executiv</h2>
+        <div class="grid">
+          <div>
+            <p>Zona analizată implementează un flux API stratificat: testele descriu scenarii, pașii orchestrează intenția, serviciile cunosc endpointurile, executorul comun realizează requestul/retry/reporting, iar validatorii aplică aserțiuni reutilizabile.</p>
+            <div class="flow"><div class="node">Config + BaseTestAPI</div><div class="arrow">→</div><div class="node">Tests</div><div class="arrow">→</div><div class="node">Steps → Services → Executor → Extent</div></div>
+            <p class="rule"><span class="req">Cerință de păstrat:</span> testele noi nu trebuie să construiască direct requesturi HTTP, JSON-uri sau loguri de reporting. Ele trebuie să folosească pași, factories/builders și validators.</p>
+          </div>
+          <div class="mini"><h3>Verdict de maturitate</h3><div class="kvs"><div class="k">Fundație runtime</div><div><span class="status good">bună</span> — client, executor, retry, reporting</div><div class="k">Acoperire servicii</div><div><span class="status warn">parțială</span> — Users dominant; Posts fără fluxuri complete</div><div class="k">Contracte de răspuns</div><div><span class="status warn">parțială</span> — schema user; validatorii există, dar nu sunt folosiți peste tot</div><div class="k">Portabilitate</div><div><span class="status info">ridicată</span> — contractele pot fi exprimate în YAML + adapter .NET</div><div class="k">Risc principal</div><div><span class="status bad">secrete/config</span> — tokenul este în fișierul de proprietăți al sursei</div></div></div>
+        </div>
+        <div class="note"><strong>Scop:</strong> documentul definește „ce trebuie să facă” un ATF API nou. Nu impune copierea claselor Java și nu presupune că GoRest este contract universal; endpointurile din sursă sunt exemplul de sistem testat, iar contractul nou trebuie să permită înlocuirea lor prin configurație.</div>
+      </section>
+
+      <section class="card searchable" id="metoda">
+        <h2>1. Metodă și surse analizate</h2>
+        <details open><summary><span class="summary-title">Surse de adevăr și ordine de interpretare</span><span class="sumhint">evidență locală</span></summary><div class="details-body">
+          <ol><li>implementarea existentă din <code>src/main/java</code>;</li><li>testele și contractele din <code>src/test/java</code>;</li><li>configurația și fixture-urile din <code>src/main/resources</code> / <code>src/test/resources</code>;</li><li>documentația vie: <code>docs/Living_Architecture_UI_API_doc_v1_0.md/html</code> și promptul de evoluție API;</li><li>comportamentul raportării Extent din adapter, listener și testele de contract.</li></ol>
+          <p class="muted">Nu am extrapolat funcționalități care apar doar în UI/MCP. Când documentația declară o regulă dar codul o aplică doar parțial, regula este păstrată ca cerință și diferența este listată la riscuri.</p>
+        </div></details>
+        <details><summary><span class="summary-title">Inventarul principal al sursei</span><span class="sumhint">~9 subzone API în main</span></summary><div class="details-body">
+          <table><thead><tr><th>Zona</th><th>Rol observat</th><th>Recreare .NET</th></tr></thead><tbody><tr><td><code>api.core.client</code></td><td>client, facade, request executor, retry, runtime options</td><td>kernel reutilizabil, fără domeniu</td></tr><tr><td><code>api.core.validation</code></td><td>status/header/body/JSON/schema/error/polling/contract</td><td>assertion DSL + rezultat diagnostic</td></tr><tr><td><code>api.core.utils</code></td><td>date, JSON, wait, sleep, stacktrace</td><td>utilities injectabile și testabile</td></tr><tr><td><code>api.support.service</code></td><td>endpointuri concrete Users/Posts</td><td>resource clients generate/handwritten</td></tr><tr><td><code>api.support.steps</code></td><td>flow-uri semantice și captură de payload</td><td>scenario step layer</td></tr><tr><td><code>api.support.factory/model</code></td><td>date de request/response și factories</td><td>DTO + data builders/providers</td></tr></tbody></table>
+         </div></details>
+         <details open><summary><span class="summary-title">Comparația celor două rapoarte de referință</span><span class="sumhint">decizii extrase pentru API</span></summary><div class="details-body"><table><thead><tr><th>Sursă</th><th>Ce păstrăm</th><th>Ce adaptăm pentru API .NET</th></tr></thead><tbody><tr><td><code>RegressionExtent.html</code> — Underwriting UI/API</td><td>overview cu cards/charts/timeline, pași business vizibili, trace tehnic bogat, body-uri JSON în code-block scrollabil, evidență de auth și request-uri unice</td><td>eliminăm zgomotul UI; fiecare schimb HTTP devine pas clar cu PROPERTY/VALUE și validarea contractului sub el</td></tr><tr><td><code>ExtentReport.html</code> — Java ATF1</td><td>lifecycle Extent, durate pe test/step, nested nodes, servicii/steps/validators separați, retry și assertion helpers</td><td>transportul nu mai este raportat ca PASS automat; statusul funcțional este derivat numai din tabelul agregat de assertions</td></tr><tr><td><code>Atf</code> — implementarea .NET curentă</td><td>HTML autonom, dark token unic, accordion collapsed, tags o singură dată, cleanup de folder auxiliar</td><td>trace lizibil: REQUEST TYPE, METHOD, PATH, URL, AUTHENTICATION, AUTH MODE, STATUS, CONTENT TYPE, DURATION, ATTEMPT</td></tr></tbody></table><div class="note"><strong>Decizia finală:</strong> raportarea țintă combină overview-ul nativ Extent cu densitatea diagnostică a RegressionExtent, dar păstrează pentru fiecare contract un singur tabel <code>ASSERTION / EXPECTED / ACTUAL / RESULT</code>. Ordinea și semantica de mai sus sunt cerințe, nu sugestii de CSS.</div></div></details>
+         <details><summary><span class="summary-title">Limită importantă a analizei</span><span class="sumhint">nu este inventar OpenAPI</span></summary><div class="details-body"><p>Repository-ul nu oferă un contract OpenAPI complet pentru toate resursele. Lista de endpointuri de mai jos reflectă ce este codificat în servicii și steps, nu toate endpointurile disponibile pe server. Un nou ATF trebuie să pornească de la contractul real al produsului (OpenAPI/Swagger, documentație, exemple și live checks), apoi să populeze aceeași schemă configurabilă.</p></div></details>
+      </section>
+
+      <section class="card searchable" id="harta">
+        <h2>2. Harta arhitecturii curente</h2>
+        <details open><summary><span class="summary-title">Fluxul unei cereri API</span><span class="sumhint">contract central</span></summary><div class="details-body">
+          <div class="flow"><div class="node">Test</div><div class="arrow">→</div><div class="node">API Step</div><div class="arrow">→</div><div class="node">Service</div></div><div class="flow"><div class="node">ApiClient</div><div class="arrow">→</div><div class="node">ApiActions</div><div class="arrow">→</div><div class="node">ApiRequestExecutor</div></div><div class="flow"><div class="node">Response</div><div class="arrow">→</div><div class="node">Validators / Schema</div><div class="arrow">→</div><div class="node">StepLogger → Extent</div></div>
+          <table><thead><tr><th>Strat</th><th>Responsabilitate</th><th>Nu are voie să facă</th></tr></thead><tbody><tr><td><strong>Test</strong></td><td>orchestrare business, taguri, setup/cleanup</td><td>HTTP direct, JSON manual, logging direct</td></tr><tr><td><strong>Step</strong></td><td>nume semantic, compunere request + validări, captură de valori</td><td>să devină client HTTP generic</td></tr><tr><td><strong>Service</strong></td><td>base path, metode de resource</td><td>assertions și decizii de reporting</td></tr><tr><td><strong>Executor</strong></td><td>transport, retry 429, observabilitate request/response</td><td>business assertions</td></tr><tr><td><strong>Validator</strong></td><td>contract status/header/body/schema/error/relationship</td><td>request HTTP sau cleanup</td></tr><tr><td><strong>Reporting</strong></td><td>lifecycle Extent și noduri/atașamente</td><td>să schimbe rezultatul functional al testului</td></tr></tbody></table>
+        </div></details>
+        <details><summary><span class="summary-title">Structura recomandată pentru noul ATF</span><span class="sumhint">independent de namespace</span></summary><div class="details-body"><pre><code>src/
+  Atf.Api.Core/
+    Configuration/       # config + environment overrides
+    Http/                 # client, request, response, executor
+    Resilience/           # 429 policy, Retry-After, polling
+    Validation/           # assertions și contract DSL
+    Reporting/            # Extent-only facade + listener
+    Data/                 # fixture loader, generator, capture
+    Lifecycle/            # suite/test/step state
+  Atf.Api.Support/
+    Services/             # resource-specific endpoint clients
+    Steps/                # flow-uri semantice
+    Models/               # request/response DTO
+    Factories/            # builders și scenarii de date
+tests/
+  Atf.Api.Tests/
+Atf.Core/Configuration/atf.api.yaml
+testdata/
+schemas/
+reports/</code></pre><p class="muted">În .NET poate fi un singur proiect sau mai multe proiecte; obligația reală este separarea ownership-ului, nu numele folderelor.</p></div></details>
+      </section>
+
+      <section class="card searchable" id="contracte">
+        <h2>3. Contracte funcționale obligatorii</h2>
+        <details open><summary><span class="summary-title">Configurație</span><span class="sumhint">MUST</span></summary><div class="details-body"><ul><li><span class="req">MUST</span> toate setările să fie citite printr-un singur <code>ConfigManager</code>/provider;</li><li><span class="req">MUST</span> să existe <code>require(key)</code> pentru valori obligatorii și <code>get(key, default)</code> pentru valori opționale;</li><li><span class="req">MUST</span> base URL, auth, timeout, retry, report path și feature flags să fie configurabile fără recompilare;</li><li><span class="req">MUST</span> secretele să vină din environment/secret store/CI, niciodată din repository;</li><li><span class="req">MUST NOT</span> testele să citească direct variabile de sistem sau să modifice global clientul.</li></ul></div></details>
+        <details><summary><span class="summary-title">Separarea test / step / service / validator</span><span class="sumhint">MUST</span></summary><div class="details-body"><ul><li>Testul exprimă intenția de business: <code>create_user_success</code>, <code>invalid_email_is_rejected</code>.</li><li>Step-ul creează requestul prin factory, execută service-ul, înregistrează semantic requestul și returnează un rezultat utilizabil.</li><li>Service-ul definește operația și calea relativă; nu validează.</li><li>Validatorul primește response-ul și produce o eroare clară: expected, actual, path, body fragment, headers relevante.</li><li>Orice flow care creează date trebuie să declare cleanup, inclusiv la failure, skipped sau timeout.</li></ul></div></details>
+        <details><summary><span class="summary-title">Contractul de request/response</span><span class="sumhint">MUST</span></summary><div class="details-body"><ul><li>Requestul are metodă, path relativ, query, headers, body opțional, auth profile și timeout.</li><li>Response-ul păstrează status, headers, body raw, body JSON parse-uit, duration, attempt count și correlation id.</li><li>JSON-ul request/response se loghează pretty-printed, cu masking pentru token, cookie, authorization și câmpuri declarate sensibile.</li><li>URL-ul complet se derivă din <code>baseUrl + relativePath</code>; path-ul relativ rămâne vizibil în titlul pasului.</li></ul></div></details>
+        <details><summary><span class="summary-title">Reguli de eșec și continuitate</span><span class="sumhint">MUST</span></summary><div class="details-body"><ul><li>O aserțiune eșuată marchează testul <code>Failed</code>, cu pasul și diagnosticul în Extent.</li><li>Un test negativ care obține răspunsul de eroare așteptat este <code>Passed</code>; „negative” descrie comportamentul verificat, nu rezultatul raportului.</li><li>Erorile în afara unui pas activ trebuie atașate la test-level și să închidă curat starea reporterului.</li><li>Cleanup-ul best-effort trebuie să fie vizibil ca eveniment controlat, nu să ascundă cauza originală.</li></ul></div></details>
+      </section>
+
+      <section class="card searchable" id="suprafata">
+        <h2>4. Suprafața de servicii observată</h2>
+        <div class="warn"><strong>Interpretare:</strong> acestea sunt operații implementate în <code>UsersService</code>/<code>PostsService</code>, nu o promisiune că toate sunt acoperite complet de teste. În noul ATF, operațiile trebuie generate/activate din configurație.</div>
+        <details open><summary><span class="summary-title">Users — <code>/public/v2/users</code></span><span class="sumhint">resource principal</span></summary><div class="details-body"><table><thead><tr><th>Operație</th><th>Path</th><th>Input</th><th>Rezultat așteptat folosit</th><th>Acoperire sursă</th></tr></thead><tbody><tr><td><code>create</code></td><td>POST <code>/public/v2/users</code></td><td>UserRequest</td><td>201, body schema, id</td><td class="status good">pozitiv + negativ</td></tr><tr><td><code>get</code></td><td>GET <code>/public/v2/users/{id}</code></td><td>id</td><td>200 / 404 după delete</td><td class="status good">flow lifecycle</td></tr><tr><td><code>list</code></td><td>GET <code>/public/v2/users</code></td><td>query params</td><td>collection/pagination posibil</td><td class="status warn">service only</td></tr><tr><td><code>replace</code></td><td>PUT <code>/public/v2/users/{id}</code></td><td>UserRequest</td><td>200</td><td class="status warn">service/step only</td></tr><tr><td><code>patch</code></td><td>PATCH <code>/public/v2/users/{id}</code></td><td>UserRequest parțial</td><td>200, status inactive în E2E</td><td class="status good">lifecycle</td></tr><tr><td><code>delete</code></td><td>DELETE <code>/public/v2/users/{id}</code></td><td>id</td><td>204 / 404 pentru id inexistent</td><td class="status good">pozitiv + negativ</td></tr></tbody></table></div></details>
+        <details><summary><span class="summary-title">Posts — <code>/public/v2/posts</code> și relația user</span><span class="sumhint">service prezent, teste insuficiente</span></summary><div class="details-body"><table><thead><tr><th>Operație</th><th>Path</th><th>Input</th><th>Obligație nouă</th></tr></thead><tbody><tr><td>list</td><td>GET <code>/public/v2/posts</code></td><td>query</td><td>schema collection, pagination, sort/filter dacă sunt în contract</td></tr><tr><td>get</td><td>GET <code>/public/v2/posts/{postId}</code></td><td>postId</td><td>200, 404, schema item</td></tr><tr><td>list user posts</td><td>GET <code>/public/v2/users/{userId}/posts</code></td><td>userId + query</td><td>relationship: toate elementele aparțin userului</td></tr><tr><td>create user post</td><td>POST <code>/public/v2/users/{userId}/posts</code></td><td>PostRequest</td><td>201/contract live, parent relationship, cleanup</td></tr></tbody></table><div class="rule"><span class="decision">Decizie de implementare:</span> resursele Posts, Comments, Todos și relațiile nested trebuie declarate ca date în configurație; nu se hardcodează în motor.</div></div></details>
+        <details><summary><span class="summary-title">Matricea minimă de scenarii pentru orice resource</span><span class="sumhint">cerință generică</span></summary><div class="details-body"><table><thead><tr><th>Familie</th><th>Scenarii</th><th>Validări</th></tr></thead><tbody><tr><td>happy path</td><td>create, get, list, update/patch, delete</td><td>status, content-type, schema, identificator, persistence</td></tr><tr><td>negative input</td><td>required missing, format invalid, enum invalid, boundary</td><td>4xx, error payload, field/message contract, schema error</td></tr><tr><td>security</td><td>missing/invalid/expired auth, wrong role</td><td>401/403, no mutation, diagnostic fără secret</td></tr><tr><td>identity</td><td>unknown id, deleted id, malformed id</td><td>404/400 și body contract</td></tr><tr><td>relationship</td><td>nested parent absent, wrong parent, collection filtered</td><td>parent/child invariants, empty/404 rules</td></tr><tr><td>resilience</td><td>429, transient 5xx dacă policy permite</td><td>retry budget, delay, final outcome, attempts</td></tr></tbody></table></div></details>
+      </section>
+
+      <section class="card searchable" id="executie">
+        <h2>5. Execuție HTTP și retry</h2>
+        <details open><summary><span class="summary-title">Client și autentificare</span><span class="sumhint">comportament observat</span></summary><div class="details-body"><ul><li>Clientul inițializează o singură dată base URL-ul din config.</li><li>Requestul JSON setează <code>Content-Type: application/json</code> și <code>Accept: application/json</code>.</li><li>Requestul autentic adaugă <code>Authorization: Bearer &lt;token&gt;</code>; requestul explicit fără auth nu adaugă headerul.</li><li>Noua implementare trebuie să suporte profile de auth: bearer, basic, api-key, none, custom headers, cu secret masking.</li></ul><pre><code>auth:
+  profiles:
+    default:
+      scheme: bearer
+      token: ${API_TOKEN}
+    anonymous:
+      scheme: none
+    invalid:
+      scheme: bearer
+      token: ${INVALID_API_TOKEN}
+</code></pre></div></details>
+        <details><summary><span class="summary-title">Policy 429 și <code>Retry-After</code></span><span class="sumhint">păstrat, făcut configurabil</span></summary><div class="details-body"><p>Implementarea actuală reîncearcă numai pentru statusul <code>429</code>, cât timp bugetul de retry nu este epuizat. Delay-ul este citit din primul header nenul dintre <code>Retry-After</code>, variantele de casing și <code>x-ratelimit-reset</code>, este folosit ca număr de secunde, fallback-ul este configurat, iar valoarea este plafonată.</p><table><thead><tr><th>Input</th><th>Decizie</th><th>Cerință .NET</th></tr></thead><tbody><tr><td>status ≠ 429</td><td>completează fără retry</td><td>implicit, dar policy extensibilă</td></tr><tr><td>429 + attempts disponibile</td><td>retry + delay</td><td>log attempt și delay în pas</td></tr><tr><td>429 fără header</td><td>delay default</td><td>telemetrie: fallback folosit</td></tr><tr><td>header invalid / ≤0</td><td>delay default</td><td>nu fail-ui retry logic</td></tr><tr><td>delay peste max</td><td>delay capped</td><td>nu aștepta necontrolat</td></tr><tr><td>retry budget epuizat</td><td>returnează ultimul response</td><td>rezultatul final trebuie evaluat de assertion; nu marca automat functional PASS</td></tr></tbody></table><div class="danger"><strong>Gap de păstrat în backlog:</strong> în Java, după epuizarea retry-urilor, <code>ApiActions</code> închide apelul cu <code>pass("Call completed")</code>; dacă testul nu are o validare explicită, un ultim 429 poate apărea ca apel trecut. În .NET, engine-ul trebuie să distingă „transport completed” de „business contract passed”.</div></div></details>
+        <details><summary><span class="summary-title">Polling / eventual consistency</span><span class="sumhint">nu este sleep arbitrar</span></summary><div class="details-body"><ul><li>Polling-ul primește o funcție care face requestul, o condiție și intervalul.</li><li>Timeout-ul vine din config (<code>api.wait.timeout.seconds</code>), nu este hardcodat în test.</li><li>Ultimul response este returnat dacă timeout-ul expiră; apoi validatorul produce diagnosticul final.</li><li>În .NET se recomandă <code>CancellationToken</code>, deadline monotonic și backoff configurabil, cu număr de încercări și duration total logate.</li></ul></div></details>
+        <details><summary><span class="summary-title">Model de rezultat al executorului</span><span class="sumhint">contract recomandat</span></summary><div class="details-body"><pre><code>ApiExecutionResult
+  response: ApiResponse
+  attempts: int
+  totalDurationMs: long
+  retryEvents: [ { status, header, delayMs, reason } ]
+  correlationId: string
+  transportError: optional
+  finalState: Completed | TransportFailed | Cancelled</code></pre><p>Validatorii decid rezultatul funcțional; executorul decide doar rezultatul transportului și istoricul încercărilor.</p></div></details>
+      </section>
+
+      <section class="card searchable" id="validare">
+        <h2>6. Validare și polling</h2>
+        <details open><summary><span class="summary-title">Familiile de validatori observate</span><span class="sumhint">API public de validare</span></summary><div class="details-body"><table><thead><tr><th>Familie</th><th>Exemple de contract</th><th>Cerință pentru noul ATF</th></tr></thead><tbody><tr><td>Status</td><td><code>statusIs(response, 201)</code></td><td>mesaj cu expected/actual și body preview</td></tr><tr><td>Header</td><td>present, equals, content-type contains</td><td>casing policy documentată</td></tr><tr><td>Body text</td><td>body contains fragment</td><td>folosit doar pentru checks robuste, nu ca substitut de JSON path</td></tr><tr><td>JSON field</td><td>equals, not blank, every item equals</td><td>JSONPath/JMESPath configurabil</td></tr><tr><td>Array</td><td>non-empty, size equals/at most</td><td>collection semantics + limit</td></tr><tr><td>Error payload</td><td>message equals, field contains</td><td>error model generic + schema</td></tr><tr><td>Schema</td><td>JSON Schema din resource</td><td>versiune/schema path/config key + diagnostic path</td></tr><tr><td>Contract compus</td><td>pagination/filter/error message/rate-limit headers</td><td>compozitoare declarative reutilizabile</td></tr></tbody></table></div></details>
+        <details><summary><span class="summary-title">Cerințe de calitate pentru aserțiuni</span><span class="sumhint">MUST</span></summary><div class="details-body"><ul><li>Toate regulile care descriu același contract HTTP se acumulează într-un singur <strong>validation step</strong>; fiecare regulă este rând, nu child step separat.</li><li>Validatorul nu face network calls suplimentare decât dacă regula este explicit de tip eventual consistency/relationship.</li><li>Mesajul de eroare trebuie să includă regula, path-ul JSON/headerul, expected, actual și un fragment safe din response.</li><li>Validările din teste nu se implementează prin <code>Assert</code> dispersat dacă există validator echivalent; direct assertions sunt permise doar pentru meta-verificări locale.</li><li>Contractele compuse trebuie să poată fi serializate ca YAML și executate de un runner generic.</li></ul></div></details>
+        <details open><summary><span class="summary-title">Regula obligatorie: toate validările într-un singur tabel Extent</span><span class="sumhint">contract → 1 step → 1 tabel</span></summary><div class="details-body"><div class="rule"><strong>Semantica cerută:</strong> o operație HTTP este un step de execuție cu request/response; validările care îi verifică contractul sunt agregate imediat după aceea într-un singur step de tip <code>Validate: &lt;contract&gt;</code>.</div><table><thead><tr><th>Coloană</th><th>Conținut obligatoriu</th><th>Regulă de randare</th></tr></thead><tbody><tr><td><code>ASSERTION</code></td><td>numele stabil al regulii: status, Content-Type, schema, JSONPath, relationship etc.</td><td>nu se repetă ca titlu de child step</td></tr><tr><td><code>EXPECTED</code></td><td>valoarea sau forma acceptată</td><td>text scurt, determinist, configurabil</td></tr><tr><td><code>ACTUAL</code></td><td>valoarea observată, path-ul afectat sau preview safe</td><td>wrap obligatoriu; niciun scroll orizontal al paginii</td></tr><tr><td><code>RESULT</code></td><td><span class="status good">PASS</span> / <span class="status bad">FAIL</span></td><td>rândurile FAIL sunt vizibile și step-ul eșuează</td></tr></tbody></table><p><strong>Consecință de design:</strong> un contract cu 7 reguli produce un singur card de validare și o singură evidență tabelară cu 7 rânduri. Request JSON, response JSON și trace-ul tehnic rămân evidențe colapsabile ale step-ului HTTP/validation, nu devin pași concurenți care fragmentează triage-ul.</p><div class="note"><strong>Criteriu de consistență:</strong> aceeași colecție de rânduri trebuie să poată fi produsă de validatorul C#, de un scenariu YAML/JSON și de un viitor adapter .NET fără schimbarea formatului Extent.</div></div></details>
+        <details><summary><span class="summary-title">Trasabilitate către codul sursă pentru regula tabelului</span><span class="sumhint">ValidationEvidence</span></summary><div class="details-body"><p>În implementarea analizată, <code>Automation.Core.Validations.ValidationEvidence</code> acumulează rânduri <code>Name / Expected / Actual</code>, iar <code>AuditedPolicyApiReport.Validate(...)</code> le publică o singură dată pentru contract. Noul ATF păstrează aceeași semnificație și adaugă explicit coloana <code>RESULT</code>.</p></div></details>
+        <details><summary><span class="summary-title">Exemplu de DSL de assertions</span><span class="sumhint">language-neutral</span></summary><div class="details-body"><pre><code>assert:
+  - type: status
+    expected: 201
+  - type: contentType
+    contains: application/json
+  - type: jsonSchema
+    path: schemas/user.json
+  - type: jsonPath
+    path: $.id
+    rule: notNull
+  - type: jsonPath
+    path: $.status
+    rule: equals
+    expected: active
+</code></pre></div></details>
+      </section>
+
+      <section class="card searchable" id="date">
+        <h2>7. Date, modele și cleanup</h2>
+        <details open><summary><span class="summary-title">Date de test</span><span class="sumhint">fixtures + generators</span></summary><div class="details-body"><ul><li>Fixture-urile statice sunt fișiere JSON încărcate printr-un provider de resurse.</li><li>Factories generează requesturi valide și variante mutate: email invalid, gender/status invalid, câmp lipsă, duplicate.</li><li>Generatorul trebuie să permită seed explicit pentru reproducere, dar să evite coliziuni între run-uri paralele; seed-ul de business și nonce-ul de run se loghează fără date secrete.</li><li>DTO-urile request/response sunt distincte; nu se reutilizează response ca request fără mapping controlat.</li><li>Fixture gap-ul trebuie să producă un status vizibil (<code>Blocked</code>/<code>Expected failure</code>), nu un test care pică aleator.</li></ul></div></details>
+        <details><summary><span class="summary-title">Modele minime</span><span class="sumhint">contract</span></summary><div class="details-body"><pre><code>UserRequest:  name, email, gender, status
+UserResponse: id, name, email, gender, status
+PostRequest:  title, body
+CommentRequest: name, email, body
+ApiErrorMessage: message
+ApiValidationError: field -> messages[]</code></pre><p class="muted">Pentru .NET, DTO-urile trebuie să aibă naming policy configurabilă (camelCase implicit), null handling explicit și validare separată de deserializare.</p></div></details>
+        <details><summary><span class="summary-title">Cleanup și izolarea stării</span><span class="sumhint">MUST</span></summary><div class="details-body"><ul><li>Testul înregistrează resource IDs create într-un cleanup registry per test invocation.</li><li>Cleanup-ul se execută în <code>finally</code>/<code>AfterEach</code> chiar dacă testul a eșuat.</li><li>Delete-ul de cleanup este marcat <code>best-effort</code>, dar se păstrează în report status, endpoint, id și excepția dacă apare.</li><li>Testele paralele nu împart user/post IDs sau obiecte mutable.</li><li>Cleanup-ul nu trebuie să șteargă resurse preexistente decât dacă sunt marcate explicit ca owned de test.</li></ul></div></details>
+      </section>
+
+      <section class="card searchable" id="lifecycle">
+        <h2>8. Lifecycle și organizarea testelor</h2>
+        <details open><summary><span class="summary-title">Base API test</span><span class="sumhint">runtime readiness</span></summary><div class="details-body"><ul><li>Există un base test API comun care inițializează runtime-ul o singură dată pe clasă/scope.</li><li>Write flows fără token sunt oprite deliberat, prin skip/precondition, cu motiv vizibil.</li><li><strong>Contract de verdict:</strong> skip-ul dinamic trebuie transmis mecanismului nativ al runnerului după publicarea statusului Extent; aceeași execuție nu poate apărea <code>Passed</code> în runner și <code>Skipped</code> în raport.</li><li>Base API nu inițializează browser/UI engine și nu importă logică UI.</li><li>Listenerul de test și Extent lifecycle sunt moștenite centralizat; testele nu își creează propriul reporter.</li></ul></div></details>
+        <details><summary><span class="summary-title">Lifecycle hooks relevante</span><span class="sumhint">contracte verificate în Java</span></summary><div class="details-body"><table><thead><tr><th>Scope</th><th>Utilizare potrivită</th><th>Regulă nouă</th></tr></thead><tbody><tr><td>Before suite / one-time</td><td>config, reporter, shared read-only setup</td><td>fără date mutate partajate</td></tr><tr><td>Before class</td><td>setup costisitor dacă testele sunt intenționat flow-scoped</td><td>cleanup garantat după clasă</td></tr><tr><td>Before each</td><td>resource fresh pentru test independent</td><td>preferat pentru parallel-safety</td></tr><tr><td>After each</td><td>delete owned resources, attach cleanup outcome</td><td>always-run/finally</td></tr><tr><td>Dependency</td><td>doar când ordinea este parte din business flow</td><td>declarată în config, nu implicită</td></tr></tbody></table></div></details>
+        <details><summary><span class="summary-title">Taguri și suite</span><span class="sumhint">routing</span></summary><div class="details-body"><p>Tagurile curente includ <code>api</code>, <code>api.users</code>, <code>api.negative</code>, <code>api.lifecycle</code>, <code>api.contract</code>, <code>api.expected-failure</code>. Noul ATF trebuie să permită rulare pe taguri/profile: smoke, contract, negative, lifecycle, resilience, full.</p><pre><code>profiles:
+  smoke: [api, contract.smoke]
+  negative: [api, negative]
+  full: [api.*]
+  resilience: [api, rate-limit, eventual-consistency]</code></pre></div></details>
+      </section>
+
+      <section class="card searchable" id="extent">
+        <h2>9. Reporting Extent-only</h2>
+        <div class="danger"><strong>Decizie fixă pentru noul ATF:</strong> nu se include Allure, nu se expune un selector de engine și nu se păstrează listeneri/artefacte Allure. Extent este singurul backend de reporting.</div>
+        <details open><summary><span class="summary-title">Artefact unic, fără folder <code>extent</code></span><span class="sumhint">MUST — raport portabil</span></summary><div class="details-body"><p>La finalul suitei se livrează <strong>un singur fișier HTML autonom</strong>, direct în <code>artifacts/reports/</code> (timestamped sau nume explicit). Toate resursele Extent/Spark necesare — CSS, JavaScript, fonturi, iconuri și logo — sunt inline în acel HTML. Folderul auxiliar <code>artifacts/reports/extent/</code> nu este permis: dacă reporterul îl creează temporar, adapterul trebuie să facă inline înainte de flush final și să-l șteargă înainte de a declara run-ul terminat.</p><ul><li>HTML-ul nu trebuie să conțină referințe relative <code>extent/...</code> și nu trebuie să depindă de CDN.</li><li>Verificarea de acceptare enumeră recursiv <code>artifacts/reports</code> și acceptă doar raportul/rapoartele HTML și fișierele explicit aprobate de pipeline.</li><li>Raportul se poate deschide offline prin <code>file:</code> fără resurse lipsă, iar ștergerea folderului auxiliar nu schimbă randarea.</li></ul></div></details>
+        <details open><summary><span class="summary-title">Contractul public al reporterului</span><span class="sumhint">singurul canal permis</span></summary><div class="details-body"><pre><code>ReportManager.beginSuite()
+ReportManager.startTest(name, description, tags)
+ReportManager.startStep(title)
+ReportManager.logDetail(key, value)
+ReportManager.logJson(label, json)        # pretty + masked
+ReportManager.assertionTable(rows)       # toate regulile contractului într-un tabel
+ReportManager.pass(message)
+ReportManager.fail(message, exception)
+ReportManager.skip(reason)
+ReportManager.attach(file/base64, title)
+ReportManager.endTest(outcome)
+ReportManager.endSuite()</code></pre><ul><li>Api executor, service, step și validator folosesc facade-ul; nu instanțiază Extent direct.</li><li>Un pas se deschide și se închide exact o dată; nodurile nested sunt permise pentru contracte compuse, dar regulile aceluiași contract se agregă într-un tabel.</li><li>Reporterul nu schimbă verdictul funcțional și nu înghite excepția originală.</li><li><code>assertionTable(rows)</code> este forma standard pentru validări agregate; tabelul este colapsat implicit, dar păstrează toate rândurile pentru triage.</li></ul></div></details>
+        <details open><summary><span class="summary-title">Conținut obligatoriu pentru un API step</span><span class="sumhint">vizibil și triage-friendly</span></summary><div class="details-body"><pre><code>POST /public/v2/users                         [step title]
+REQUEST TYPE=HTTP POST
+METHOD=POST
+PATH=/public/v2/users
+URL=https://…/public/v2/users
+AUTHENTICATION=default
+AUTH MODE=bearer
+ATTEMPT=1
+REQUEST BODY={ pretty JSON, secrets masked }
+RESPONSE STATUS=201
+CONTENT TYPE=application/json
+RESPONSE DURATION=… ms
+TOTAL DURATION=… ms
+RESPONSE BODY={ pretty JSON, secrets masked }
+INFO HTTP exchange completed; contract validation pending.
+Validate: user contract                     [one collapsed assertion table]</code></pre><p>La retry se loghează separat <code>rate-limit.retry.attempt</code>, headerul folosit, delay-ul și motivul. La failure se atașează stacktrace și body safe. Nu se afișează timestamp în zona de test: timpul util este durata requestului și durata totală a exchange-ului. Timestamp-ul poate exista numai în numele fișierului pentru izolarea run-urilor.</p></div></details>
+        <details><summary><span class="summary-title">Regula de afișare: schimb HTTP coerent, nu zgomot de evenimente</span><span class="sumhint">decizie UX obligatorie</span></summary><div class="details-body"><p>Un API step trebuie citit de sus în jos ca o unitate: titlu <code>METHOD + PATH</code>, apoi evidența tehnică, body-ul requestului dacă există, evidența response-ului, body-ul response-ului și, în final, validarea contractului. Toate blocurile sunt colapsate inițial; primul click deschide doar pasul, iar fiecare sub-bloc rămâne controlabil independent.</p><table><thead><tr><th>Zona</th><th>Ce vede cititorul</th><th>Ce nu trebuie făcut</th></tr></thead><tbody><tr><td>Header test</td><td>nume, verdict, tags o singură dată, durata testului</td><td>start/end timestamp ca badge-uri repetate</td></tr><tr><td>Request/response trace</td><td>tabel <code>PROPERTY / VALUE</code> cu METHOD, PATH, URL, AUTHENTICATION, AUTH MODE, STATUS, CONTENT TYPE, DURATION și ATTEMPT</td><td>chei raw greu de scanat fără etichetă umană; timestamp</td></tr><tr><td>JSON body</td><td>code-block monospace, pretty, scroll vertical intern, fără scroll orizontal</td><td>body într-un tabel sau conținut trunchiat</td></tr><tr><td>Contract validation</td><td>un singur tabel <code>ASSERTION / EXPECTED / ACTUAL / RESULT</code></td><td>câte un child step pentru fiecare assertion</td></tr><tr><td>Transport</td><td><code>INFO</code> pentru exchange terminat; verdictul funcțional vine din tabelul de assertions</td><td><code>PASS</code> automat doar pentru că s-a primit un HTTP response</td></tr></tbody></table><p class="rule"><strong>Contract de randare:</strong> evenimentul Extent care poartă o proprietate tehnică poate avea status <code>Info</code>; numai validarea agregată poate determina <code>Pass</code>/<code>Fail</code> pentru business contract.</p></div></details>
+        <details open><summary><span class="summary-title">JSON bodies — densitate vizuală cu 10% mai compactă și suprafață cu 20% mai deschisă</span><span class="sumhint">mai mult conținut vizibil, aceeași evidență</span></summary><div class="details-body"><p>Body-urile JSON trebuie să fie mai subțiri vizual cu aproximativ <code>10%</code> față de baseline-ul raportului actual, fără truncare și fără scroll orizontal. „Mai subțire” înseamnă densitate tipografică și spațiere redusă, nu eliminarea liniilor sau a indentării utile. Separat de densitate, suprafața code-block-ului JSON trebuie să fie cu aproximativ <code>20%</code> mai deschisă decât dark-ul global, pentru ca payload-ul să fie scanabil fără a pierde tema dark.</p><table><thead><tr><th>Proprietate</th><th>Baseline observat</th><th>Țintă obligatorie</th><th>Regulă de siguranță</th></tr></thead><tbody><tr><td>Font monospace</td><td><code>11px</code></td><td>aprox. <code>10px</code> / scale <code>0.90</code></td><td>rămâne monospace și lizibil; nu se folosește font condensat agresiv</td></tr><tr><td>Line height</td><td><code>1.5</code></td><td>aprox. <code>1.35</code></td><td>nu se suprapun rândurile și se păstrează indentarea JSON</td></tr><tr><td>Padding vertical</td><td><code>10px</code></td><td>aprox. <code>9px</code></td><td>titlul blocului și separarea request/response rămân vizibile</td></tr><tr><td>Suprafață JSON</td><td>dark global</td><td><code>--atf-json-surface</code>, aprox. <code>+20%</code> față de <code>--atf-dark</code></td><td>un singur token dedicat pentru toate request/response/read-back code-block-urile</td></tr><tr><td>Înălțime maximă</td><td><code>360px</code></td><td>se păstrează configurabilă, implicit <code>360px</code></td><td>scrollul este vertical în code-block, nu la nivel de pagină</td></tr><tr><td>Overflow orizontal</td><td>ascuns</td><td>interzis la nivel de raport</td><td><code>pre-wrap</code> + <code>overflow-wrap:anywhere</code>; liniile lungi se împachetează</td></tr></tbody></table><ul><li>Etichetele <code>REQUEST JSON</code> și <code>RESPONSE JSON</code> rămân în headerul blocului și sunt colapsabile separat de <code>Request details</code>/<code>Response details</code>.</li><li>Conținutul raw complet trebuie păstrat în DOM/artefact; reducerea vizuală nu poate altera JSON-ul folosit la copy, diagnostic sau verificare.</li><li>JSON-ul este pretty-printed, mascat înainte de randare și trebuie să distingă clar request body, response body și read-back/polling body.</li><li>Testul responsive trebuie să verifice simultan: <code>scrollWidth &lt;= clientWidth</code>, scroll vertical funcțional, indentare păstrată și text fără clipping.</li></ul><div class="rule"><strong>Config propus:</strong> <code>reporting.json.densityScale=0.90</code>, <code>fontSizePx=10</code>, <code>lineHeight=1.35</code>, <code>verticalPaddingPx=9</code>, <code>maxHeightPx=360</code>, <code>horizontalOverflow=wrap</code>, <code>surfaceToken=--atf-json-surface</code>, <code>surfaceBrightness=+20% relative to --atf-dark</code>.</div></div></details>
+        <details><summary><span class="summary-title">Observații de maturizare din raportul actual</span><span class="sumhint">prioritizare pentru următoarea iterație</span></summary><div class="details-body"><table><thead><tr><th>Prioritate</th><th>Observație</th><th>Cerință recomandată</th></tr></thead><tbody><tr><td class="status bad">P0</td><td>Metadata Overview este construită din datele de execuție, dar tag audit-ul actual citește tabelul DOM Tags și estimează feature groups prin excluderea unor tag-uri.</td><td>Agregatorul trebuie să consume snapshot-uri de test immutable; tagurile sunt dimensiuni de navigație, nu sursă pentru numărul de scenarii sau feature groups. Fără fallback inventat la <code>1</code>.</td></tr><tr><td class="status bad">P1</td><td>Cu grupare class → scenario, cards-urile native Extent numără class roots (de exemplu <code>2 passed</code>), nu scenariile runnerului (de exemplu <code>32 passed + 1 skipped</code>).</td><td>Raportul trebuie să distingă vizual <code>container totals</code> de <code>scenario/test-case totals</code>. Dacă păstrăm cards-urile native, metadata ATF cu totalurile runnerului trebuie să fie primară și explicată; nu permitem ca un count de class roots să fie interpretat ca verdict funcțional.</td></tr><tr><td class="status bad">P1</td><td>Un raport poate avea simultan totaluri native și metrici ATF secundare.</td><td>Orice metrică secundară afișează label <code>secondary</code>, sursa și regula de calcul; nu repetă verdictul și nu concurează cu cards/charts/timeline native.</td></tr><tr><td class="status warn">P1</td><td>JSON-ul este lizibil, dar ocupă mai mult spațiu vertical decât este necesar.</td><td>Aplică densitate <code>0.90</code> și testează vizual atât request, cât și response, inclusiv arrays și error bodies.</td></tr><tr><td class="status warn">P1</td><td>Overview-ul și pașii folosesc structuri dinamice care pot fi reconstruite după hydration.</td><td>Inserțiile trebuie să fie idempotente prin marker/data attribute; MutationObserver/hydration nu trebuie să dubleze metadata, auditul sau handlers.</td></tr><tr><td class="status info">P2</td><td>La triage, utilizatorul trebuie să deschidă mai multe niveluri pentru a ajunge la body.</td><td>Păstrează ierarhia: operație → request/response details → JSON; adaugă opțional acțiune de copy raw JSON și indică explicit masking-ul aplicat.</td></tr><tr><td class="status info">P2</td><td>Stările Pass/Skip/Fail pot avea tint-uri native diferite față de suprafața dark comună.</td><td>Fundalul de bază rămâne tokenul dark unic; statusul se exprimă prin badge/border/accent, iar tint-ul de selecție nu trebuie să pară o a doua temă.</td></tr></tbody></table></div></details>
+        <details><summary><span class="summary-title">Temă dark, colapsare și artefacte</span><span class="sumhint">ExtensibleReport / Spark</span></summary><div class="details-body"><ul><li>Reporterul este configurat cu tema <code>DARK</code> și CSS/JS standardizat.</li><li>Raportul folosește o singură constantă de suprafață dark pentru pagină, listă, dashboard, tabele, pași și containere JSON; nu se introduc nuanțe de fundal concurente care fragmentează vizual raportul.</li><li>Valoarea normativă a suprafeței comune este tokenul <code>--atf-dark: #101723</code>; diferențierea vizuală se face prin border, spacing și tipografie. JSON-ul folosește numai tokenul separat documentat <code>--atf-json-surface</code>.</li><li>În zona de test API nu se afișează timestamp-uri redundante; se afișează durata testului, durata response-ului și durata totală a exchange-ului. Timestamp-ul rămâne permis doar în numele fișierului pentru izolarea run-urilor.</li><li>Raportul trebuie să aibă test-level, step-level și child-step colapsabile; starea inițială este configurabilă, iar default-ul pentru API este collapsed.</li><li>Există un singur raport principal per run, cu path timestamped sau explicit; flush-ul are loc la final de suite.</li><li>Raportul este HTML autonom sau își include resursele necesare; calea este publicată în summary/manifest.</li><li>Nu se scriu credențiale, Authorization, cookie-uri sau payload fields sensibile în clar.</li></ul></div></details>
+        <details open><summary><span class="summary-title">Overview Extent — contract de display identic cu RegressionExtent</span><span class="sumhint">native overview + ATF secondary metadata</span></summary><div class="details-body"><p><strong>Cerință de paritate:</strong> noul ATF API trebuie să păstreze aceeași compoziție vizuală și aceeași ierarhie de citire ca raportul de referință <code>RegressionExtent.html</code> generat de <code>Underwriting.Modernisation.Tests.Automation</code>. Se reproduce display-ul, nu numele domeniului NorthStandard și nu se copiază mecanic codul UI.</p><div class="rule"><strong>Principiul de autoritate:</strong> overview-ul nativ Extent rămâne sursa verdictului de execuție — Started, Ended, Passed, Failed, graficele, evenimentele și Timeline. Orice bloc ATF adăugat este metadata secundară sau navigație; nu dublează și nu rescrie totalurile native.</div><table><thead><tr><th>Ordine obligatorie în Overview</th><th>Element</th><th>Comportament și scop</th></tr></thead><tbody><tr><td>1</td><td>Native run summary</td><td>Cards Started, Ended, Tests Passed, Tests Failed; afișate de Extent, fără înlocuire sau recalculare vizuală.</td></tr><tr><td>2</td><td>Native charts</td><td>Tests, Steps și Log events; păstrează proporțiile, legenda și canvas-ul Extent.</td></tr><tr><td>3</td><td>Native Timeline</td><td>Rămâne ultimul bloc nativ de execuție și ancora de inserție pentru metadata ATF.</td></tr><tr><td>4</td><td><code>ATF execution metadata (secondary)</code></td><td>Bară full-width, colapsată implicit, cu <code>+</code> în stânga, titlu centrat și eticheta <code>SECONDARY METADATA</code> în dreapta.</td></tr><tr><td>5</td><td><code>ATF tag audit (secondary navigation metadata)</code></td><td>A doua bară full-width, colapsată implicit, cu aceeași geometrie; eticheta din dreapta este <code>COLLAPSED BY DEFAULT</code>.</td></tr><tr><td>6</td><td>Native <code>Tags</code> + <code>System/Environment</code></td><td>Rămân în același rând, în carduri aliniate și de aceeași înălțime; tabelele au scroll intern, nu deplasează pagina.</td></tr></tbody></table><h4>Geometria vizuală obligatorie</h4><table><thead><tr><th>Suprafață</th><th>Contract</th><th>Default</th></tr></thead><tbody><tr><td>Barele secundare</td><td><code>width:100%</code>, border discret, radius 8px, padding uniform; plus-ul la stânga, titlul pe axa centrală, badge-ul descriptiv la dreapta.</td><td>closed</td></tr><tr><td>Native Tags/System</td><td>grid Bootstrap/echivalent cu două coloane pe desktop; gap comun; cardurile au aceeași înălțime <code>420px</code>.</td><td>vizibile</td></tr><tr><td>Body tabele native</td><td><code>overflow:auto</code>, <code>min-height:0</code>, headerul rămâne în flux normal; scrollul vertical este numai în body-ul cardului.</td><td>scroll intern dacă datele depășesc viewport-ul</td></tr><tr><td>ATF tag audit deschis</td><td>trei carduri egale: test class/scenario identities, packages și other tags; fiecare tabel are regiune scrollabilă proprie.</td><td>closed; se deschide numai la nevoie</td></tr><tr><td>Suprafața dark</td><td>toate cardurile, body-urile și tabelele folosesc aceeași constantă dark; diferențierea se face prin border, spacing și tipografie, nu prin fundaluri concurente.</td><td>dark uniform</td></tr></tbody></table><h4>Conținutul blocurilor secundare</h4><ul><li><strong>Execution metadata:</strong> la expandare afișează nota de autoritate, apoi cardurile <code>ATF FEATURE GROUPS</code>, <code>TOTAL PASSED</code>, <code>TOTAL WARNINGS</code>, <code>TOTAL FAILED</code> și regula de citire că tagurile sunt metadata de navigație, nu rezultate.</li><li><strong>Tag audit:</strong> la expandare afișează o notă scurtă și distribuții deduplicate pe test class, package și tag; fiecare rând are cel puțin <code>Name</code>, <code>Scenarios</code>, <code>Share</code>, iar totalurile sunt marcate separat.</li><li><strong>Native System/Environment:</strong> rămâne tabelul de context al run-ului — environment, base URL/API, browser/runtime, transport, suite/lane, expected/discovered scenarios și manifest — fără credențiale sau valori secrete.</li></ul><pre><code>Overview
+-- Native run summary
+-- Native charts: Tests / Steps / Log events
+-- Native Timeline
+-- [collapsed] ATF execution metadata (secondary)
+-- [collapsed] ATF tag audit (secondary navigation metadata)
+-- Native overview tables: Tags | System/Environment
+-- Test navigation and execution details</code></pre><h4>Responsive și accesibilitate</h4><ul><li>La lățimi sub pragul configurat (referința folosește <code>1100px</code> pentru audit), cardurile secundare trec pe o coloană; cardurile native rămân lizibile.</li><li>Niciun tabel nu produce scroll orizontal al documentului. Dacă o valoare este lungă, se face wrap; dacă auditul are multe coloane/valori, scrollul este limitat la regiunea tabelului.</li><li>Header-ele de tabel rămân în flux normal și nu se suprapun peste body; cardurile au înălțime egală înainte de scroll.</li><li>Starea collapsed/open este controlabilă prin configurație, dar default-ul pentru metadata, audit și pașii de test este collapsed.</li><li>Barele pot fi operate cu mouse și tastatură, au text accesibil și nu folosesc culoarea ca singur semnal.</li></ul><div class="note"><strong>Implementare de referință observată:</strong> <code>AtfOverviewRenderer</code> publică viewport-ul comun de <code>420px</code>, <code>ExtentHtmlInsertionAdapter</code> inserează fragmentul după Timeline și înainte de row-ul nativ Tags/System, iar <code>ExtentOverviewBrowserLayoutTests</code> verifică egalitatea viewport-urilor, scrollul intern, ordinea DOM, starea collapsed și lipsa overflow-ului orizontal. Noul ATF trebuie să aibă un contract echivalent, chiar dacă numele claselor sunt diferite.</div></div></details>
+        <details open><summary><span class="summary-title">Ierarhia vizuală obligatorie a raportului API</span><span class="sumhint">fără zgomot structural</span></summary><div class="details-body"><ul><li>Sub headerul unui test trebuie să apară direct primul pas API real, colapsat implicit; nu se creează un nod artificial <code>API scenario</code>.</li><li>Nu se randă blocuri orfane de tip <code>Scenario context · N fields</code> și nu se adaugă un rând generic <code>Scenario passed.</code> peste primul pas. Verdictul rămâne în statusul testului și al pașilor.</li><li>La expandarea unui pas-rădăcină se deschid împreună corpul propriu al pasului (trace, request/response JSON, rezultat) și accordion-ul cu pașii copii; toate validările rămân sub operația care le-a produs.</li><li>Tagurile/categoriile se afișează o singură dată în headerul testului; nu se repetă pe child nodes.</li></ul></div></details>
+        <details><summary><span class="summary-title">Lifecycle Extent în .NET</span><span class="sumhint">recomandare de implementare</span></summary><div class="details-body"><p>Un singur <code>ExtentReports</code> per suite/run, cu <code>AsyncLocal</code>/<code>AsyncLocal&lt;ExtentTest&gt;</code> pentru contextul testului și stack pentru pași. Hook-urile runnerului (NUnit SetUpFixture/OneTimeSetUp/TearDown, xUnit fixtures sau MSTest equivalents) se adaptează printr-un singur listener/adapter.</p><div class="warn">Nu se folosește un singleton global fără izolarea contextului async/parallel. Nu se face flush din fiecare test în paralel.</div></div></details>
+      </section>
+
+      <section class="card searchable" id="config">
+        <h2>10. Model configurabil de cerințe</h2>
+        <details open><summary><span class="summary-title">Limită configurabilă pentru <code>ACTUAL</code> în assertion table</span><span class="sumhint">diagnostic compact, semantică neschimbată</span></summary><div class="details-body"><p>Valoarea <code>ACTUAL</code> din tabelul unic <code>ASSERTION / EXPECTED / ACTUAL / RESULT</code> trebuie să aibă o limită configurabilă, nu un prag hardcodat în validator. Cheia este deținută de modul în <code>modules.&lt;moduleId&gt;.config.reporting.assertionMaxDisplayCharacters</code> (în implementarea .NET: <code>ReportingSettings.AssertionMaxDisplayCharacters</code>), este pozitivă și are default recomandat <code>240</code>.</p><ul><li>limita se aplică uniform tuturor validatorilor: status, header, body, JSONPath, relationship, schema și assertions configurate;</li><li>trunchierea este numai pentru prezentare; response/request raw și rezultatul folosit de assertion rămân complete;</li><li>textul scurt rămâne neschimbat, iar textul lung se termină explicit cu <code>…</code>;</li><li>limita este transmisă prin portul reporterului către tabelul agregat, astfel încât test doubles și adapterul Extent să observe același contract;</li><li>există unit/component tests pentru valoarea implicită, override configurat, valoare invalidă și păstrarea verdictului funcțional.</li></ul></div></details>
+        <p>Configurația de mai jos este contractul propus pentru a putea recrea testele în .NET sau alt limbaj. Ea separă ce este variabil (URL, auth, resurse, scenarii, reguli) de ce este fix (semantica executorului, validatorilor și reportingului).</p>
+        <p><strong>Regulă de ownership:</strong> configurația executabilă nu stă la rădăcina soluției și nu se păstrează într-un folder global <code>config/</code>. Fișierul comun de configurare se păstrează în <code>Atf.Core/Configuration/appsettings.json</code>, lângă loaderul comun; în interiorul lui, fiecare modul își deține propriul bloc <code>modules.&lt;moduleId&gt;.config</code>, inclusiv environment, execuție, reporting, auth, scheme, servicii, date și scenarii. <code>Atf.Common</code> nu deține fișiere de configurare, ci doar componente reutilizabile. Astfel, un ATF poate adăuga ulterior module precum <code>billing</code> sau <code>claims</code> fără coliziuni de configurare, iar runnerul poate încărca și valida un modul izolat.</p>
+        <details><summary><span class="summary-title">Contractul tipizat al unei rute</span><span class="sumhint">cerință pentru auth și raportare</span></summary><div class="details-body"><p>Catalogul de rute trebuie să fie o clasă/registry centrală, analogă cu <code>Routes.cs</code> din framework-ul de referință, dar fiecare rută trebuie să transporte metadate executabile și tipizate, nu doar un path string.</p><pre><code>ApiRoute
+  name: users.create
+  method: POST
+  pathTemplate: /public/v2/users
+  resource: users
+  operation: create
+  authentication:
+    type: Bearer          # enum; nu text liber în catalog
+    requirement: Required # enum; Optional pentru rute publice
+    profile: default      # cheie configurabilă, fără secret
+    policy: bearer required # valoare derivată pentru raport
+</code></pre><ul><li><span class="req">MUST</span> tipul de autentificare să fie reprezentat printr-un enum/union extensibil: <code>None</code>, <code>Bearer</code>, <code>ApiKey</code>, <code>Basic</code>, <code>Custom</code>;</li><li><span class="req">MUST</span> cerința de acces să fie separată de mecanism: <code>Optional</code> nu înseamnă automat „fără auth”, iar <code>Required</code> nu trebuie dedus din numele profilului;</li><li><span class="req">MUST</span> profilul să rămână configurabil și să fie verificat față de auth profiles la startup/runtime;</li><li><span class="req">MUST</span> executorul să raporteze separat contractul declarat de rută (<code>route.auth.type</code>, <code>route.auth.requirement</code>, <code>route.auth.profile</code>) și profilul efectiv aplicat (<code>auth.profile</code>, <code>auth.mode</code>, <code>auth.token.state</code>);</li><li><span class="req">MUST NOT</span> tokenul, headerul Authorization sau valoarea secretului să apară în HTML;</li><li>politica text <code>anonymous allowed</code>/<code>bearer required</code> este derivată pentru lizibilitate și nu este sursa de adevăr.</li></ul><p>Acest model permite o rută nouă să fie mutată între medii prin configurație fără a pierde intenția semantică din raport. Un profil configurat greșit trebuie să fie vizibil ca nepotrivire între <code>route.auth.*</code> și <code>auth.*</code>, nu ascuns printr-un mesaj generic „anonymous”.</p></div></details>
+        <details open><summary><span class="summary-title">Exemplu de fișier <code>atf.api.yaml</code></span><span class="sumhint">blueprint executabil</span></summary><div class="details-body"><pre><code>version: "1"
+project: "API ATF"
+platform: "dotnet"
+
+modules:
+  api:
+    config:
+      environment:
+        baseUrl: ${API_BASE_URL}
+        token: ${API_TOKEN}
+        reportDirectory: ${ATF_REPORT_DIR:-artifacts/reports}
+
+      execution:
+        requestTimeoutSeconds: 30
+        polling:
+          timeoutSeconds: 10
+          intervalMilliseconds: 500
+        rateLimit:
+          retryStatuses: [429]
+          maxRetries: 2
+          defaultDelaySeconds: 5
+          maxDelaySeconds: 65
+          headers: [Retry-After, x-ratelimit-reset]
+        parallel: false
+
+      reporting:
+        engine: extent
+        mode: extent-only
+        theme: dark
+        darkSurfaceBrightness: "exact reference surface"
+        darkSurfaceToken: "--atf-dark"
+        darkSurfaceColor: "#101723"
+        overview:
+          preserveNativeExtentSummary: true
+          insertionAnchor: after-native-timeline-before-native-overview-tables
+          nativeCards: [started, ended, testsPassed, testsFailed]
+          nativeCharts: [tests, steps, logEvents]
+          nativeTimeline: true
+          secondaryBlocks:
+            executionMetadata:
+              label: "ATF execution metadata (secondary)"
+              collapsedByDefault: true
+            tagAudit:
+              label: "ATF tag audit (secondary navigation metadata)"
+              collapsedByDefault: true
+          nativeOverviewTables: [tags, systemEnvironment]
+          nativeTableViewportHeight: 420
+          internalTableScrollOnly: true
+          responsiveAuditBreakpointPx: 1100
+        json:
+          densityScale: 0.90
+          fontSizePx: 10
+          lineHeight: 1.35
+          verticalPaddingPx: 9
+          maxHeightPx: 360
+          horizontalOverflow: wrap
+          preserveRawContent: true
+          copyRawJson: optional
+          surfaceToken: "--atf-json-surface"
+          surfaceBrightness: "+20% relative to --atf-dark"
+        collapse:
+          testNodes: true
+          requestResponsePayloads: true
+        fileName: api-atf-report.html
+        timestamped: true
+        selfContained: true
+        assetDirectory: none
+        consoleDetails: true
+        mask:
+          headers: [Authorization, Cookie, Set-Cookie]
+          jsonPaths: [$.token, $.password, $.secret]
+
+      authProfiles:
+        default: { type: bearer, value: ${API_TOKEN} }
+        anonymous: { type: none }
+        invalid: { type: bearer, value: ${INVALID_API_TOKEN} }
+
+      schemas:
+        user: schemas/user.json
+        post: schemas/post.json
+
+      services:
+        users:
+          basePath: /public/v2/users
+          operations:
+            create:  { method: POST, path: /public/v2/users }
+            get:     { method: GET, path: /public/v2/users/{id} }
+            list:    { method: GET, path: /public/v2/users }
+            replace: { method: PUT, path: /public/v2/users/{id} }
+            patch:   { method: PATCH, path: /public/v2/users/{id} }
+            delete:  { method: DELETE, path: /public/v2/users/{id} }
+        posts:
+          basePath: /public/v2/posts
+          operations:
+            list:          { method: GET, path: /public/v2/posts }
+            get:           { method: GET, path: /public/v2/posts/{postId} }
+            listByUser:    { method: GET, path: /public/v2/users/{userId}/posts }
+            createByUser:  { method: POST, path: /public/v2/users/{userId}/posts }
+
+      data:
+        factories:
+          validUser:
+            name: generated.name
+            email: unique.email
+            gender: male
+            status: active
+        fixtures:
+          invalidEmail: testdata/invalid-email.json
+
+      scenarios:
+        - id: create_user_success
+          tags: [api, users, smoke, contract]
+          auth: default
+          steps:
+            - id: create
+              operation: users.create
+              body: factory.validUser
+              capture: { userId: $.id }
+              assert:
+                - { type: status, expected: 201 }
+                - { type: jsonSchema, schema: user }
+                - { type: jsonPath, path: $.id, rule: notNull }
+            - id: cleanup
+              finally: true
+              operation: users.delete
+              pathParams: { id: ${userId} }
+              assert: [{ type: status, expected: 204 }]
+
+        - id: invalid_email_is_rejected
+          tags: [api, users, negative, contract]
+          auth: default
+          steps:
+            - operation: users.create
+              body: fixture.invalidEmail
+              assert:
+                - { type: status, expected: 422 }
+                - { type: jsonPathContains, path: $.field, expected: email }
+                - { type: errorSchema, schema: schemas/validation-error.json }
+</code></pre></div></details>
+        <details><summary><span class="summary-title">Schema minimă a DSL-ului</span><span class="sumhint">validator pentru config</span></summary><div class="details-body"><table><thead><tr><th>Element</th><th>Obligatoriu</th><th>Regulă</th></tr></thead><tbody><tr><td><code>version</code></td><td>da</td><td>compatibilitate de schema</td></tr><tr><td><code>modules.&lt;moduleId&gt;.config.environment</code></td><td>da</td><td>variabile rezolvate înainte de run; secretele nu se tipăresc</td></tr><tr><td><code>modules.&lt;moduleId&gt;.config.execution</code></td><td>da</td><td>timeout/retry/polling validate numeric și pozitiv</td></tr><tr><td><code>modules.&lt;moduleId&gt;.config.reporting</code></td><td>da</td><td><code>engine: extent</code>, orice alt engine respins</td></tr><tr><td><code>modules.&lt;moduleId&gt;.config.services</code></td><td>da</td><td>operation id unic, method/path valide</td></tr><tr><td><code>modules.&lt;moduleId&gt;.config.scenarios</code></td><td>da</td><td>step id, operation sau request explicit, assertions/cleanup</td></tr><tr><td><code>capture</code></td><td>opțional</td><td>JSONPath valid; valorile sunt scoped per test</td></tr></tbody></table></div></details>
+      </section>
+
+      <section class="card searchable" id="dotnet">
+        <h2>11. Blueprint .NET</h2>
+        <details open><summary><span class="summary-title">Stack recomandat, tratat ca implementare înlocuibilă</span><span class="sumhint">cerință, nu dependență</span></summary><div class="details-body"><table><thead><tr><th>Nevoie</th><th>Opțiune .NET recomandată</th><th>Contractul care contează</th></tr></thead><tbody><tr><td>runner</td><td>NUnit, xUnit sau MSTest</td><td>hook-uri suite/test, categories/tags, skip, async-safe</td></tr><tr><td>HTTP</td><td><code>HttpClient</code> + handler pipeline</td><td>request/response model, timeout, cancellation, headers</td></tr><tr><td>JSON</td><td><code>System.Text.Json</code></td><td>camelCase, raw + typed JSON, masking, JSONPath layer</td></tr><tr><td>schema</td><td>validator JSON Schema .NET</td><td>draft/config, path diagnostics</td></tr><tr><td>reporting</td><td>ExtentReports .NET</td><td>singurul backend, dark theme, flush per suite</td></tr><tr><td>config</td><td>YAML + environment overrides</td><td>schema validation, no secrets in source</td></tr><tr><td>parallel</td><td>AsyncLocal + scoped context</td><td>fără cross-test state</td></tr></tbody></table></div></details>
+        <details><summary><span class="summary-title">Interfețe minimale</span><span class="sumhint">separare și testabilitate</span></summary><div class="details-body"><pre><code>public interface IApiClient
+{
+    Task&lt;ApiResponse&gt; SendAsync(ApiRequest request, CancellationToken ct);
+}
+
+public interface IRetryPolicy
+{
+    RetryDecision Decide(ApiResponse response, int attempt, RuntimeOptions options);
+}
+
+public interface IApiValidator
+{
+    void Validate(ApiResponse response, AssertionSpec assertion);
+}
+
+public interface IAtfReporter
+{
+    void StartStep(string title);
+    void Detail(string key, object? value);
+    void Json(string label, string json);
+    void Pass(string message);
+    void Fail(string message, Exception? error = null);
+}
+
+public interface ICleanupRegistry
+{
+    void Own(string resource, string id, Func&lt;Task&gt; cleanup);
+    Task RunAsync(CancellationToken ct);
+}</code></pre><p>Interfețele sunt orientative; implementarea poate fi diferită, dar testele configurate nu trebuie să depindă de Extent sau HttpClient direct.</p></div></details>
+        <details><summary><span class="summary-title">Runner generic pentru scenarii YAML</span><span class="sumhint">recreare fără cod per test</span></summary><div class="details-body"><ol><li>încarcă și validează schema YAML;</li><li>rezolvă environment variables și auth profile;</li><li>instanțiază contextul per scenariu;</li><li>execută operation id prin service registry;</li><li>capturează valori prin JSONPath;</li><li>execută assertions declarative și le publică în Extent;</li><li>înregistrează cleanup imediat după create;</li><li>închide testul, execută cleanup, apoi face flush doar la finalul suitei.</li></ol></div></details>
+      </section>
+
+      <section class="card searchable" id="nefunctional">
+        <h2>12. Cerințe non-funcționale</h2>
+        <div class="checklist"><div class="check">Determinism: seed, deadline și retry budget sunt logate.</div><div class="check">Parallel safety: context și date scoped per test.</div><div class="check">Security: secret masking înainte de reporting.</div><div class="check">Diagnostics: status, headers safe, body safe, duration, attempts.</div><div class="check">Reproducibility: config snapshot fără secrete.</div><div class="check">Resilience: 429 și timeout testabile cu fake transport.</div><div class="check">Extensibility: resource/validator noi fără modificarea engine-ului.</div><div class="check">API/UI isolation: zero browser initialization în API core.</div><div class="check">Performance: reutilizare HttpClient/handler; fără socket churn per pas.</div><div class="check">Report integrity: un singur writer/flush sincronizat.</div></div>
+        <details><summary><span class="summary-title">Reguli de securitate</span><span class="sumhint">obligatorii</span></summary><div class="details-body"><div class="danger">În sursa analizată există un token concret în <code>src/main/resources/framework.properties</code>. Pentru orice implementare nouă: revocare/rotire a tokenului, eliminarea lui din Git și injectare exclusivă din secret store/CI. Documentul nu reproduce valoarea.</div><ul><li>masking pe nume de header și JSONPath;</li><li>body raw nu se scrie în log dacă content type sau contractul declară secret;</li><li>URL query params sensibili sunt redacționați;</li><li>stacktrace-ul nu include tokenul și nu publică dump-uri de environment;</li><li>report artifacts au retention și ACL definite.</li></ul></div></details>
+      </section>
+
+      <section class="card searchable" id="goluri">
+        <h2>13. Goluri, riscuri și decizii recomandate</h2>
+        <table class="matrix"><thead><tr><th>Prioritate</th><th>Observație din Java</th><th>Impact</th><th>Cerință / remediere .NET</th></tr></thead><tbody><tr><td class="status bad">P0</td><td>Token hardcodat în properties.</td><td>compromitere credențiale și audit failure</td><td>rotate + secret provider; fail fast dacă nu există.</td></tr><tr><td class="status bad">P1</td><td>Allure este încă în listener/base class, deși noul scope cere Extent-only.</td><td>dependențe și lifecycle inutil</td><td>Extent-only; fără package/plugin/listener Allure.</td></tr><tr><td class="status bad">P1</td><td>Ultimul 429 poate fi logat ca apel trecut după retry exhaustion.</td><td>false positive de transport/business</td><td>separă transport completion de assertion outcome.</td></tr><tr><td class="status warn">P1</td><td>PostsService există, dar nu există suită API echivalentă de acoperire în testele de business.</td><td>relațiile și contractele posts sunt neverificate</td><td>activează scenarii config + schema + cleanup.</td></tr><tr><td class="status warn">P1</td><td>Schema disponibilă este pentru user; fixture-urile principale nu corespund direct userului.</td><td>validare incompletă / confuzie de domeniu</td><td>schema per resource și fixture registry validat.</td></tr><tr><td class="status warn">P1</td><td>În teste apar aserțiuni TestNG directe pentru status/id.</td><td>diagnostic și naming inconsistent</td><td>migrează la validator DSL; lasă direct asserts doar pentru meta-contracte.</td></tr><tr><td class="status warn">P2</td><td>Cleanup silently nu produce report noise.</td><td>debugging slab când cleanup eșuează</td><td>cleanup best-effort, dar cu child step controlat și status.</td></tr><tr><td class="status info">P2</td><td>Polling returnează ultimul response fără un rezultat explicit de timeout.</td><td>ambiguitate pentru scenarii config</td><td>returnează <code>PollingResult</code> cu attempts, elapsed, last response și timedOut.</td></tr><tr><td class="status info">P2</td><td>Conținutul requestului nu este logat dacă este null; headers sunt doar parțial vizibile.</td><td>triage mai dificil</td><td>safe request summary standardizat și redacție.</td></tr><tr><td class="status info">P3</td><td>Operațiile PUT/list/posts nu au validări de business suficiente.</td><td>coverage gap</td><td>contract matrix generată din configurație.</td></tr></tbody></table>
+        <details><summary><span class="summary-title">Decizii deschise înainte de implementare</span><span class="sumhint">trebuie confirmate în proiectul nou</span></summary><div class="details-body"><ol><li>runner .NET: NUnit, xUnit sau MSTest;</li><li>formatul oficial: YAML-only sau YAML + OpenAPI import;</li><li>suport pentru testele scrise manual în C# lângă scenarii config;</li><li>politica pentru 5xx: fără retry implicit sau policy per operation;</li><li>schema JSON: draft suportat și strictness pentru additionalProperties;</li><li>parallelism: permis în CI, interzis local sau controlat per profile;</li><li>formatul agregării mai multor run-uri în Extent.</li></ol></div></details>
+      </section>
+
+      <section class="card searchable" id="acceptare">
+        <h2>14. Criterii de acceptare pentru un nou ATF</h2>
+        <details open><summary><span class="summary-title">Definition of Done tehnic</span><span class="sumhint">gate obligatoriu</span></summary><div class="details-body"><div class="checklist"><div class="check">Config YAML are schema proprie și validare de startup.</div><div class="check">API base URL și tokenul vin din environment/secret store.</div><div class="check">Există client HTTP comun și service registry configurabil.</div><div class="check">Fiecare request are step Extent cu method/path/url/status.</div><div class="check">Payload-urile sunt pretty JSON și masked.</div><div class="check">Body-urile JSON folosesc densitate vizuală 0.90, fără clipping și fără scroll orizontal.</div><div class="check">429 are retry policy cu cap, fallback și attempt log.</div><div class="check">Polling are deadline, interval și rezultat explicit.</div><div class="check">Validatorii acoperă status/header/body/JSONPath/schema/error.</div><div class="check">Factories + fixtures sunt separate de test runner.</div><div class="check">Cleanup rulează la failure/skip/timeout și este raportat.</div><div class="check">Reportul este Extent-only, dark, colapsabil și flush-uit la suite end.</div><div class="check">Overview-ul păstrează cards/charts/timeline native și inserează cele două bare secondary după Timeline, înainte de Tags/System.</div><div class="check">Tags și System/Environment au carduri aliniate, viewport comun de 420px și scroll intern fără overflow de pagină.</div><div class="check">Tag audit-ul are trei tabele secundare colapsate implicit și nu schimbă totalurile native.</div><div class="check">Metadata este agregată din snapshot-ul de execuție, nu estimată din DOM sau din numele tag-urilor.</div><div class="check">Inserțiile Overview sunt idempotente și rezistă la hydration/rerender.</div><div class="check">Testele pot rula smoke/negative/lifecycle/full prin tags/profile.</div><div class="check">Fake transport acoperă retry, timeout și response parsing.</div><div class="check">Există contract tests pentru layer ownership și API/UI isolation.</div></div></div></details>
+        <details><summary><span class="summary-title">Scenarii de demonstrație obligatorii</span><span class="sumhint">minimum viable proof</span></summary><div class="details-body"><ol><li>Create user → schema/id → delete.</li><li>Create → GET eventual consistency → PATCH → DELETE → GET 404.</li><li>Invalid email → 422 + error field contract.</li><li>Missing auth → 401 fără mutație.</li><li>Unknown id delete/get → 404.</li><li>List/filter/pagination pentru cel puțin o resource collection.</li><li>Nested user posts → parent relationship invariant.</li><li>Simulare 429: Retry-After valid, absent, invalid și capped.</li><li>Failure report: request/response safe + validator diagnostic + stacktrace.</li><li>Parallel smoke: două scenarii cu date independente și Extent nodes corecte.</li></ol></div></details>
+      </section>
+
+      <section class="card searchable" id="trasabilitate">
+        <h2>15. Trasabilitate către sursa analizată</h2>
+        <p class="muted">Referințele sunt simboluri/clase pentru navigare în repository; liniile pot varia dacă sursa evoluează.</p>
+        <table><thead><tr><th>Contract documentat aici</th><th>Dovadă în Java ATF1</th><th>Interpretare pentru recreare</th></tr></thead><tbody><tr><td>base setup și token readiness</td><td><code>src/main/java/com/endava/ai/api/core/BaseTestAPI.java</code></td><td>păstrează precondiția de write, elimină secretul din source</td></tr><tr><td>client + auth profiles</td><td><code>api/core/client/ApiClient.java</code></td><td>un HttpClient comun, auth injectabil</td></tr><tr><td>facade și executor</td><td><code>ApiActions.java</code>, <code>ApiRequestExecutor.java</code></td><td>facade mică; retry în executor, nu în teste</td></tr><tr><td>429 policy</td><td><code>ApiRateLimitPolicy.java</code>, <code>RetryAfterParser.java</code></td><td>policy injectabilă și testată cu fake response</td></tr><tr><td>request/response reporting</td><td><code>ApiExecutionReporter.java</code></td><td>Extent step standardizat + masking</td></tr><tr><td>validators</td><td><code>api/core/validation/ResponseValidator.java</code> + familiile de assertions</td><td>DSL declarativ și diagnostic uniform</td></tr><tr><td>composite contracts</td><td><code>ApiContractValidator.java</code></td><td>pagination/filter/error/rate-limit reusable contracts</td></tr><tr><td>services</td><td><code>api/support/service/UsersService.java</code>, <code>PostsService.java</code></td><td>resource operations din YAML/service registry</td></tr><tr><td>steps/factories</td><td><code>UsersSteps.java</code>, <code>PostsSteps.java</code>, <code>UserFactory.java</code></td><td>semantic step layer + generated data</td></tr><tr><td>business tests</td><td><code>src/test/java/com/endava/ai/atf/api/tests</code> și <code>com/endava/ai/api/tests</code></td><td>scenarii pozitive, negative, lifecycle, expected failure</td></tr><tr><td>Extent dark/collapse</td><td><code>ExtentAdapter.java</code>, <code>ExtentSparkReporterFactory.java</code></td><td>singur backend .NET, dark theme, nested collapsible nodes</td></tr><tr><td>report lifecycle</td><td><code>core/reporting/listener/TestListener.java</code></td><td>suite/test hooks adaptate la runnerul .NET</td></tr><tr><td>config</td><td><code>src/main/resources/framework.properties</code></td><td>migrare la YAML + env overrides; fără token în fișier</td></tr></tbody></table>
+        <details><summary><span class="summary-title">Ce nu trebuie copiat mecanic</span><span class="sumhint">decizii deliberate</span></summary><div class="details-body"><ul><li>Allure dependencies/listeners — excluse prin cerința Extent-only.</li><li>global static state fără context async — înlocuit cu scoped/AsyncLocal.</li><li>direct <code>Assert</code> în business tests — înlocuit cu validators.</li><li>numele GoRest și căile hardcodate — mutate în service/config.</li><li>tokenul din properties — eliminat și rotit.</li><li>„transport completed = pass” — înlocuit cu separarea transport/business outcome.</li></ul></div></details>
+      </section>
+
+      <section class="card searchable"><h2>Concluzie operațională</h2><p>Pentru a recrea acest API ATF în .NET, trebuie reprodus comportamentul și contractul, nu structura Java: un motor generic citește scenarii configurabile, execută operații de service printr-un executor HTTP comun, aplică retry/polling controlat, validează răspunsul prin reguli declarative și publică totul într-un singur raport Extent dark, colapsabil și sigur.</p><div class="note"><strong>Ordinea recomandată de implementare:</strong> 1) config/schema + secret handling → 2) Extent lifecycle → 3) request/response kernel → 4) validators/schema → 5) cleanup/captures → 6) Users smoke/negative → 7) Posts relationships/pagination → 8) contract tests și parallel hardening.</div></section>
+      <div class="footer">ATF API requirements baseline • document autonom • analiză locală a sursei Java ATF1 • Extent-only pentru ținta .NET</div>
+    <section class="card searchable" id="overview-typography"><h2>Regulă UI — barele Overview secondary</h2><div class="details-body"><p>Titlurile <code>ATF execution metadata (secondary)</code> și <code>ATF tag audit (secondary navigation metadata)</code> trebuie să fie clar dominante față de textul descriptiv: <code>1.1rem</code>, line-height <code>1.4</code>, font-weight <code>550</code>. Eticheta din dreapta rămâne secundară la <code>.85rem</code>. Barele rămân colapsate implicit și nu se modifică geometria tabelelor native.</p></div></section>
+    </main>
+  </div>
+</div>
+<script>
+  const allDetails = () => [...document.querySelectorAll('details')];
+  document.getElementById('openAll').addEventListener('click', () => allDetails().forEach(d => d.open = true));
+  document.getElementById('closeAll').addEventListener('click', () => allDetails().forEach(d => d.open = false));
+  document.getElementById('filter').addEventListener('input', event => {
+    const query = event.target.value.trim().toLowerCase();
+    document.querySelectorAll('.searchable').forEach(section => {
+      section.classList.toggle('hidden', Boolean(query) && !section.innerText.toLowerCase().includes(query));
+    });
+  });
+</script>
+</body>
+</html>

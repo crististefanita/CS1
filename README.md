@@ -2,7 +2,7 @@
 
 This repository is a reusable, configuration-driven API automation framework for .NET 9. It is intentionally product-neutral: the framework executes HTTP exchanges, applies authentication and resilience policies, validates contracts, owns test data cleanup and publishes a self-contained Extent HTML report. A product-specific module contributes routes, models, fixtures, validators and scenarios.
 
-The implementation is the executable companion to the requirements in `C:\\work\\ex\\java\\demo\\docs\\ATF_API_REQUIREMENTS_RO_DOTNET_EXTENT.html`. The requirements describe the intended behavior; this repository is the reference implementation of the contracts that can be verified in code.
+The implementation is the executable companion to the [ATF requirements](docs/ATF_Requirements.html). The requirements describe the intended behavior; this repository is the reference implementation of the contracts that can be verified in code.
 
 ## What this framework is responsible for
 
@@ -321,7 +321,7 @@ Extent is the only reporting engine. The final HTML is self-contained:
 
 - Extent CSS, JavaScript and fonts are embedded;
 - no `artifacts/reports/extent` folder is part of the delivered report;
-- reports are timestamped under `C:\\work\\ex\\.net\\Atf\\artifacts\\reports\\` by default;
+- reports are timestamped under `artifacts/reports/` by default;
 - the left navigation groups scenarios under their actual xUnit class;
 - phase nodes are siblings below the scenario;
 - request/response details, JSON and assertion evidence are collapsed by default;
@@ -460,6 +460,6 @@ A change is complete only when:
 Canonical report directory:
 
 ```text
-C:\\work\\ex\\.net\\Atf\\artifacts\\reports\\
+artifacts/reports/
 ```
 
