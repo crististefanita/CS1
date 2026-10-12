@@ -12,14 +12,14 @@ public sealed class PostsService(IApiExecutor executor, ApiRoutes routes)
         executor.ExecuteAsync(routes.PostsCollection.CreateRequest(authProfile, query: query), ct);
 
     public Task<ApiExecutionResult> GetAsync(int id, string? authProfile = null, CancellationToken ct = default) =>
-        executor.ExecuteAsync(routes.PostItem.CreateRequest(authProfile, values: [("id", id)]), ct);
+        executor.ExecuteAsync(routes.PostItem.CreateRequest(authProfile, values: [(ApiRouteTokens.Id, id)]), ct);
 
     public Task<ApiExecutionResult> ListForUserAsync(int userId, IReadOnlyDictionary<string, string?>? query = null, string? authProfile = null, CancellationToken ct = default) =>
-        executor.ExecuteAsync(routes.UserPostsCollection.CreateRequest(authProfile, query: query, values: [("userId", userId)]), ct);
+        executor.ExecuteAsync(routes.UserPostsCollection.CreateRequest(authProfile, query: query, values: [(ApiRouteTokens.UserId, userId)]), ct);
 
     public Task<ApiExecutionResult> CreateForUserAsync(int userId, PostRequest request, string? authProfile = null, CancellationToken ct = default)
     {
         var json = JsonSerializer.Serialize(request, new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        return executor.ExecuteAsync(routes.UserPostCreate.CreateRequest(authProfile, json, values: [("userId", userId)]), ct);
+        return executor.ExecuteAsync(routes.UserPostCreate.CreateRequest(authProfile, json, values: [(ApiRouteTokens.UserId, userId)]), ct);
     }
 }

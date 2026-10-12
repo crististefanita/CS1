@@ -4,8 +4,8 @@ using Atf.Core.Http;
 namespace Atf.Common.Routing;
 
 /// <summary>
-/// API route catalog. Path templates remain configurable through RouteSettings;
-/// this class adds the executable contract used by services and reporting.
+/// Module-owned route catalog. It translates configurable relative paths into
+/// typed route contracts consumed by services and semantic test steps.
 /// </summary>
 public sealed class ApiRoutes
 {
@@ -13,17 +13,91 @@ public sealed class ApiRoutes
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        UsersCollection = Route("users.collection", HttpMethod.Get, settings.Users, "users", "list", ApiRouteAuthentication.Anonymous());
-        UserItem = Route("users.item", HttpMethod.Get, $"{settings.Users}/{{id}}", "users", "get", ApiRouteAuthentication.Anonymous());
-        UserCreate = Route("users.create", HttpMethod.Post, settings.Users, "users", "create", ApiRouteAuthentication.Required(ApiAuthType.Bearer, "default"));
-        UserReplace = Route("users.replace", HttpMethod.Put, $"{settings.Users}/{{id}}", "users", "replace", ApiRouteAuthentication.Required(ApiAuthType.Bearer, "default"));
-        UserPatch = Route("users.patch", HttpMethod.Patch, $"{settings.Users}/{{id}}", "users", "patch", ApiRouteAuthentication.Required(ApiAuthType.Bearer, "default"));
-        UserDelete = Route("users.delete", HttpMethod.Delete, $"{settings.Users}/{{id}}", "users", "delete", ApiRouteAuthentication.Required(ApiAuthType.Bearer, "default"));
+        UsersCollection = Route(
+            ApiRouteNames.UsersCollection,
+            ApiRequestMethods.Get,
+            settings.Users,
+            ApiRouteResources.Users,
+            ApiRouteActions.List,
+            AnonymousAccess());
+        UserItem = Route(
+            ApiRouteNames.UserItem,
+            ApiRequestMethods.Get,
+            ApiRoutePathTemplates.Item(settings.Users),
+            ApiRouteResources.Users,
+            ApiRouteActions.Get,
+            AnonymousAccess());
+        UserCreate = Route(
+            ApiRouteNames.UserCreate,
+            ApiRequestMethods.Post,
+            settings.Users,
+            ApiRouteResources.Users,
+            ApiRouteActions.Create,
+            DefaultBearerAccess());
+        UserReplace = Route(
+            ApiRouteNames.UserReplace,
+            ApiRequestMethods.Put,
+            ApiRoutePathTemplates.Item(settings.Users),
+            ApiRouteResources.Users,
+            ApiRouteActions.Replace,
+            DefaultBearerAccess());
+        UserPatch = Route(
+            ApiRouteNames.UserPatch,
+            ApiRequestMethods.Patch,
+            ApiRoutePathTemplates.Item(settings.Users),
+            ApiRouteResources.Users,
+            ApiRouteActions.Patch,
+            DefaultBearerAccess());
+        UserDelete = Route(
+            ApiRouteNames.UserDelete,
+            ApiRequestMethods.Delete,
+            ApiRoutePathTemplates.Item(settings.Users),
+            ApiRouteResources.Users,
+            ApiRouteActions.Delete,
+            DefaultBearerAccess());
 
-        PostsCollection = Route("posts.collection", HttpMethod.Get, settings.Posts, "posts", "list", ApiRouteAuthentication.Anonymous());
-        PostItem = Route("posts.item", HttpMethod.Get, $"{settings.Posts}/{{id}}", "posts", "get", ApiRouteAuthentication.Anonymous());
-        UserPostsCollection = Route("users.posts.collection", HttpMethod.Get, settings.UserPosts, "posts", "list by user", ApiRouteAuthentication.Anonymous());
-        UserPostCreate = Route("users.posts.create", HttpMethod.Post, settings.UserPosts, "posts", "create by user", ApiRouteAuthentication.Required(ApiAuthType.Bearer, "default"));
+        PostsCollection = Route(
+            ApiRouteNames.PostsCollection,
+            ApiRequestMethods.Get,
+            settings.Posts,
+            ApiRouteResources.Posts,
+            ApiRouteActions.List,
+            AnonymousAccess());
+        PostItem = Route(
+            ApiRouteNames.PostItem,
+            ApiRequestMethods.Get,
+            ApiRoutePathTemplates.Item(settings.Posts),
+            ApiRouteResources.Posts,
+            ApiRouteActions.Get,
+            AnonymousAccess());
+        UserPostsCollection = Route(
+            ApiRouteNames.UserPostsCollection,
+            ApiRequestMethods.Get,
+            settings.UserPosts,
+            ApiRouteResources.Posts,
+            ApiRouteActions.ListByUser,
+            AnonymousAccess());
+        UserPostCreate = Route(
+            ApiRouteNames.UserPostCreate,
+            ApiRequestMethods.Post,
+            settings.UserPosts,
+            ApiRouteResources.Posts,
+            ApiRouteActions.CreateByUser,
+            DefaultBearerAccess());
+
+        All =
+        [
+            UsersCollection,
+            UserItem,
+            UserCreate,
+            UserReplace,
+            UserPatch,
+            UserDelete,
+            PostsCollection,
+            PostItem,
+            UserPostsCollection,
+            UserPostCreate
+        ];
     }
 
     public ApiRoute UsersCollection { get; }
@@ -36,6 +110,7 @@ public sealed class ApiRoutes
     public ApiRoute PostItem { get; }
     public ApiRoute UserPostsCollection { get; }
     public ApiRoute UserPostCreate { get; }
+    public IReadOnlyList<ApiRoute> All { get; }
 
     private static ApiRoute Route(
         string name,
@@ -45,4 +120,10 @@ public sealed class ApiRoutes
         string operation,
         ApiRouteAuthentication authentication) =>
         new(name, method, pathTemplate, resource, operation, authentication);
+
+    private static ApiRouteAuthentication AnonymousAccess() =>
+        ApiRouteAuthentication.Anonymous(ApiRouteAuthProfiles.Anonymous);
+
+    private static ApiRouteAuthentication DefaultBearerAccess() =>
+        ApiRouteAuthentication.Required(ApiAuthType.Bearer, ApiRouteAuthProfiles.Default);
 }

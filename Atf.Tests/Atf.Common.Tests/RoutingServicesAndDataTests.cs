@@ -85,8 +85,8 @@ public sealed class RoutingServicesAndDataTests
 
         await service.CreateAsync(request, "write");
 
-        Assert.Equal(HttpMethod.Post, executor.Request!.Method);
-        Assert.Equal("/public/v2/users", executor.Request.Path);
+        Assert.Equal(ApiRequestMethods.Post, executor.Request!.Method);
+        Assert.Equal(RouteSettings.DefaultUsersPath, executor.Request.Path);
         Assert.Equal("write", executor.Request.AuthProfile);
         Assert.Equal("Ada", JsonDocument.Parse(executor.Request.BodyJson!).RootElement.GetProperty("name").GetString());
         Assert.Equal("ada@example.com", JsonDocument.Parse(executor.Request.BodyJson!).RootElement.GetProperty("email").GetString());
@@ -101,10 +101,10 @@ public sealed class RoutingServicesAndDataTests
 
         await new PostsService(executor, routes).ListForUserAsync(42, authProfile: "anonymous");
 
-        Assert.Equal(HttpMethod.Get, executor.Request!.Method);
-        Assert.Equal("/public/v2/users/42/posts", executor.Request.Path);
-        Assert.Equal("posts", executor.Request.Route!.Resource);
-        Assert.Equal("list by user", executor.Request.Route.Operation);
+        Assert.Equal(ApiRequestMethods.Get, executor.Request!.Method);
+        Assert.Equal($"{RouteSettings.DefaultUsersPath}/42/posts", executor.Request.Path);
+        Assert.Equal(ApiRouteResources.Posts, executor.Request.Route!.Resource);
+        Assert.Equal(ApiRouteActions.ListByUser, executor.Request.Route.Operation);
     }
 
     [Fact(DisplayName = "API module exposes domain steps while hiding composition details")]

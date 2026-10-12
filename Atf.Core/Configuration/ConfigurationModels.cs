@@ -50,9 +50,13 @@ public sealed class AuthProfileSettings
 
 public sealed class RouteSettings
 {
-    public string Users { get; init; } = "/public/v2/users";
-    public string Posts { get; init; } = "/public/v2/posts";
-    public string UserPosts { get; init; } = "/public/v2/users/{userId}/posts";
+    public const string DefaultUsersPath = "/public/v2/users";
+    public const string DefaultPostsPath = "/public/v2/posts";
+    public const string DefaultUserPostsPath = "/public/v2/users/{userId}/posts";
+
+    public string Users { get; init; } = DefaultUsersPath;
+    public string Posts { get; init; } = DefaultPostsPath;
+    public string UserPosts { get; init; } = DefaultUserPostsPath;
 }
 
 public sealed class ReportingSettings

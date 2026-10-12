@@ -94,6 +94,23 @@ reads), while the profile name remains configurable. The report shows both
 sides: `route.auth.*` describes what the route declares, and `auth.*` describes
 the effective configured profile used by the exchange.
 
+The catalog keeps its vocabulary in one place:
+
+| Constant group | Owns |
+|---|---|
+| ApiRouteNames | Stable route identifiers used in evidence and diagnostics |
+| ApiRequestMethods | The supported HTTP method instances |
+| ApiRouteActions | Semantic operations such as list, create and list by user |
+| ApiRouteResources | Report/grouping resources such as users and posts |
+| ApiRouteTokens | Template tokens such as id and userId |
+| ApiRouteAuthProfiles | Configuration profile keys such as anonymous and default |
+| ApiRoutePathTemplates | Safe construction of item paths from configurable collection roots |
+
+ApiRoutes.All is the deterministic route inventory. A new module route should
+be added to the constants, catalog and inventory contract together; services
+then consume the typed route instead of repeating method, path, operation or
+token strings.
+
 ## Services, steps and validation
 
 Services translate typed data into requests:
