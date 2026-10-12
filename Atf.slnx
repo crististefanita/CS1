@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="Atf.Common/Atf.Common.csproj" />
+  <Project Path="Atf.Core/Atf.Core.csproj" />
+  <Folder Name="/Atf.Tests/">
+    <Project Path="Atf.Tests/Atf.Common.Tests/Atf.Common.Tests.csproj" />
+    <Project Path="Atf.Tests/Atf.Core.Tests/Atf.Core.Tests.csproj" />
+  </Folder>
+  <Project Path="Atf.Api/Atf.Api.csproj" />
+</Solution>
