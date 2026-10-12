@@ -1,5 +1,8 @@
 # Atf.Common — reusable API module layer
 
+The cross-layer design and report tree are described in the
+[architecture and reporting guide](../docs/ATF_Architecture.md).
+
 `Atf.Common` translates a configured endpoint catalog into a readable API language for scenarios. It is the bridge between the product-neutral execution kernel and a concrete API module.
 
 ## Boundary
@@ -141,6 +144,37 @@ ASSERTION | EXPECTED | ACTUAL | RESULT
 
 Supported validation families include status, allowed statuses, headers, content, JSONPath, array relationships and JSON Schema.
 
+### Validation step lifecycle
+
+```mermaid
+sequenceDiagram
+    participant C as Contract validator
+    participant T as ValidationTable
+    participant R as IAtfReporter
+
+    C->>T: Check(rule, expected, actual)
+    C->>T: Check(...)
+    T->>R: StartStep(Validate: ...)
+    T->>R: AssertionTable(rows)
+    alt all rows pass
+        T->>R: Pass(summary)
+        T->>R: CompleteStep(Pass)
+    else one or more rows fail
+        T->>R: Fail(summary, first failure)
+        T->>R: CompleteStep(Fail)
+    end
+```
+
+`ValidationTable.Run` closes its own reporter step in a `finally` boundary. That
+contract is required even when a test has several validations after one response:
+`GET` remains open, while `Validate: status`, `Validate: JSONPath` and
+`Validate: schema` become children of that request. Prefer one
+`ContractValidators.*` method when the checks describe one response contract;
+the method emits one validation node and one aggregated table. Use separate
+validation methods only when the report needs a genuinely distinct contract
+boundary. The table aggregates assertions; it does not create one Extent node
+per assertion.
+
 Validation contract details:
 
 | Validator family | Input | Evidence | Important edge case |
@@ -154,6 +188,27 @@ Validation contract details:
 The `ACTUAL` preview limit comes from `IAtfReporter.AssertionMaxDisplayCharacters`
 and defaults to `240`. This is a presentation limit only: the validator evaluates the
 complete raw response, while the report receives a bounded diagnostic string.
+
+### Aggregate validations by response
+
+`ApiAssertions.Contract` is the preferred public entry point when one HTTP
+response needs more than one check. It exposes a small fluent
+`ResponseValidationGroup`; every method appends a row to the same
+`ValidationTable`, and the table is published once. This keeps the report
+compact without hiding any assertion:
+
+```csharp
+ApiAssertions.Contract(reporter, response, "Validate: post item contract", contract => contract
+    .Status(HttpStatusCode.OK)
+    .ContentTypeContains("application/json")
+    .JsonPathExists("$.id")
+    .JsonPathExists("$.user_id"));
+```
+
+Do not aggregate assertions from different HTTP responses. They remain separate
+request-owned validation nodes so the report still answers exactly which exchange was
+validated. The legacy single-check helpers remain available and delegate to the
+same grouping primitive for compatibility.
 
 ## Lifecycle and cleanup
 
@@ -185,7 +240,7 @@ Cleanup is reverse-order and best-effort: one failed action does not prevent oth
 RoutingServicesAndDataTests  route encoding, metadata, serialization,
                              module composition, data and fixture errors
 ValidationComponentTests     status/header/body/JSONPath/schema/relationship
-ValidationAndLifecycleTests  one-table aggregation and cleanup
+ValidationAndLifecycleTests  one-table aggregation, validator-step closure and cleanup
 ```
 
 Run:

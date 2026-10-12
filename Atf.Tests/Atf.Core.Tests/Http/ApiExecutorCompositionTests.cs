@@ -79,6 +79,45 @@ public sealed class ApiExecutorCompositionTests
         Assert.Same(expected, actual);
     }
 
+    [Fact(DisplayName = "Reporter failures do not prevent a successful HTTP exchange")]
+    public async Task ExecutorTreatsReporterAsBestEffortInfrastructure()
+    {
+        var reporter = new RecordingReporter
+        {
+            ThrowWhenStarting = true,
+            ThrowWhenDetailing = true,
+            ThrowWhenWritingJson = true
+        };
+        var transport = new FakeTransport(new ApiResponse(
+            HttpStatusCode.OK,
+            "{}",
+            new Dictionary<string, string>(),
+            TimeSpan.Zero,
+            "https://example.test/items"));
+        var executor = new ApiExecutor(
+            new HttpClient(),
+            new ApiSettings
+            {
+                BaseUrl = "https://example.test",
+                TimeoutSeconds = 5,
+                DefaultAuthProfile = "anonymous",
+                AuthProfiles = new(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["anonymous"] = new AuthProfileSettings { Type = "none" }
+                },
+                RateLimit = new RateLimitSettings { MaxRetries = 0 }
+            },
+            reporter,
+            new FakeAuthenticator(),
+            transport,
+            new FakeUrlBuilder("https://example.test/items"));
+
+        var result = await executor.ExecuteAsync(new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous"));
+
+        Assert.Equal(HttpStatusCode.OK, result.Response.StatusCode);
+        Assert.Equal(1, transport.Calls);
+    }
+
     private sealed class FakeUrlBuilder(string url) : IApiUrlBuilder
     {
         public string? LastRequestUrl { get; private set; }
@@ -122,11 +161,36 @@ public sealed class ApiExecutorCompositionTests
     {
         public string? StartedStep { get; private set; }
         public bool ThrowWhenFailing { get; init; }
+        public bool ThrowWhenStarting { get; init; }
+        public bool ThrowWhenDetailing { get; init; }
+        public bool ThrowWhenWritingJson { get; init; }
         public List<string> Infos { get; } = [];
 
-        public void StartStep(string title) => StartedStep = title;
-        public void Detail(string key, string value) { }
-        public void Json(string label, string json) { }
+        public void StartStep(string title)
+        {
+            if (ThrowWhenStarting)
+            {
+                throw new InvalidOperationException("report start failed");
+            }
+
+            StartedStep = title;
+        }
+
+        public void Detail(string key, string value)
+        {
+            if (ThrowWhenDetailing)
+            {
+                throw new InvalidOperationException("report detail failed");
+            }
+        }
+
+        public void Json(string label, string json)
+        {
+            if (ThrowWhenWritingJson)
+            {
+                throw new InvalidOperationException("report json failed");
+            }
+        }
         public void AssertionTable(IReadOnlyCollection<AtfAssertion> assertions) { }
         public void Info(string message) => Infos.Add(message);
         public void Pass(string message) { }

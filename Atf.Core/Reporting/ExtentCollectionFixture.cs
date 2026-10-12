@@ -1,10 +1,11 @@
 using Atf.Core.Configuration;
+using System.Reflection;
 
 namespace Atf.Core.Reporting;
 
 public sealed class ExtentCollectionFixture : IDisposable
 {
-    private readonly IAtfReportLifecycle _reportLifecycle;
+    private readonly IAtfReportSession _reportSession;
     private int _disposed;
 
     public ExtentCollectionFixture()
@@ -14,12 +15,12 @@ public sealed class ExtentCollectionFixture : IDisposable
 
     internal ExtentCollectionFixture(
         IAtfConfigurationLoader configurationLoader,
-        IAtfReportLifecycle reportLifecycle)
+        IAtfReportSession reportSession)
     {
         ArgumentNullException.ThrowIfNull(configurationLoader);
-        _reportLifecycle = reportLifecycle ?? throw new ArgumentNullException(nameof(reportLifecycle));
+        _reportSession = reportSession ?? throw new ArgumentNullException(nameof(reportSession));
         Configuration = configurationLoader.Load();
-        _reportLifecycle.Initialize(Configuration.Reporting, Configuration.Api);
+        _reportSession.Initialize(Configuration.Reporting, Configuration.Api);
     }
 
     public AtfConfiguration Configuration { get; }
@@ -29,7 +30,10 @@ public sealed class ExtentCollectionFixture : IDisposable
         string scenarioName,
         string description,
         IEnumerable<string> categories) =>
-        _reportLifecycle.StartTest(testClassName, scenarioName, description, categories);
+        _reportSession.StartTest(testClassName, scenarioName, description, categories);
+
+    public void RegisterTestAssembly(Assembly testAssembly) =>
+        _reportSession.RegisterTestAssembly(testAssembly);
 
     public void Dispose()
     {
@@ -38,7 +42,7 @@ public sealed class ExtentCollectionFixture : IDisposable
             return;
         }
 
-        _reportLifecycle.FinalizeReport();
+        _reportSession.FinalizeReport();
         GC.SuppressFinalize(this);
     }
 }

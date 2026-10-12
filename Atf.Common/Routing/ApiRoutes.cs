@@ -15,42 +15,42 @@ public sealed class ApiRoutes
 
         UsersCollection = Route(
             ApiRouteNames.UsersCollection,
-            ApiRequestMethods.Get,
+            ApiRequestConstants.Get,
             settings.Users,
             ApiRouteResources.Users,
             ApiRouteActions.List,
             AnonymousAccess());
         UserItem = Route(
             ApiRouteNames.UserItem,
-            ApiRequestMethods.Get,
+            ApiRequestConstants.Get,
             ApiRoutePathTemplates.Item(settings.Users),
             ApiRouteResources.Users,
             ApiRouteActions.Get,
             AnonymousAccess());
         UserCreate = Route(
             ApiRouteNames.UserCreate,
-            ApiRequestMethods.Post,
+            ApiRequestConstants.Post,
             settings.Users,
             ApiRouteResources.Users,
             ApiRouteActions.Create,
             DefaultBearerAccess());
         UserReplace = Route(
             ApiRouteNames.UserReplace,
-            ApiRequestMethods.Put,
+            ApiRequestConstants.Put,
             ApiRoutePathTemplates.Item(settings.Users),
             ApiRouteResources.Users,
             ApiRouteActions.Replace,
             DefaultBearerAccess());
         UserPatch = Route(
             ApiRouteNames.UserPatch,
-            ApiRequestMethods.Patch,
+            ApiRequestConstants.Patch,
             ApiRoutePathTemplates.Item(settings.Users),
             ApiRouteResources.Users,
             ApiRouteActions.Patch,
             DefaultBearerAccess());
         UserDelete = Route(
             ApiRouteNames.UserDelete,
-            ApiRequestMethods.Delete,
+            ApiRequestConstants.Delete,
             ApiRoutePathTemplates.Item(settings.Users),
             ApiRouteResources.Users,
             ApiRouteActions.Delete,
@@ -58,28 +58,28 @@ public sealed class ApiRoutes
 
         PostsCollection = Route(
             ApiRouteNames.PostsCollection,
-            ApiRequestMethods.Get,
+            ApiRequestConstants.Get,
             settings.Posts,
             ApiRouteResources.Posts,
             ApiRouteActions.List,
             AnonymousAccess());
         PostItem = Route(
             ApiRouteNames.PostItem,
-            ApiRequestMethods.Get,
+            ApiRequestConstants.Get,
             ApiRoutePathTemplates.Item(settings.Posts),
             ApiRouteResources.Posts,
             ApiRouteActions.Get,
             AnonymousAccess());
         UserPostsCollection = Route(
             ApiRouteNames.UserPostsCollection,
-            ApiRequestMethods.Get,
+            ApiRequestConstants.Get,
             settings.UserPosts,
             ApiRouteResources.Posts,
             ApiRouteActions.ListByUser,
             AnonymousAccess());
         UserPostCreate = Route(
             ApiRouteNames.UserPostCreate,
-            ApiRequestMethods.Post,
+            ApiRequestConstants.Post,
             settings.UserPosts,
             ApiRouteResources.Posts,
             ApiRouteActions.CreateByUser,

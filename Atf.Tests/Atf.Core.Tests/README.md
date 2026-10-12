@@ -1,5 +1,8 @@
 # Atf.Core.Tests — kernel and artifact contract tests
 
+The complete test-to-artifact strategy is in the
+[architecture and reporting guide](../../docs/ATF_Architecture.md).
+
 This is the fast, offline quality gate for `Atf.Core`. It does not start a service, open a socket or require a token. Network and reporting boundaries are replaced with deterministic fakes or temporary files.
 
 ## Protected contracts
@@ -21,7 +24,7 @@ flowchart LR
 | `HttpExecutorComponentTests` | retry result, route metadata, JSON evidence and auth state |
 | `ApiExecutorCompositionTests` | injected ports and exception preservation |
 | `ReportingComponentTests` | class status precedence and evidence classification |
-| `ReportingStructureTests` | phase sibling hierarchy and active-step evidence |
+| `ReportingStructureTests` | phase sibling hierarchy, phase-level request/validation siblings, active-step evidence and suppression of generic phase summaries |
 | `ReportArtifactInspectorTests` | self-contained HTML, dark token, collapsed evidence and table contracts |
 | `ReportingLifecycleComponentTests` | fixture composition, identity forwarding and idempotent finalization |
 
@@ -40,7 +43,20 @@ They should not assert private helper calls. For example, executor composition i
 
 ## Artifact testing
 
-`ReportArtifactInspector` checks the file a developer opens: custom theme, shared dark token, embedded assets, absent `extent` folder, collapsed details, scrollable JSON, assertion table, technical trace, hidden timestamp column and removed inner phase rail.
+`ReportArtifactInspector` checks the file a developer opens: custom theme, shared dark token, embedded assets, absent `extent` folder, collapsed details, scrollable JSON, assertion table, technical trace, hidden timestamp column and removed inner phase rail. The structural Extent tests complement this with the in-memory rule that lifecycle phases and API evidence nodes remain correctly ordered.
+
+```mermaid
+flowchart LR
+    Model[In-memory Extent tree] --> Structure[phase/request/validation hierarchy]
+    Html[Generated single HTML] --> Artifact[embedded assets + dark CSS]
+    Browser[Browser MCP render] --> UX[collapsed state + zero horizontal overflow]
+    Structure --> Acceptance[reporting acceptance]
+    Artifact --> Acceptance
+    UX --> Acceptance
+```
+
+A green unit test is not sufficient for the final browser contract: the HTML
+artifact must still be opened and checked after the live API run.
 
 This is stronger than testing a CSS string in isolation.
 

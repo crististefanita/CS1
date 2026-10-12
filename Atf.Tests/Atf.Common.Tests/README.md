@@ -1,5 +1,8 @@
 # Atf.Common.Tests — module component tests
 
+The module boundaries and evidence flow are described in the
+[architecture and reporting guide](../../docs/ATF_Architecture.md).
+
 This is the fast, offline quality gate for the API-module layer. It verifies route semantics, service serialization, semantic steps, validation aggregation, fixtures/data and cleanup without contacting a live API.
 
 ## Component flow
@@ -24,7 +27,7 @@ flowchart LR
 |---|---|
 | `RoutingServicesAndDataTests` | token encoding, route metadata, service bodies, module composition, data uniqueness and fixture errors |
 | `ValidationComponentTests` | status, allowed status, headers, body, JSONPath, relationships and JSON Schema |
-| `ValidationAndLifecycleTests` | one-table aggregation, reverse cleanup and best-effort failures |
+| `ValidationAndLifecycleTests` | one-table aggregation, Pass/Fail step closure, reverse cleanup and best-effort failures |
 
 ## What these tests prove
 
@@ -32,6 +35,8 @@ flowchart LR
 - services preserve route metadata, auth profile and typed JSON payload;
 - `ApiModule` exposes steps while hiding executor wiring;
 - validators publish all rows and raise `ApiValidationException` only after evidence;
+- every validation opens and closes exactly one reporter step, including unexpected exceptions;
+- consecutive validations remain siblings instead of nesting under the previous validation;
 - assertion `ACTUAL` values use the reporter's configured maximum length, so the
   diagnostic table stays readable without changing assertion semantics;
 - malformed response shapes are contract failures;
@@ -51,6 +56,25 @@ flowchart LR
 ```
 
 Keep the test seam at `IApiExecutor`. Inspect the produced `ApiRequest` and `ApiRoute` rather than reconstructing service internals.
+
+## Why the lifecycle tests matter
+
+```mermaid
+flowchart TD
+    Request[HTTP request step] --> CloseRequest[CompleteStep]
+    CloseRequest --> Status[Validate: status]
+    Status --> CloseStatus[CompleteStep]
+    CloseStatus --> Schema[Validate: schema]
+    Schema --> CloseSchema[CompleteStep]
+    Request --> Status[status row]
+    Request --> Json[JSON/schema rows]
+    Status -. sibling validation .- Json
+```
+
+The recording reporter asserts the lifecycle events, not an implementation detail:
+`start:Validate:*` must be paired with `complete:Pass` or `complete:Fail`. This
+protects the same hierarchy later rendered by Extent without requiring a browser
+or a live service.
 
 ## Run
 

@@ -1,5 +1,8 @@
 # Atf.Tests — testarea internă a ATF-ului
 
+The test strategy and the browser-validated report contract are documented in
+the [architecture and reporting guide](../docs/ATF_Architecture.md).
+
 Aceasta este secțiunea dedicată testării ATF-ului însuși, nu testării unui API produs. Ea protejează contractele reutilizabile ale soluției înainte de rularea scenariilor live din `Atf.Api`.
 
 ## Organizare
@@ -39,6 +42,7 @@ modificare poate fi verificată fără serviciu, ea aparține testelor de sub `A
 | transport separat de policy | `IApiTransport`, `IApiAuthenticator`, `IApiUrlBuilder` | `HttpExecutorComponentTests` | cancellation, timeout și headers case-insensitive |
 | retry bounded | `RateLimitRetryPolicy` + `ApiExecutionResult` | `ConfigurationAndResilienceTests` | retry exhaustion fără verdict PASS |
 | contract funcțional agregat | `ValidationTable` | `ValidationComponentTests` | JSON invalid, schema invalid și colecție goală |
+| lifecycle de reporting | `ValidationTable.Run` + `CompleteStep` | `ValidationAndLifecycleTests` | validarea agregată rămâne copilul requestului în Extent |
 | cleanup determinist | `CleanupRegistry` | `ValidationAndLifecycleTests` | failure în setup/body/teardown și duplicate ownership |
 | artifact consumabil | `ReportArtifactInspector` | `ReportArtifactInspectorTests` | DOM semantic, responsive layout și overflow |
 
@@ -66,7 +70,8 @@ Orice modificare a executorului, lifecycle-ului sau raportării trebuie să fie 
 Raportarea nu trebuie tratată ca un singur helper static. Implementarea actuală separă responsabilitățile astfel:
 
 ```text
-ExtentManager              lifecycle process-scoped și sincronizare
+IAtfReportSession          sesiune de raport izolată per rulare
+ExtentReportLifecycle      adaptor Extent al sesiunii de raport
   -> ExtentTestHierarchy   clase, scenarii, categorii și status agregat
   -> ExtentReportEnvironment metadata de execuție din overview
   -> ExtentTestScope       contextul unui scenariu și publicarea pașilor
@@ -112,11 +117,30 @@ Un test ATF este sănătos când testează un contract observabil la nivelul pot
 
 ```mermaid
 flowchart TB
-    L[33 live API tests\nAtf.Api]
-    C[27 module component tests\nAtf.Common.Tests]
-    U[56 kernel + reporting contract tests\nAtf.Core.Tests]
+    L[13 Extent API scenarios\nAtf.Api]
+    C[32 module component tests\nAtf.Common.Tests]
+    U[80 kernel + reporting contract tests\nAtf.Core.Tests]
     U --> C --> L
 ```
+
+The current `Atf.Api` xUnit assembly also contains offline framework contract
+tests, so its runner total is larger than the 13 API scenarios shown by Extent.
+The report and the runner are intentionally reconciled by label rather than by
+blindly reusing a container count.
+
+### Regula de verificare a raportului
+
+```mermaid
+flowchart TD
+    Unit[Unit tests: lifecycle + validator status] --> Component[Component tests: Extent tree]
+    Component --> Artifact[Single-file HTML inspector]
+    Artifact --> Browser[Browser MCP render check]
+    Browser --> Evidence[GET, aggregate validation, JSON and tables visible at the right level]
+```
+
+Unit tests prove the close/open protocol, component tests prove the node hierarchy,
+and the browser check proves that Extent's hydrated DOM preserves the intended
+collapsed phase → request → evidence + aggregate validation layout. The three layers are complementary, not substitutes.
 
 Ordinea este intenționată: un defect de configurare, routing sau reporting trebuie să eșueze în testele offline, înainte de a consuma timp și date pe serviciul live.
 
@@ -156,7 +180,7 @@ Ordinea este intenționată: un defect de configurare, routing sau reporting tre
 
 ## Sugestii de îmbunătățire profundă
 
-1. **Separă starea de execuție de adapterul Extent.** `ExtentManager` este încă un hotspot static; următorul pas ar fi `IReportRun`, `ITestScope` și un context `AsyncLocal`, cu un singur adapter Extent la margine.
+1. **Păstrează sesiunea de execuție izolată de adapterul Extent.** `IAtfReportSession` deține starea unei singure rulări, iar `ExtentReportLifecycle` este adaptorul concret. Următorul pas este un context `AsyncLocal` doar pentru corelarea explicită a transportului, nu pentru starea globală a raportului.
 2. **Introdu un model de rezultat explicit.** `ApiExecutionResult` ar trebui să poată exprima transport error, cancellation, final response, correlation id și retry history fără a deduce starea din loguri.
 3. **Adaugă un redactor central.** Nicio componentă nu ar trebui să decidă local ce este secret; `ISensitiveDataRedactor` trebuie aplicat înainte de `Detail`, `Json`, exception și snapshot.
 4. **Validează configurația ca schemă.** JSON este implementarea curentă; blueprint-ul declarativ YAML poate fi introdus ulterior printr-un provider, dar semantic trebuie să rămână aceeași configurație pe module.

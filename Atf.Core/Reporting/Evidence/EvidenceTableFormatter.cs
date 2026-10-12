@@ -31,8 +31,8 @@ public static class EvidenceTableFormatter
             ["attempt"] = "ATTEMPT",
             ["response.status"] = "RESPONSE STATUS",
             ["response.content.type"] = "CONTENT TYPE",
-            ["response.duration.ms"] = "RESPONSE DURATION",
-            ["exchange.duration.ms"] = "TOTAL DURATION",
+            ["response.duration.ms"] = "RESPONSE DURATION (ms)",
+            ["exchange.duration.ms"] = "TOTAL DURATION (ms)",
             ["rate-limit.retry.delay.ms"] = "RETRY DELAY",
             ["rate-limit.retry.reason"] = "RETRY REASON"
         };
@@ -134,9 +134,10 @@ public static class EvidenceTableFormatter
             compactDetails.Select(detail =>
                 $"<tr><th scope='row'>{Html(DisplayName(detail.Key))}</th><td data-field='{Html(detail.Key)}'>{Html(detail.Value)}</td></tr>"));
 
-        return "<table class='helm-evidence-table helm-trace-table'>" +
+        return "<div class='helm-evidence-table-wrap helm-trace-table-wrap'>" +
+            "<table class='helm-evidence-table helm-trace-table'>" +
             "<thead><tr><th>FIELD</th><th>VALUE</th></tr></thead>" +
-            $"<tbody>{rows}</tbody></table>";
+            $"<tbody>{rows}</tbody></table></div>";
     }
 
     private static string DisplayName(string key) =>

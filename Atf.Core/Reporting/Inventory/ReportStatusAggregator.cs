@@ -1,5 +1,3 @@
-using AventStack.ExtentReports;
-
 namespace Atf.Core.Reporting.Inventory;
 
 /// <summary>
@@ -10,9 +8,9 @@ namespace Atf.Core.Reporting.Inventory;
 public sealed class ReportStatusAggregator
 {
     private readonly object _sync = new();
-    private readonly Dictionary<string, Status> _statuses = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, AtfReportStatus> _statuses = new(StringComparer.Ordinal);
 
-    public Status Record(string logicalTestName, Status next)
+    public AtfReportStatus Record(string logicalTestName, AtfReportStatus next)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(logicalTestName);
 
@@ -26,7 +24,7 @@ public sealed class ReportStatusAggregator
         }
     }
 
-    public bool TryGet(string logicalTestName, out Status status)
+    public bool TryGet(string logicalTestName, out AtfReportStatus status)
     {
         lock (_sync)
         {
@@ -42,18 +40,18 @@ public sealed class ReportStatusAggregator
         }
     }
 
-    private static Status Merge(Status current, Status next)
+    private static AtfReportStatus Merge(AtfReportStatus current, AtfReportStatus next)
     {
-        if (current == Status.Fail || next == Status.Fail)
+        if (current == AtfReportStatus.Fail || next == AtfReportStatus.Fail)
         {
-            return Status.Fail;
+            return AtfReportStatus.Fail;
         }
 
-        if (current == Status.Skip || next == Status.Skip)
+        if (current == AtfReportStatus.Skip || next == AtfReportStatus.Skip)
         {
-            return Status.Skip;
+            return AtfReportStatus.Skip;
         }
 
-        return Status.Pass;
+        return AtfReportStatus.Pass;
     }
 }

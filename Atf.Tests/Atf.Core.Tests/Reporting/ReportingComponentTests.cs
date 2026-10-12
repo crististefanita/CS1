@@ -76,13 +76,151 @@ public sealed class ReportingComponentTests
     [Fact(DisplayName = "Embedded report behaviour exposes dependency-free view navigation")]
     public void ClientBehaviourProvidesViewNavigation()
     {
-        var script = ExtentReportClientBehaviour.Build(7);
+        var script = ExtentReportClientBehaviour.Build();
 
         Assert.Contains("function installNavigation()", script, StringComparison.Ordinal);
         Assert.Contains("window.toggleView = function (view)", script, StringComparison.Ordinal);
         Assert.Contains(".main-content > .view", script, StringComparison.Ordinal);
         Assert.Contains("candidate.classList.toggle('d-none'", script, StringComparison.Ordinal);
         Assert.Contains("window.currentView = view", script, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Client behaviour embeds configured native navigation order")]
+    public void ClientBehaviourEmbedsConfiguredNavigationOrder()
+    {
+        var script = ExtentReportClientBehaviour.Build(
+            new ReportingSettings
+            {
+                TestClassOrder = ["UsersApiTests", "PostsApiTests"],
+                TestScenarioOrder = ["USERS API — test only"],
+                TagOrder = ["api", "smoke"]
+            });
+
+        Assert.Contains(
+            $"const classOrder = {System.Text.Json.JsonSerializer.Serialize(new[] { "UsersApiTests", "PostsApiTests" })}",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"const scenarioOrder = {System.Text.Json.JsonSerializer.Serialize(new[] { "USERS API — test only" })}",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            $"const tagOrder = {System.Text.Json.JsonSerializer.Serialize(new[] { "api", "smoke" })}",
+            script,
+            StringComparison.Ordinal);
+        Assert.Contains("function directScenarioCards(item)", script, StringComparison.Ordinal);
+        Assert.Contains("const cards = directScenarioCards(item)", script, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Client behaviour keeps lifecycle phase shells compact and collapsed")]
+    public void ClientBehaviourUsesCollapsedPhaseShellContract()
+    {
+        var script = ExtentReportClientBehaviour.Build();
+
+        Assert.Contains("body.classList.remove('show')", script, StringComparison.Ordinal);
+        Assert.Contains("body.style.setProperty('display', 'none', 'important')", script, StringComparison.Ordinal);
+        Assert.Contains("header.setAttribute('aria-expanded', 'false')", script, StringComparison.Ordinal);
+        Assert.Contains("function removeCompositeScenarioSummary()", script, StringComparison.Ordinal);
+        Assert.Contains("const summary = directChild(card, 'collapse')", script, StringComparison.Ordinal);
+        Assert.Contains("if (summary) summary.remove()", script, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Client behaviour reconciles native overview counters from API scenario cards")]
+    public void ClientBehaviourCountsScenariosInsteadOfClassRootsOrAssemblyTests()
+    {
+        var script = ExtentReportClientBehaviour.Build();
+
+        Assert.Contains("function reportScenarioData()", script, StringComparison.Ordinal);
+        Assert.Contains("const total = data.scenarioCards.length", script, StringComparison.Ordinal);
+        Assert.Contains("setText(summaryValue('Tests Passed'), totals.passed)", script, StringComparison.Ordinal);
+        Assert.Contains("setText(summaryValue('Tests Failed'), totals.failed)", script, StringComparison.Ordinal);
+        Assert.Contains("statusGroup.parentCount = total", script, StringComparison.Ordinal);
+        Assert.Contains("chart?.canvas?.id !== 'parent-analysis'", script, StringComparison.Ordinal);
+        Assert.Contains("const nativeTagTable = dashboard.querySelector('.category-container table')", script, StringComparison.Ordinal);
+        Assert.Contains("const tagTotal = totals.passed + totals.failed + totals.skipped + totals.other", script, StringComparison.Ordinal);
+        Assert.Contains("cells[5].textContent = Math.round(totals.passed / Math.max(tagTotal, 1) * 100) + '%'", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("__ATF_TEST_TOTAL__", script, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Report client behaviour keeps API nodes collapsed until the user opens them")]
+    public void ClientBehaviourKeepsNodesCollapsedByDefault()
+    {
+        var script = ExtentReportClientBehaviour.Build();
+
+        Assert.Contains("body.style.setProperty('display', 'none', 'important')", script, StringComparison.Ordinal);
+        Assert.Contains("body.classList.remove('show')", script, StringComparison.Ordinal);
+        Assert.Contains("details.step-detail", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("<details class='step-detail' open", script, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Client behaviour preserves phase request-validation siblings")]
+    public void ClientBehaviourMarksExecutionRoles()
+    {
+        var script = ExtentReportClientBehaviour.Build();
+
+        Assert.Contains("function configureExecutionHierarchy()", script, StringComparison.Ordinal);
+        Assert.Contains("data-atf-node-role', 'phase", script, StringComparison.Ordinal);
+        Assert.Contains("stepCard.setAttribute('data-atf-node-role', role)", script, StringComparison.Ordinal);
+        Assert.Contains("const role = /^validate\\s*:/i.test(titleText) ? 'validation' : 'request'", script, StringComparison.Ordinal);
+        Assert.Contains("/^validate\\s*:/i.test(titleText)", script, StringComparison.Ordinal);
+        Assert.Contains("data-atf-parent-node', 'phase", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-atf-node-group', 'validations", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("data-atf-parent-node', 'request", script, StringComparison.Ordinal);
+        Assert.Contains("configureExecutionHierarchy();", script, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Client behaviour owns nested card clicks in capture phase")]
+    public void ClientBehaviourDelegatesIndependentCardToggles()
+    {
+        var script = ExtentReportClientBehaviour.Build();
+
+        Assert.Contains("function installCardDelegation()", script, StringComparison.Ordinal);
+        Assert.Contains("document.addEventListener('click'", script, StringComparison.Ordinal);
+        Assert.Contains("event.stopImmediatePropagation()", script, StringComparison.Ordinal);
+        Assert.Contains("toggleCard(header.parentElement, header, event)", script, StringComparison.Ordinal);
+        Assert.Contains("installCardDelegation();", script, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Report theme keeps JSON readable without horizontal page overflow")]
+    public void ReportThemeUsesVerticalJsonScrollAndWrappedValues()
+    {
+        var css = AtfReportTheme.BuildCss();
+
+        Assert.Contains("--atf-audit-scroll-height: 340px", css, StringComparison.Ordinal);
+        Assert.Contains(".atf-tag-scroll { height: var(--atf-audit-scroll-height) !important; max-height: var(--atf-audit-scroll-height) !important;", css, StringComparison.Ordinal);
+        Assert.Contains(".helm-scroll-block-body { max-height: var(--atf-audit-scroll-height) !important;", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".helm-scroll-block-body { height:", css, StringComparison.Ordinal);
+        Assert.Contains("overflow-y: auto !important", css, StringComparison.Ordinal);
+        Assert.Contains(".helm-scroll-block-body pre { box-sizing: border-box !important; min-height: 0 !important;", css, StringComparison.Ordinal);
+        Assert.Contains("white-space: pre-wrap !important", css, StringComparison.Ordinal);
+        Assert.Contains("word-break: break-word !important", css, StringComparison.Ordinal);
+        Assert.Contains(".test-wrapper, .test-content, .test-content-detail { overflow-x: hidden !important; }", css, StringComparison.Ordinal);
+        Assert.Contains(".helm-trace-table thead th:first-child", css, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Report theme visually separates request and validation siblings")]
+    public void ReportThemeUsesPhaseExecutionFrames()
+    {
+        var css = AtfReportTheme.BuildCss();
+
+        Assert.Contains("card[data-atf-node-role=\"request\"]", css, StringComparison.Ordinal);
+        Assert.Contains("card[data-atf-node-role=\"validation\"]", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("content: \"CONTRACT VALIDATION\"", css, StringComparison.Ordinal);
+        Assert.Contains("contract validations are sibling steps", css, StringComparison.Ordinal);
+        Assert.Contains("data-atf-parent-phase", ExtentReportClientBehaviour.Build(), StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Report node interaction binds directly to headers and keeps nodes collapsed")]
+    public void ClientBehaviourBindsDirectCardToggles()
+    {
+        var script = ExtentReportClientBehaviour.Build();
+
+        Assert.Contains("bindCardToggle(card, header);", script, StringComparison.Ordinal);
+        Assert.Contains("window.addEventListener('click', function (event)", script, StringComparison.Ordinal);
+        Assert.Contains("window.__atfCaptureToggleInstalled", script, StringComparison.Ordinal);
+        Assert.Contains("targetHeader?.__atfToggleHandler", script, StringComparison.Ordinal);
+        Assert.Contains("body.style.setProperty('display', expanded ? 'block' : 'none', 'important');", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("document.addEventListener('click', toggleCard, true)", script, StringComparison.Ordinal);
     }
 
     [Fact(DisplayName = "Extent evidence renderer keeps details collapsed and escapes values")]
@@ -107,12 +245,12 @@ public sealed class ReportingComponentTests
     {
         var aggregator = new ReportStatusAggregator();
 
-        Assert.Equal(Status.Pass, aggregator.Record("UsersApiTests", Status.Pass));
-        Assert.Equal(Status.Skip, aggregator.Record("UsersApiTests", Status.Skip));
-        Assert.Equal(Status.Fail, aggregator.Record("UsersApiTests", Status.Fail));
-        Assert.Equal(Status.Fail, aggregator.Record("UsersApiTests", Status.Pass));
+        Assert.Equal(AtfReportStatus.Pass, aggregator.Record("UsersApiTests", AtfReportStatus.Pass));
+        Assert.Equal(AtfReportStatus.Skip, aggregator.Record("UsersApiTests", AtfReportStatus.Skip));
+        Assert.Equal(AtfReportStatus.Fail, aggregator.Record("UsersApiTests", AtfReportStatus.Fail));
+        Assert.Equal(AtfReportStatus.Fail, aggregator.Record("UsersApiTests", AtfReportStatus.Pass));
         Assert.True(aggregator.TryGet("UsersApiTests", out var status));
-        Assert.Equal(Status.Fail, status);
+        Assert.Equal(AtfReportStatus.Fail, status);
     }
 
     [Fact(DisplayName = "Report status aggregation is isolated per logical test class")]
@@ -120,13 +258,13 @@ public sealed class ReportingComponentTests
     {
         var aggregator = new ReportStatusAggregator();
 
-        aggregator.Record("UsersApiTests", Status.Fail);
-        aggregator.Record("PostsApiTests", Status.Pass);
+        aggregator.Record("UsersApiTests", AtfReportStatus.Fail);
+        aggregator.Record("PostsApiTests", AtfReportStatus.Pass);
 
         Assert.True(aggregator.TryGet("UsersApiTests", out var userStatus));
         Assert.True(aggregator.TryGet("PostsApiTests", out var postStatus));
-        Assert.Equal(Status.Fail, userStatus);
-        Assert.Equal(Status.Pass, postStatus);
+        Assert.Equal(AtfReportStatus.Fail, userStatus);
+        Assert.Equal(AtfReportStatus.Pass, postStatus);
     }
 
     [Fact(DisplayName = "Execution evidence classifies response details and keeps the compact trace")]
@@ -195,8 +333,8 @@ public sealed class ReportingComponentTests
         Assert.Equal(1, Count(evidence.BodyHtml, "<table"));
     }
 
-    [Fact(DisplayName = "Execution evidence uses execution summary when no request or response metadata exists")]
-    public void GenericEvidenceUsesExecutionSummary()
+    [Fact(DisplayName = "Execution evidence classifies context-only fields as generic metadata")]
+    public void GenericEvidenceIsIdentifiedAsContextOnly()
     {
         var evidence = ExecutionEvidenceComposer.Compose(
             "TEST BODY",
@@ -204,6 +342,7 @@ public sealed class ReportingComponentTests
 
         Assert.Equal("Execution summary · 1 fields", evidence.Title);
         Assert.Equal(string.Empty, evidence.Kind);
+        Assert.True(evidence.IsGenericSummary);
         Assert.Contains("FIXTURE USERID", evidence.BodyHtml);
     }
 

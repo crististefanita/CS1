@@ -1,6 +1,7 @@
 using Atf.Core.Configuration;
 using Atf.Core.Reporting;
 using AventStack.ExtentReports;
+using System.Reflection;
 
 namespace Atf.Core.Tests.Reporting;
 
@@ -45,19 +46,77 @@ public sealed class ReportingLifecycleComponentTests
         Assert.Equal(1, lifecycle.FinalizeCount);
     }
 
+    [Fact(DisplayName = "Collection fixture forwards the test assembly to the scoped report session")]
+    public void FixtureForwardsTestAssembly()
+    {
+        var lifecycle = new RecordingReportLifecycle();
+        using var fixture = new ExtentCollectionFixture(
+            new RecordingConfigurationLoader(Configuration()),
+            lifecycle);
+
+        fixture.RegisterTestAssembly(typeof(ReportingLifecycleComponentTests).Assembly);
+
+        Assert.Same(typeof(ReportingLifecycleComponentTests).Assembly, lifecycle.TestAssembly);
+    }
+
     [Fact(DisplayName = "Status aggregator clears state without affecting another instance")]
     public void StatusAggregatorClearIsIsolated()
     {
         var first = new ReportStatusAggregator();
         var second = new ReportStatusAggregator();
 
-        first.Record("UsersApiTests", Status.Fail);
-        second.Record("UsersApiTests", Status.Pass);
+        first.Record("UsersApiTests", AtfReportStatus.Fail);
+        second.Record("UsersApiTests", AtfReportStatus.Pass);
         first.Clear();
 
         Assert.False(first.TryGet("UsersApiTests", out _));
         Assert.True(second.TryGet("UsersApiTests", out var status));
-        Assert.Equal(Status.Pass, status);
+        Assert.Equal(AtfReportStatus.Pass, status);
+    }
+
+    [Fact(DisplayName = "Report sessions keep output paths and test trees isolated")]
+    public void ReportSessionsAreIsolated()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-session-");
+        try
+        {
+            var firstPath = Path.Combine(root.FullName, "first.html");
+            var secondPath = Path.Combine(root.FullName, "second.html");
+            var first = new ExtentReportLifecycle();
+            var second = new ExtentReportLifecycle();
+            var firstSettings = new ReportingSettings
+            {
+                ReportPath = firstPath,
+                TimestampEnabled = false,
+                Engine = "extent"
+            };
+            var secondSettings = new ReportingSettings
+            {
+                ReportPath = secondPath,
+                TimestampEnabled = false,
+                Engine = "extent"
+            };
+
+            first.Initialize(firstSettings);
+            using (first.StartTest("UsersApiTests", "FIRST SESSION", "first", ["api"])) { }
+            first.FinalizeReport();
+
+            second.Initialize(secondSettings);
+            using (second.StartTest("UsersApiTests", "SECOND SESSION", "second", ["api"])) { }
+            second.FinalizeReport();
+
+            Assert.NotEqual(first.ReportPath, second.ReportPath);
+            var firstHtml = File.ReadAllText(first.ReportPath);
+            var secondHtml = File.ReadAllText(second.ReportPath);
+            Assert.Contains("FIRST SESSION", firstHtml, StringComparison.Ordinal);
+            Assert.DoesNotContain("SECOND SESSION", firstHtml, StringComparison.Ordinal);
+            Assert.Contains("SECOND SESSION", secondHtml, StringComparison.Ordinal);
+            Assert.DoesNotContain("FIRST SESSION", secondHtml, StringComparison.Ordinal);
+        }
+        finally
+        {
+            root.Delete(recursive: true);
+        }
     }
 
     private static AtfConfiguration Configuration() => new()
@@ -80,7 +139,7 @@ public sealed class ReportingLifecycleComponentTests
         public AtfConfiguration Load(string? basePath = null) => configuration;
     }
 
-    private sealed class RecordingReportLifecycle : IAtfReportLifecycle
+    private sealed class RecordingReportLifecycle : IAtfReportSession
     {
         private readonly ExtentReports _reports = new();
         private ExtentTest? _test;
@@ -92,6 +151,10 @@ public sealed class ReportingLifecycleComponentTests
         public int FinalizeCount { get; private set; }
         public (string ClassName, string Scenario, string Description)? StartedTest { get; private set; }
         public IReadOnlyList<string> Categories { get; private set; } = [];
+
+        public Assembly? TestAssembly { get; private set; }
+
+        public void RegisterTestAssembly(Assembly testAssembly) => TestAssembly = testAssembly;
 
         public void Initialize(ReportingSettings settings, ApiSettings? api = null)
         {

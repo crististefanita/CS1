@@ -31,9 +31,7 @@ public sealed class PostsApiTests(ITestOutputHelper output, Atf.Core.Reporting.E
             ContractValidators.PostCollection(context.Reporter, list.Response);
             var id = JsonResponseData.FirstArrayItemInt(list.Response, "id");
             var result = await context.Posts.GetAsync(id, "anonymous");
-            ApiAssertions.Status(context.Reporter, result.Response, HttpStatusCode.OK);
-            JsonAssertions.JsonPathExists(context.Reporter, result.Response, "$.id");
-            JsonAssertions.JsonPathExists(context.Reporter, result.Response, "$.user_id");
+            ContractValidators.PostItem(context.Reporter, result.Response);
         });
 
     [Fact(DisplayName = "Posts: nested user posts preserve parent relationship")]
@@ -56,6 +54,10 @@ public sealed class PostsApiTests(ITestOutputHelper output, Atf.Core.Reporting.E
         async context =>
         {
             var result = await context.Posts.GetAsync(999999999, "anonymous");
-            ApiAssertions.Status(context.Reporter, result.Response, HttpStatusCode.NotFound);
+            ApiAssertions.Contract(
+                context.Reporter,
+                result.Response,
+                "Validate: post not found",
+                new ResponseContract().ExpectStatus(HttpStatusCode.NotFound));
         });
 }

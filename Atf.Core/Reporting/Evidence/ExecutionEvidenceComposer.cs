@@ -9,7 +9,17 @@ public sealed record ExecutionEvidence(
     string Title,
     string Kind,
     string BodyHtml,
-    bool IsAssertion);
+    bool IsAssertion)
+{
+    /// <summary>
+    /// True when the fields are contextual metadata rather than evidence of an
+    /// HTTP exchange or an assertion. These rows are useful while debugging
+    /// the runner, but are noise in the user-facing Extent tree.
+    /// </summary>
+    public bool IsGenericSummary =>
+        !IsAssertion &&
+        Title.StartsWith("Execution summary", StringComparison.OrdinalIgnoreCase);
+}
 
 public static class ExecutionEvidenceComposer
 {

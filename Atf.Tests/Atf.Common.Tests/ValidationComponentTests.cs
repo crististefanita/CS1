@@ -1,3 +1,4 @@
+using Atf.Common.Errors;
 using Atf.Common.Validation;
 using Atf.Core.Http;
 using Atf.Core.Reporting;
@@ -33,6 +34,48 @@ public sealed class ValidationComponentTests
             HttpStatusCode.Forbidden);
 
         Assert.True(Assert.Single(reporter.Tables.Single()).Passed);
+    }
+
+    [Fact(DisplayName = "One response contract publishes one aggregate assertion table")]
+    public void ResponseContractAggregatesAssertions()
+    {
+        var reporter = new RecordingReporter();
+
+        ApiAssertions.Contract(
+            reporter,
+            Response(HttpStatusCode.OK, "{\"id\":42}", new Dictionary<string, string>
+            {
+                ["Content-Type"] = "application/json"
+            }),
+            "Validate: aggregated response",
+            contract => contract
+                .Status(HttpStatusCode.OK)
+                .ContentTypeContains("application/json")
+                .JsonPathExists("$.id"));
+
+        Assert.Single(reporter.Tables);
+        Assert.Equal(3, reporter.Tables.Single().Count);
+        Assert.All(reporter.Tables.Single(), assertion => Assert.True(assertion.Passed));
+        Assert.Contains("3 validations passed.", reporter.Passes);
+    }
+
+    [Fact(DisplayName = "Aggregate response validation keeps all failure rows in one table")]
+    public void ResponseContractKeepsFailureRowsTogether()
+    {
+        var reporter = new RecordingReporter();
+
+        Assert.Throws<ApiValidationException>(() => ApiAssertions.Contract(
+            reporter,
+            Response(HttpStatusCode.NotFound, "{\"message\":\"missing\"}"),
+            "Validate: aggregated failure",
+            contract => contract
+                .Status(HttpStatusCode.OK)
+                .JsonPathExists("$.id")
+                .BodyContains("missing")));
+
+        Assert.Single(reporter.Tables);
+        Assert.Equal(3, reporter.Tables.Single().Count);
+        Assert.Equal(2, reporter.Tables.Single().Count(assertion => !assertion.Passed));
     }
 
     [Fact(DisplayName = "Header and body assertions report useful actual values")]

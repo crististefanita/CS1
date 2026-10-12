@@ -1,5 +1,3 @@
-using System.Net.Http;
-
 namespace Atf.Common.Routing;
 
 /// <summary>
@@ -62,20 +60,6 @@ public static class ApiRouteAuthProfiles
 {
     public const string Anonymous = "anonymous";
     public const string Default = "default";
-}
-
-/// <summary>
-/// HTTP methods allowed by the current API route catalog.
-/// HttpMethod is a reference type, therefore these are readonly values rather
-/// than C# const fields.
-/// </summary>
-public static class ApiRequestMethods
-{
-    public static readonly HttpMethod Get = HttpMethod.Get;
-    public static readonly HttpMethod Post = HttpMethod.Post;
-    public static readonly HttpMethod Put = HttpMethod.Put;
-    public static readonly HttpMethod Patch = HttpMethod.Patch;
-    public static readonly HttpMethod Delete = HttpMethod.Delete;
 }
 
 /// <summary>

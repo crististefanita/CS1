@@ -121,6 +121,20 @@ public sealed class ConfigurationAndResilienceTests
         }
     }
 
+    [Fact(DisplayName = "Configuration loads deterministic report navigation order")]
+    public void ConfigurationLoadsReportNavigationOrder()
+    {
+        var configuration = new AtfConfigurationLoader().Load();
+
+        Assert.Equal(
+            ["UsersApiTests", "PostsApiTests", "ApiLifecycleAndCombinationsTests"],
+            configuration.Reporting.TestClassOrder);
+        Assert.Contains(
+            "Users API — setup → body → teardown",
+            configuration.Reporting.TestScenarioOrder);
+        Assert.Equal("api", configuration.Reporting.TagOrder[0]);
+    }
+
     [Theory(DisplayName = "Retry policy uses fallback for unusable Retry-After values")]
     [InlineData(null)]
     [InlineData("")]

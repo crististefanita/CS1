@@ -85,7 +85,7 @@ public sealed class RoutingServicesAndDataTests
 
         await service.CreateAsync(request, "write");
 
-        Assert.Equal(ApiRequestMethods.Post, executor.Request!.Method);
+        Assert.Equal(ApiRequestConstants.Post, executor.Request!.Method);
         Assert.Equal(RouteSettings.DefaultUsersPath, executor.Request.Path);
         Assert.Equal("write", executor.Request.AuthProfile);
         Assert.Equal("Ada", JsonDocument.Parse(executor.Request.BodyJson!).RootElement.GetProperty("name").GetString());
@@ -101,7 +101,7 @@ public sealed class RoutingServicesAndDataTests
 
         await new PostsService(executor, routes).ListForUserAsync(42, authProfile: "anonymous");
 
-        Assert.Equal(ApiRequestMethods.Get, executor.Request!.Method);
+        Assert.Equal(ApiRequestConstants.Get, executor.Request!.Method);
         Assert.Equal($"{RouteSettings.DefaultUsersPath}/42/posts", executor.Request.Path);
         Assert.Equal(ApiRouteResources.Posts, executor.Request.Route!.Resource);
         Assert.Equal(ApiRouteActions.ListByUser, executor.Request.Route.Operation);

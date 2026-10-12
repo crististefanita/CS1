@@ -19,6 +19,9 @@ public sealed class ReportArtifactInspectorTests
             Assert.Empty(inspection.Violations);
             Assert.True(inspection.Satisfies("collapsed-evidence"));
             Assert.True(inspection.Satisfies("inner-phase-rail-removed"));
+            Assert.True(inspection.Satisfies("composite-summary-cleanup"));
+            Assert.True(inspection.Satisfies("phase-shells-collapsed"));
+            Assert.True(inspection.Satisfies("sibling-execution-hierarchy"));
         }
         finally
         {
@@ -79,9 +82,18 @@ public sealed class ReportArtifactInspectorTests
           :root { --atf-dark: #101723; --atf-bg: var(--atf-dark); }
           .timestamp-col { display: none !important; }
           .card[data-atf-phase] > .accordion { border-left: 0 !important; }
+          .card[data-atf-node-role="request"] {}
+          .card[data-atf-node-role="validation"] {}
+          [data-atf-parent-phase] {}
         </style>
       </head>
       <body>
+        <script id="atf-custom-behaviour">
+          function configureExecutionHierarchy() {}
+          function removeCompositeScenarioSummary() {}
+          body.classList.remove('show');
+          header.setAttribute('aria-expanded', 'false');
+        </script>
         <details class='step-detail'><summary>REQUEST JSON</summary>
           <div class='helm-scroll-block-body'><pre>{}</pre></div>
         </details>

@@ -2,7 +2,7 @@ namespace Atf.Core.Reporting.Artifacts;
 
 /// <summary>
 /// Resolves relative report paths against the configured project root or the
-/// nearest solution. Keeping this policy outside ExtentManager makes it pure
+/// nearest solution. Keeping this policy outside the report session makes it pure
 /// enough to test and prevents path rules from leaking into report rendering.
 /// </summary>
 public sealed class ReportPathResolver

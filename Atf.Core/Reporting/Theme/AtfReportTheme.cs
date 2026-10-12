@@ -104,6 +104,8 @@ public static class AtfReportTheme
         --atf-table-header-font-size: __ATF_FONT_TABLE_HEADER_SIZE__;
         --atf-table-cell-font-size: __ATF_FONT_TABLE_CELL_SIZE__;
         --atf-badge-font-size: __ATF_FONT_BADGE_SIZE__;
+        /* One shared viewport for audit tables and JSON code blocks. */
+        --atf-audit-scroll-height: 340px;
       }
     
       html, body, body.dark {
@@ -468,7 +470,7 @@ public static class AtfReportTheme
       .atf-tag-card .card-header { min-height: 0 !important; padding: 10px 12px !important; border-bottom: 1px solid var(--atf-border) !important; background: var(--atf-panel-2) !important; color: var(--atf-secondary-audit-text) !important; }
       .atf-tag-card .card-header p { margin: 0 !important; color: var(--atf-text) !important; font-size: var(--atf-overview-font-size) !important; font-weight: 550 !important; line-height: 1.35 !important; }
       .atf-tag-card .card-body { padding: 0 !important; background: var(--atf-panel) !important; }
-      .atf-tag-scroll { max-height: 340px !important; overflow-x: hidden !important; overflow-y: auto !important; }
+      .atf-tag-scroll { height: var(--atf-audit-scroll-height) !important; max-height: var(--atf-audit-scroll-height) !important; overflow-x: hidden !important; overflow-y: auto !important; }
       .atf-tag-table { width: 100% !important; margin: 0 !important; table-layout: fixed !important; border: 1px solid __ATF_TABLEBORDER__ !important; border-collapse: collapse !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-overview-font-size) !important; line-height: 1.32 !important; }
       .atf-tag-table th, .atf-tag-table td { padding: 7px 9px !important; border: 1px solid var(--atf-border) !important; color: var(--atf-text) !important; background: var(--atf-bg) !important; overflow-wrap: anywhere !important; word-break: break-word !important; vertical-align: top !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-overview-font-size) !important; }
       .atf-tag-table th { color: var(--atf-muted) !important; background: var(--atf-panel-2) !important; font-weight: 600 !important; letter-spacing: .05em !important; text-transform: uppercase !important; text-align: left !important; }
@@ -557,20 +559,6 @@ public static class AtfReportTheme
         background: __ATF_WHITE018__ !important;
       }
 
-      .test-view .test-content-detail .card[data-atf-phase] .accordion .node {
-        background: var(--atf-panel) !important;
-        border: 0 !important;
-        color: var(--atf-text) !important;
-        box-shadow: none !important;
-      }
-
-      .test-view .test-content-detail .card[data-atf-phase] .accordion .card-header,
-      .test-view .test-content-detail .card[data-atf-phase] .accordion .card-title,
-      .test-view .test-content-detail .card[data-atf-phase] .accordion .card-body {
-        background: var(--atf-panel) !important;
-        border-color: var(--atf-border) !important;
-        color: var(--atf-text) !important;
-      }
       .node-info, .event-row td { color: var(--atf-text) !important; }
       .event-row { border-color: var(--atf-border) !important; }
       .event-row td { background: var(--atf-bg) !important; border-color: var(--atf-border) !important; }
@@ -689,11 +677,11 @@ public static class AtfReportTheme
          spacing and scroll ownership. */
       .helm-scroll-block { margin: 8px 0 10px !important; background: __ATF_JSONCONTAINER__ !important; border: 1px solid var(--atf-border) !important; border-radius: 10px !important; overflow: hidden !important; }
       .helm-scroll-block-title { padding: 9px 12px !important; color: var(--atf-muted) !important; background: __ATF_WHITE03__ !important; border-bottom: 1px solid var(--atf-border) !important; font-size: .76rem !important; text-transform: uppercase !important; letter-spacing: .05em !important; }
-      .helm-scroll-block-body { max-width: 100% !important; min-width: 0 !important; overflow: auto !important; }
-      .helm-scroll-block-body pre { min-width: 0 !important; max-width: 100% !important; max-height: none !important; margin: 0 !important; padding: 10px 12px !important; color: var(--atf-json-text) !important; background: var(--atf-json-surface) !important; border: 0 !important; border-radius: 0 !important; font-family: var(--atf-font-code) !important; font-size: var(--atf-json-font-size) !important; font-weight: 400 !important; line-height: 1.5 !important; letter-spacing: normal !important; white-space: pre-wrap !important; overflow: visible !important; overflow-wrap: normal !important; word-break: break-word !important; }
+      .helm-scroll-block-body { max-height: var(--atf-audit-scroll-height) !important; max-width: 100% !important; min-width: 0 !important; overflow-x: hidden !important; overflow-y: auto !important; scrollbar-gutter: stable !important; }
+      .helm-scroll-block-body pre { box-sizing: border-box !important; min-height: 0 !important; min-width: 0 !important; max-width: 100% !important; max-height: none !important; margin: 0 !important; padding: 10px 12px !important; color: var(--atf-json-text) !important; background: var(--atf-json-surface) !important; border: 0 !important; border-radius: 0 !important; font-family: var(--atf-font-code) !important; font-size: var(--atf-json-font-size) !important; font-weight: 400 !important; line-height: 1.5 !important; letter-spacing: normal !important; white-space: pre-wrap !important; overflow: visible !important; overflow-wrap: normal !important; word-break: break-word !important; }
       details.step-detail pre { margin: 6px 0 0 !important; padding: 10px 12px !important; color: var(--atf-json-text) !important; background: var(--atf-json-surface) !important; border: 1px solid var(--atf-border) !important; border-radius: 8px !important; font-family: var(--atf-font-code) !important; font-size: var(--atf-json-font-size) !important; font-weight: 400 !important; line-height: 1.5 !important; letter-spacing: normal !important; white-space: pre-wrap !important; overflow: auto !important; word-break: break-word !important; overflow-wrap: normal !important; }
-      details.step-detail .helm-scroll-block-body { max-width: 100% !important; min-width: 0 !important; overflow: auto !important; }
-      details.step-detail .helm-scroll-block-body pre { min-width: 0 !important; max-width: 100% !important; max-height: none !important; margin: 0 !important; padding: 10px 12px !important; color: var(--atf-json-text) !important; background: var(--atf-json-surface) !important; border: 0 !important; border-radius: 0 !important; font-family: var(--atf-font-code) !important; font-size: var(--atf-json-font-size) !important; font-weight: 400 !important; line-height: 1.5 !important; letter-spacing: normal !important; white-space: pre-wrap !important; overflow: visible !important; overflow-wrap: normal !important; word-break: break-word !important; }
+      details.step-detail .helm-scroll-block-body { max-height: var(--atf-audit-scroll-height) !important; max-width: 100% !important; min-width: 0 !important; overflow-x: hidden !important; overflow-y: auto !important; }
+      details.step-detail .helm-scroll-block-body pre { box-sizing: border-box !important; min-height: 0 !important; min-width: 0 !important; max-width: 100% !important; max-height: none !important; margin: 0 !important; padding: 10px 12px !important; color: var(--atf-json-text) !important; background: var(--atf-json-surface) !important; border: 0 !important; border-radius: 0 !important; font-family: var(--atf-font-code) !important; font-size: var(--atf-json-font-size) !important; font-weight: 400 !important; line-height: 1.5 !important; letter-spacing: normal !important; white-space: pre-wrap !important; overflow: visible !important; overflow-wrap: normal !important; word-break: break-word !important; }
       details.step-detail.fail { border-color: __ATF_DANGER55__ !important; }
       details.step-detail.fail > summary { color: var(--atf-bad) !important; background: __ATF_DANGER10__ !important; }
       details.step-detail.skip > summary, details.step-detail.warn > summary { color: var(--atf-warn) !important; background: __ATF_WARNING10__ !important; }
@@ -856,6 +844,47 @@ public static class AtfReportTheme
         line-height: 1.22 !important;
         margin-top: 0 !important;
         margin-bottom: 0 !important;
+      }
+
+      /* Execution hierarchy contract: TEST BODY is the phase shell; HTTP
+         requests and contract validations are sibling steps, matching the
+         reference Extent report. The request owns response evidence only. */
+      .test-view .test-content-detail .card[data-atf-node-role="phase"] > .accordion[data-atf-node-group="phase-children"] {
+        display: block !important;
+        margin: 6px 12px 8px !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+      }
+      .test-view .test-content-detail .card[data-atf-node-role="request"],
+      .test-view .test-content-detail .card[data-atf-node-role="validation"] {
+        margin: 0 0 10px !important;
+        border: 1px solid var(--atf-border) !important;
+        border-radius: 8px !important;
+        background: var(--atf-bg) !important;
+        box-shadow: 0 3px 10px rgba(0,0,0,.12) !important;
+        overflow: hidden !important;
+      }
+      .test-view .test-content-detail .card[data-atf-node-role="request"] > .card-header {
+        background: var(--atf-panel-2) !important;
+        border-bottom: 1px solid var(--atf-border) !important;
+      }
+      .test-view .test-content-detail .card[data-atf-node-role="request"] > .collapse,
+      .test-view .test-content-detail .card[data-atf-node-role="validation"] > .collapse {
+        margin: 0 !important;
+        border: 0 !important;
+        background: var(--atf-bg) !important;
+      }
+      .test-view .test-content-detail .card[data-atf-node-role="request"] > .collapse > .card-body,
+      .test-view .test-content-detail .card[data-atf-node-role="validation"] > .collapse > .card-body {
+        padding: 10px 12px 4px !important;
+        background: var(--atf-bg) !important;
+      }
+      .test-view .test-content-detail .card[data-atf-node-role="validation"] > .card-header {
+        min-height: 0 !important;
+        padding: 7px 10px !important;
+        background: var(--atf-panel-2) !important;
+        border-bottom: 1px solid var(--atf-border) !important;
       }
     
       @media (max-width: 900px) {

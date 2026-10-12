@@ -7,7 +7,7 @@ public static class JsonSchemaAssertions
 {
     public static void Matches(IAtfReporter reporter, ApiResponse response, string schemaPath)
     {
-        ValidationTable.Run(reporter, "Validate: JSON schema", table =>
-            ValidationChecks.JsonSchema(table, response, schemaPath));
+        ApiAssertions.Contract(reporter, response, "Validate: JSON schema",
+            group => group.JsonSchema(schemaPath));
     }
 }

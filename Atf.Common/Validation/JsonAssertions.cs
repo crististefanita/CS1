@@ -7,14 +7,14 @@ public static class JsonAssertions
 {
     public static void JsonPathExists(IAtfReporter reporter, ApiResponse response, string path)
     {
-        ValidationTable.Run(reporter, $"Validate: JSONPath exists={path}", table =>
-            ValidationChecks.JsonPathExists(table, response, path));
+        ApiAssertions.Contract(reporter, response, $"Validate: JSONPath exists={path}",
+            group => group.JsonPathExists(path));
     }
 
     public static void JsonPathEquals(IAtfReporter reporter, ApiResponse response, string path, string expected)
     {
-        ValidationTable.Run(reporter, $"Validate: JSONPath {path}={expected}", table =>
-            ValidationChecks.JsonPathEquals(table, response, path, expected));
+        ApiAssertions.Contract(reporter, response, $"Validate: JSONPath {path}={expected}",
+            group => group.JsonPathEquals(path, expected));
     }
 
     public static void EveryArrayItemEquals(
@@ -24,7 +24,7 @@ public static class JsonAssertions
         string property,
         string expected)
     {
-        ValidationTable.Run(reporter, $"Validate: every {path} item {property}={expected}", table =>
-            ValidationChecks.EveryArrayItemEquals(table, response, path, property, expected));
+        ApiAssertions.Contract(reporter, response, $"Validate: every {path} item {property}={expected}",
+            group => group.EveryArrayItemEquals(path, property, expected));
     }
 }

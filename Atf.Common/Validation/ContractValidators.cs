@@ -8,42 +8,53 @@ public static class ContractValidators
 {
     public static void UserItem(IAtfReporter reporter, ApiResponse response)
     {
-        ValidationTable.Run(reporter, "Validate: user item contract", table =>
-        {
-            ValidationChecks.Status(table, response, HttpStatusCode.OK);
-            ValidationChecks.ContentTypeContains(table, response, "application/json");
-            ValidationChecks.JsonSchema(table, response, "Schemas/user.schema.json");
-            ValidationChecks.JsonPathExists(table, response, "$.id");
-        });
+        ApiAssertions.Contract(reporter, response, "Validate: user item contract", UserItemContract());
     }
 
     public static void UserCollection(IAtfReporter reporter, ApiResponse response)
     {
-        ValidationTable.Run(reporter, "Validate: user collection contract", table =>
-        {
-            ValidationChecks.Status(table, response, HttpStatusCode.OK);
-            ValidationChecks.ContentTypeContains(table, response, "application/json");
-            ValidationChecks.JsonSchema(table, response, "Schemas/user-collection.schema.json");
-        });
+        ApiAssertions.Contract(reporter, response, "Validate: user collection contract", UserCollectionContract());
+    }
+
+    public static void PostItem(IAtfReporter reporter, ApiResponse response)
+    {
+        ApiAssertions.Contract(reporter, response, "Validate: post item contract", PostItemContract());
     }
 
     public static void PostCollection(IAtfReporter reporter, ApiResponse response)
     {
-        ValidationTable.Run(reporter, "Validate: post collection contract", table =>
-        {
-            ValidationChecks.Status(table, response, HttpStatusCode.OK);
-            ValidationChecks.ContentTypeContains(table, response, "application/json");
-            ValidationChecks.JsonSchema(table, response, "Schemas/post-collection.schema.json");
-        });
+        ApiAssertions.Contract(reporter, response, "Validate: post collection contract", PostCollectionContract());
     }
 
     public static void UserPostsBelongToUser(IAtfReporter reporter, ApiResponse response, int userId)
     {
-        ValidationTable.Run(reporter, "Validate: user posts relationship contract", table =>
-        {
-            ValidationChecks.Status(table, response, HttpStatusCode.OK);
-            ValidationChecks.ContentTypeContains(table, response, "application/json");
-            ValidationChecks.EveryArrayItemEquals(table, response, "$", "user_id", userId.ToString());
-        });
+        ApiAssertions.Contract(reporter, response, "Validate: user posts relationship contract", UserPostsBelongToUserContract(userId));
     }
+
+    public static ResponseContract UserItemContract() => new ResponseContract()
+        .ExpectStatus(HttpStatusCode.OK)
+        .ExpectContentType("application/json")
+        .ExpectSchema("Schemas/user.schema.json")
+        .ExpectJsonPath("$.id");
+
+    public static ResponseContract UserCollectionContract() => new ResponseContract()
+        .ExpectStatus(HttpStatusCode.OK)
+        .ExpectContentType("application/json")
+        .ExpectSchema("Schemas/user-collection.schema.json");
+
+    public static ResponseContract PostItemContract() => new ResponseContract()
+        .ExpectStatus(HttpStatusCode.OK)
+        .ExpectContentType("application/json")
+        .ExpectJsonPath("$.id")
+        .ExpectJsonPath("$.user_id");
+
+    public static ResponseContract PostCollectionContract() => new ResponseContract()
+        .ExpectStatus(HttpStatusCode.OK)
+        .ExpectContentType("application/json")
+        .ExpectSchema("Schemas/post-collection.schema.json");
+
+    public static ResponseContract UserPostsBelongToUserContract(int userId) => new ResponseContract()
+        .ExpectStatus(HttpStatusCode.OK)
+        .ExpectContentType("application/json")
+        .ExpectEveryArrayItem("$", "user_id", userId.ToString());
 }

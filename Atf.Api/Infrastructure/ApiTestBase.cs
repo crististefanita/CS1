@@ -17,7 +17,7 @@ public abstract class ApiTestBase(ITestOutputHelper output, ExtentCollectionFixt
 
     private static ExtentCollectionFixture RegisterTestAssembly(ExtentCollectionFixture fixture)
     {
-        ExtentManager.RegisterTestAssembly(typeof(ApiTestBase).Assembly);
+        fixture.RegisterTestAssembly(typeof(ApiTestBase).Assembly);
         return fixture;
     }
 
@@ -104,10 +104,10 @@ public abstract class ApiTestBase(ITestOutputHelper output, ExtentCollectionFixt
         // node under that class; SETUP / TEST BODY / TEARDOWN remain beneath
         // the scenario and are not promoted into the left-hand test list.
         scope.CompleteScenario(failure is null && skip is null
-            ? AventStack.ExtentReports.Status.Pass
+            ? AtfReportStatus.Pass
             : failure is not null
-                ? AventStack.ExtentReports.Status.Fail
-                : AventStack.ExtentReports.Status.Skip);
+                ? AtfReportStatus.Fail
+                : AtfReportStatus.Skip);
 
         if (skip is not null)
         {
@@ -137,16 +137,18 @@ public abstract class ApiTestBase(ITestOutputHelper output, ExtentCollectionFixt
         try
         {
             await action(context);
-            scope.CompleteStep(AventStack.ExtentReports.Status.Pass);
+            scope.CompletePhase(phase, AtfReportStatus.Pass);
         }
         catch (ScenarioSkipException exception)
         {
             scope.Skip(exception.Message);
+            scope.CompletePhase(phase, AtfReportStatus.Skip);
             throw;
         }
         catch (Exception exception)
         {
             scope.Fail($"{phase} failed.", exception);
+            scope.CompletePhase(phase, AtfReportStatus.Fail);
             throw;
         }
     }

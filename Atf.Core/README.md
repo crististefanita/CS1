@@ -1,5 +1,8 @@
 # Atf.Core — execution kernel
 
+For the complete dependency, lifecycle and Extent artifact model, see the
+[architecture and reporting guide](../docs/ATF_Architecture.md).
+
 `Atf.Core` is the product-neutral kernel. It owns policies that should behave identically for every API module and remain testable without a live service.
 
 ## Responsibility boundary
@@ -65,7 +68,20 @@ sequenceDiagram
     X-->>Caller: ApiExecutionResult
 ```
 
-`HTTP exchange completed` does not imply `functional contract passed`. The executor returns an `ApiExecutionResult`; `Atf.Common` validators decide whether it satisfies the requested contract.
+`HTTP exchange completed` does not imply `functional contract passed`. The executor
+publishes transport evidence and keeps the HTTP node open with an informational
+status; `Atf.Common` then opens one or more validation steps beneath that request
+and decides whether the response satisfies the requested contract. Each validation
+step closes immediately after its aggregated assertion table is published. The
+rendered hierarchy is therefore `phase → request → validation, validation`, with
+the request owning the complete exchange and each validation owning its own table.
+
+`ApiExecutionReporter` is the execution-side adapter. It maps request/response
+facts to stable report properties, request JSON, response JSON and retry
+diagnostics. Its best-effort policy is intentional: a broken renderer cannot
+turn a successful HTTP response into a failed test or replace the original
+transport exception. This keeps the executor cohesive and leaves Extent markup
+inside the reporting boundary.
 
 The result is intentionally split into transport facts and functional verdict:
 
@@ -122,7 +138,8 @@ IAtfReporter                 framework-neutral evidence API
        |
 ExtentTestScope              scenario-scoped adapter
        |
-ExtentManager                process/report lifecycle facade
+IAtfReportSession            isolated report session contract
+ExtentReportLifecycle        Extent-backed session adapter
 AtfReportTheme               centralized palette + CSS provider
 ExtentEvidenceRenderer       evidence HTML presentation component
 ExtentAssetInliner           offline asset embedding component
@@ -138,7 +155,9 @@ ReportArtifactInspector      verify consumer-facing contract
 
 The final report must be one timestamped, self-contained HTML file; Extent assets are embedded; no `extent` folder is delivered; all surfaces share `--atf-dark`; class → scenario → phase → API step is preserved; request/response/JSON/assertion evidence is collapsed by default; JSON is wrapped and vertically scrollable; technical trace and assertions are compact tables.
 
-The reporter renders evidence. It must not decide business validity. Validators own the assertion result.
+The reporter renders evidence. It must not decide business validity. Validators own the assertion result. Lifecycle phases are structural containers: they do not render a generic `Execution summary · N fields` row. Context-only fields (fixture ids, combination shape and similar runner metadata) are suppressed even when they arrive while the last HTTP node is still active; technical evidence belongs to the HTTP or validation child that produced it.
+
+The embedded client script also has one canonical `directScenarioCards(item)` selector. Overview totals and the secondary tag audit must count the same direct scenario nodes; they must never infer totals from class containers or accidentally call an undefined selector.
 
 Evidence ownership is also a security boundary: the current implementation reports
 token availability rather than token content. The next hardening step is one redaction
@@ -173,7 +192,7 @@ A new Core policy is acceptable only when it is product-neutral, exposed through
 | URL/auth | path and query are encoded; secrets are described only by state | `CoreArchitectureTests`, `HttpExecutorComponentTests` |
 | execution | transport is replaceable; retry result is explicit; reporter cannot replace the original exception | `ApiExecutorCompositionTests`, `HttpExecutorComponentTests` |
 | resilience | retry status, delay source, cap and budget are deterministic | `ConfigurationAndResilienceTests`, `CoreArchitectureTests` |
-| reporting | status aggregation is failure-first and evidence is attached to the active step | `ReportingComponentTests`, `ReportingStructureTests` |
+| reporting | status aggregation is failure-first; request and validation are phase siblings | `ReportingComponentTests`, `ReportingStructureTests`, `ApiExecutorReportingTests` |
 | artifact | final HTML is self-contained and follows the visual/report contract | `ReportArtifactInspectorTests` |
 
 ## Test additions recommended for Core
@@ -199,5 +218,5 @@ The highest-value additions are deterministic and do not require a live endpoint
 
 ### Remaining safe increments
 
-The current kernel intentionally supports `none` and `bearer` authentication, JSON configuration and an Extent-backed lifecycle facade. Reporting presentation is now split into `AtfReportTheme`, `ExtentEvidenceRenderer` and `ExtentAssetInliner`; the static `ExtentManager` remains only the process-scoped compatibility boundary required by the Extent integration. Future increments should add a central secret redactor, explicit transport correlation state, a runner-neutral report scope and a schema-backed configuration provider behind contracts and deterministic tests.
+The current kernel intentionally supports `none` and `bearer` authentication, JSON configuration and an Extent-backed lifecycle adapter. Reporting presentation is split into `AtfReportTheme`, `ExtentEvidenceRenderer` and `ExtentAssetInliner`; `IAtfReportSession` is the isolated run-scoped boundary and no static Extent manager owns test state. Future increments should add a central secret redactor, explicit transport correlation state, a schema-backed configuration provider and a dedicated Extent adapter assembly behind contracts and deterministic tests.
 

@@ -1,3 +1,4 @@
+using Atf.Common.Errors;
 using Atf.Core.Reporting;
 
 namespace Atf.Common.Validation;
@@ -81,6 +82,7 @@ public sealed class ValidationTable
     {
         reporter.StartStep(title);
         var table = new ValidationTable(reporter.AssertionMaxDisplayCharacters);
+        var status = AtfReportStatus.Pass;
 
         try
         {
@@ -89,9 +91,22 @@ public sealed class ValidationTable
         }
         catch (Exception exception) when (!table.Finished)
         {
+            status = AtfReportStatus.Fail;
             table.AddFailure("Validation execution", "no unexpected exception", exception.Message, exception);
             table.FinishUnexpected(reporter, exception);
             throw;
+        }
+        catch
+        {
+            status = AtfReportStatus.Fail;
+            throw;
+        }
+        finally
+        {
+            // Every validation is a leaf evidence step. Closing it here is
+            // essential when several validators follow one request: otherwise
+            // Extent attaches the next validation below the previous one.
+            reporter.CompleteStep(status);
         }
     }
 

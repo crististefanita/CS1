@@ -8,6 +8,33 @@ namespace Atf.Api;
 
 public sealed class ApiRoutesTests
 {
+    [Fact(DisplayName = "Request constants expose the supported API verb vocabulary")]
+    public void RequestConstantsExposeSupportedVerbs()
+    {
+        Assert.Equal("GET", ApiRequestConstants.Get.Method);
+        Assert.Equal("POST", ApiRequestConstants.Post.Method);
+        Assert.Equal("PUT", ApiRequestConstants.Put.Method);
+        Assert.Equal("PATCH", ApiRequestConstants.Patch.Method);
+        Assert.Equal("DELETE", ApiRequestConstants.Delete.Method);
+    }
+
+    [Fact(DisplayName = "Relative API paths are centralized and remain configurable")]
+    public void RelativePathsUseOneCanonicalVocabulary()
+    {
+        Assert.Equal(ApiRoutePaths.UsersCollection, RouteSettings.DefaultUsersPath);
+        Assert.Equal(ApiRoutePaths.PostsCollection, RouteSettings.DefaultPostsPath);
+        Assert.Equal(ApiRoutePaths.UserPostsCollection, RouteSettings.DefaultUserPostsPath);
+
+        var routes = new ApiRoutes(new RouteSettings
+        {
+            Users = "/v3/users",
+            Posts = "/v3/posts"
+        });
+
+        Assert.Equal("/v3/users", routes.UsersCollection.PathTemplate);
+        Assert.Equal("/v3/posts", routes.PostsCollection.PathTemplate);
+    }
+
     [Fact(DisplayName = "Route catalog preserves configured paths and semantic auth policies")]
     public void CatalogDescribesConfiguredApiContract()
     {
@@ -18,14 +45,14 @@ public sealed class ApiRoutesTests
             UserPosts = "/public/v2/users/{userId}/posts"
         });
 
-        Assert.Equal(ApiRequestMethods.Post, routes.UserCreate.Method);
+        Assert.Equal(ApiRequestConstants.Post, routes.UserCreate.Method);
         Assert.Equal(RouteSettings.DefaultUsersPath, routes.UserCreate.PathTemplate);
         Assert.Equal(ApiRouteAuthProfiles.Default, routes.UserCreate.DefaultAuthProfile);
         Assert.Equal(ApiAuthType.Bearer, routes.UserCreate.AuthType);
         Assert.Equal(ApiAuthRequirement.Required, routes.UserCreate.AuthRequirement);
         Assert.Equal("bearer required", routes.UserCreate.AuthPolicy);
 
-        Assert.Equal(ApiRequestMethods.Get, routes.UserPostsCollection.Method);
+        Assert.Equal(ApiRequestConstants.Get, routes.UserPostsCollection.Method);
         Assert.Equal(ApiRouteAuthProfiles.Anonymous, routes.UserPostsCollection.DefaultAuthProfile);
         Assert.Equal(ApiAuthType.None, routes.UserPostsCollection.AuthType);
         Assert.Equal(ApiAuthRequirement.Optional, routes.UserPostsCollection.AuthRequirement);
@@ -40,7 +67,7 @@ public sealed class ApiRoutesTests
         var route = new ApiRoutes(new RouteSettings()).UserPostsCollection;
         var request = route.CreateRequest(values: [(ApiRouteTokens.UserId, 8663020)]);
 
-        Assert.Equal(ApiRequestMethods.Get, request.Method);
+        Assert.Equal(ApiRequestConstants.Get, request.Method);
         Assert.Equal("/public/v2/users/8663020/posts", request.Path);
         Assert.Equal(ApiRouteAuthProfiles.Anonymous, request.AuthProfile);
         Assert.Same(route, request.Route);

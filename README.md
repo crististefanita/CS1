@@ -104,13 +104,61 @@ flowchart TD
     D --> G[API request step]
     E --> H[API request step]
     F --> I[Cleanup / verification]
-    G --> J[Request details]
-    G --> K[Response JSON]
-    H --> L[Validation table]
+    G --> J[Technical trace]
+    G --> K[Request / response JSON]
+    H --> L[Contract validation]
     H --> M[Retry / diagnostic evidence]
+    G --> N[Validation owned by request]
+    N --> O[One aggregate assertion table]
 ```
 
-The three lifecycle phases are direct siblings below the scenario. An API request and its validation rows remain beneath the phase that caused them. Details and JSON are collapsed by default so the report is scannable before it becomes forensic.
+The three lifecycle phases are direct siblings below the scenario. The request owns
+its transport evidence and the validation that verifies the same response, so the
+report reads as `phase → request → evidence + aggregate validation` and keeps each HTTP
+exchange with its contract evidence. The
+scenario verdict is carried by its header; composite lifecycle scenarios do not repeat
+it in a redundant parent event table. Phase shells, request/response details, JSON and
+assertion evidence remain collapsed by default so the report is scannable before it
+becomes forensic.
+
+### Evidence lifecycle — invariant discovered in the report review
+
+```mermaid
+sequenceDiagram
+    participant S as Semantic step
+    participant E as ApiExecutor
+    participant R as ExtentTestScope
+    participant V as ValidationTable
+
+    S->>E: ExecuteAsync(request)
+    E->>R: StartStep(METHOD + PATH)
+    E->>R: Detail / JSON / response evidence
+    Note over E,R: request remains open while response evidence is published
+    E-->>S: ApiExecutionResult
+    S->>V: Validate(response)
+    V->>R: StartStep(Validate: contract)
+    V->>R: AssertionTable(all rows)
+    V->>R: Pass or Fail
+    V->>R: CompleteStep(Pass or Fail)
+```
+
+The validation `CompleteStep` boundary is not cosmetic: it closes each validation
+card after its table is published, while the enclosing phase closes the request.
+This guarantees the report shape below and prevents a validator from becoming a child
+of the request or of a previous validator:
+
+```mermaid
+flowchart TD
+    Phase[SETUP / TEST BODY / TEARDOWN]
+    Phase --> Request[GET / POST request]
+    Request --> Trace[Technical trace + JSON evidence]
+    Request --> V1[Validate: contract]
+    V1 --> T1[One aggregate assertion table]
+```
+
+This request-owned hierarchy is covered offline in `ApiScenarioPhaseLayoutTests` and
+`ReportingStructureTests`; the final HTML is then inspected separately because
+an in-memory Extent tree cannot prove browser hydration, collapsed state or overflow.
 
 ## Projects and ownership
 
@@ -126,6 +174,8 @@ The three lifecycle phases are direct siblings below the scenario. An API reques
 
 Detailed guides:
 
+- [Architecture and reporting guide](docs/ATF_Architecture.md)
+- [Constructive quality assessment and refactoring backlog](docs/ATF_Quality_Assessment.md)
 - [Atf.Tests/README.md](Atf.Tests/README.md)
 - [Atf.Core/README.md](Atf.Core/README.md)
 - [Atf.Common/README.md](Atf.Common/README.md)
@@ -140,7 +190,7 @@ These are not labels added after the fact; each pattern corresponds to a concret
 | Pattern | Concrete implementation | Why it exists |
 |---|---|---|
 | Layered architecture | Core → Common → Api | Prevents product code from leaking into the reusable kernel |
-| Ports and adapters | `IApiTransport`, `IApiAuthenticator`, `IApiUrlBuilder`, `IAtfReporter`, `IAtfReportLifecycle` | Replaces sockets, secrets and Extent with deterministic test doubles |
+| Ports and adapters | `IApiTransport`, `IApiAuthenticator`, `IApiUrlBuilder`, `IAtfReporter`, `IAtfReportSession` | Replaces sockets, secrets and Extent lifecycle state with deterministic test doubles |
 | Composition root | `ApiModule`, `ExtentCollectionFixture` | Keeps object graph construction in one place |
 | Strategy | `RateLimitRetryPolicy`, auth profiles, configured route policy | Changes policy without changing orchestration |
 | Pipeline/orchestrator | `ApiExecutor` | Runs one HTTP exchange in a stable order and emits evidence at the boundary |
@@ -148,7 +198,7 @@ These are not labels added after the fact; each pattern corresponds to a concret
 | Catalog / builder | `ApiRoutes`, `ApiRoute.CreateRequest`, `ApiUrlBuilder` | Centralizes endpoint semantics and safe token/query encoding |
 | Aggregator | `ValidationTable`, `ReportStatusAggregator` | Publishes one contract outcome from many observations |
 | Ownership / unit of work | `CleanupRegistry`, `ApiScenarioContext` | Makes created resources explicit and teardown deterministic |
-| Adapter | `ExtentReportLifecycle`, `ExtentTestScope`, `ExtentManager` | Isolates the Extent lifecycle from scenario/domain code |
+| Adapter | `ExtentReportLifecycle`, `ExtentTestScope` | Isolates one Extent report session from scenario/domain code |
 | Presentation | `ExtentEvidenceRenderer`, `AtfReportTheme` | Keeps evidence HTML and palette decisions out of lifecycle orchestration |
 | Artifact adapter | `ExtentAssetInliner`, `ReportAssetCleaner` | Produces one portable HTML file without an external `extent` folder |
 | Artifact contract | `ReportArtifactInspector` | Verifies the HTML users open, not only in-memory Extent nodes |
@@ -298,6 +348,32 @@ ASSERTION | EXPECTED | ACTUAL | RESULT
 
 The table is emitted once, after all rows have been evaluated. This gives the reader the complete failure picture without reconstructing it from many nodes. Status, headers, content, JSONPath, relationship and schema checks use the same aggregation model.
 
+For a response with several checks, use the fluent response group so the report
+contains one validation node and one table:
+
+```csharp
+ApiAssertions.Contract(reporter, response, "Validate: user item contract", contract => contract
+    .Status(HttpStatusCode.OK)
+    .ContentTypeContains("application/json")
+    .JsonSchema("Schemas/user.schema.json")
+    .JsonPathExists("$.id"));
+```
+
+The boundary is deliberately one `ApiResponse`: aggregate status, headers and
+JSON evidence from that response, but keep validations for later HTTP exchanges
+as separate request-owned validation nodes. This preserves diagnostic order and prevents a table
+from implying that two different exchanges were one assertion subject.
+
+```mermaid
+flowchart LR
+    R[one HTTP response] --> G[ResponseValidationGroup]
+    G --> T[one ValidationTable]
+    T --> S[status]
+    T --> H[headers/content]
+    T --> J[JSONPath/schema]
+    T --> V[one contract verdict]
+```
+
 Evidence ownership:
 
 | Evidence | Owner | Display policy |
@@ -306,7 +382,7 @@ Evidence ownership:
 | Request JSON | `ApiExecutor` + reporter adapter | collapsed, dark, vertically scrollable, wrapped |
 | Response JSON | `ApiExecutor` + reporter adapter | collapsed, dark, vertically scrollable, wrapped |
 | Assertion rows | `ValidationTable` | one table, collapsed by default |
-| Fixture/setup metadata | scenario/module | compact execution summary |
+| Fixture/setup metadata | scenario/module | not rendered as a generic phase summary; useful evidence belongs to the API step or explicit scenario metadata |
 | Cleanup actions | `CleanupRegistry` | under TEARDOWN, never detached from scenario |
 
 ## Lifecycle and failure semantics
@@ -342,6 +418,9 @@ Extent is the only reporting engine. The final HTML is self-contained:
 - reports are timestamped under `artifacts/reports/` by default;
 - the left navigation groups scenarios under their actual xUnit class;
 - phase nodes are siblings below the scenario;
+- expanding a scenario shows its header verdict, then compact lifecycle phase shells; composite scenarios do not repeat a generic `Scenario passed` table;
+- an HTTP request owns its contract validation node under `SETUP`, `TEST BODY` or `TEARDOWN`; assertions for the same response are rows in one aggregate table;
+- request/response evidence and assertion tables never become children of the wrong API step;
 - request/response details, JSON and assertion evidence are collapsed by default;
 - JSON is a dark wrapped code block with vertical scrolling and no page-level horizontal overflow;
 - dashboard, tests, tags and environment tables share one dark surface token;
@@ -386,7 +465,7 @@ dotnet test .\Atf.Api\Atf.Api.csproj --filter "Category=lifecycle"
 dotnet test .\Atf.Api\Atf.Api.csproj --filter "Category=combination"
 ```
 
-Every new public behavior needs a deterministic test. Every report-rendering change needs both a structural Extent test and a final-HTML artifact test. Live tests may be skipped for an explicit environment reason; they must not be made “green” by hiding a missing token or a broken contract.
+Every new public behavior needs a deterministic test. Every report-rendering change needs both a structural Extent test and a final-HTML artifact test. The minimum reporting regression set includes: request-owned aggregate validation, phase-shell visibility after scenario expansion, collapsed evidence, dark theme and zero horizontal overflow. Live tests may be skipped for an explicit environment reason; they must not be made “green” by hiding a missing token or a broken contract.
 
 ## How to recreate this ATF in another language
 
@@ -412,9 +491,9 @@ The repository currently has a sound execution path, but the following boundarie
 
 ```text
 build solution                         PASS / 0 warnings / 0 errors
-Atf.Core.Tests                         56 passed
-Atf.Common.Tests                       27 passed
-Atf.Api                                33 discovered; live skip parity verified with xUnit v3
+Atf.Core.Tests                         70 passed
+Atf.Common.Tests                       30 passed
+Atf.Api                                13 API scenarios in Extent; 12 passed + 1 skipped
 report artifact                        self-contained HTML
 report sibling extent folder           absent
 assertion display limit                configurable, default 240
@@ -430,7 +509,7 @@ just a developer convenience.
 | configuration | module-owned JSON is validated at startup | add schema validation and an environment/profile snapshot without secrets |
 | auth | `none` and `bearer` are implemented | add strategy contracts for basic/api-key/custom headers only when a target API requires them |
 | reporting | Extent-only, embedded, dark and artifact-inspected | extract static state into a run/context abstraction and add semantic DOM checks |
-| native overview totals | Extent cards count the two class-root containers (`2 passed`, `0 failed`), while xUnit executed `32 passed + 1 skipped` scenarios | make the authority label and scenario totals visually unambiguous; do not let a class-container count look like a functional test count |
+| native overview totals | Extent's native parent counters count class-root containers, not API scenarios | reconcile the visible overview and parent chart from direct API scenario cards; keep unit/component runner cases outside the API evidence total |
 | evidence security | token value is not reported by the current auth adapter | introduce one central redactor for headers, URLs, JSON and exceptions |
 | declarative execution | routes and scenarios are still C# | add an operation registry/DSL after the runtime contracts stabilize |
 | resilience | bounded 429 retry and polling exist | model cancellation, transport failure and correlation id explicitly |

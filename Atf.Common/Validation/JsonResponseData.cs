@@ -1,3 +1,4 @@
+using Atf.Common.Errors;
 using Atf.Core.Http;
 using System.Text.Json;
 

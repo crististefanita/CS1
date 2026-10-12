@@ -6,36 +6,60 @@ using System.Reflection;
 namespace Atf.Core.Reporting;
 
 /// <summary>
-/// Process-scoped Extent lifecycle. The static boundary is deliberately small;
-/// tree semantics live in <see cref="ExtentTestHierarchy"/> and presentation
-/// composition lives in dedicated components.
+/// One isolated report session for one test run. The session owns the Extent
+/// document and its hierarchy; it is intentionally instance-scoped so a
+/// parallel run cannot reuse another run's class nodes, status aggregation or
+/// output path.
 /// </summary>
-public static class ExtentManager
+public interface IAtfReportSession
 {
-    private static readonly object Sync = new();
-    private static ExtentReports? _reports;
-    private static ExtentSparkReporter? _reporter;
-    private static ExtentTestHierarchy? _hierarchy;
-    private static ReportingSettings? _settings;
-    private static string? _reportPath;
-    private static Assembly? _testAssembly;
-    private static bool _finalized;
+    string ReportPath { get; }
 
-    public static string ReportPath => _reportPath ?? throw new InvalidOperationException("Extent reporting has not been initialized.");
+    void RegisterTestAssembly(Assembly testAssembly);
 
-    public static void RegisterTestAssembly(Assembly testAssembly)
+    void Initialize(ReportingSettings settings, ApiSettings? api = null);
+
+    ExtentTestScope StartTest(
+        string testClassName,
+        string scenarioName,
+        string description,
+        IEnumerable<string> categories);
+
+    void Flush();
+    void FinalizeReport();
+}
+
+/// <summary>
+/// Extent-backed implementation of the runner-neutral report session.
+/// Extent-specific rendering is kept inside this adapter; callers only own
+/// the session contract and the ATF status model.
+/// </summary>
+public sealed class ExtentReportLifecycle : IAtfReportSession
+{
+    private readonly object _sync = new();
+    private ExtentReports? _reports;
+    private ExtentSparkReporter? _reporter;
+    private ExtentTestHierarchy? _hierarchy;
+    private ReportingSettings? _settings;
+    private string? _reportPath;
+    private Assembly? _testAssembly;
+    private bool _finalized;
+
+    public string ReportPath => _reportPath ?? throw new InvalidOperationException("Extent reporting has not been initialized.");
+
+    public void RegisterTestAssembly(Assembly testAssembly)
     {
         ArgumentNullException.ThrowIfNull(testAssembly);
-        lock (Sync)
+        lock (_sync)
         {
             _testAssembly = testAssembly;
         }
     }
 
-    public static void Initialize(ReportingSettings settings, ApiSettings? api = null)
+    public void Initialize(ReportingSettings settings, ApiSettings? api = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        lock (Sync)
+        lock (_sync)
         {
             if (_reports is not null && !_finalized)
             {
@@ -55,7 +79,7 @@ public static class ExtentManager
 
             var reports = new ExtentReports();
             reports.AttachReporter(reporter);
-            new ExtentReportEnvironment().Apply(reports, api);
+            new Lifecycle.ExtentReportEnvironment().Apply(reports, api);
 
             _reporter = reporter;
             _reports = reports;
@@ -66,13 +90,13 @@ public static class ExtentManager
         }
     }
 
-    public static ExtentTestScope StartTest(
+    public ExtentTestScope StartTest(
         string testClassName,
         string scenarioName,
         string description,
         IEnumerable<string> categories)
     {
-        lock (Sync)
+        lock (_sync)
         {
             if (_reports is null || _hierarchy is null || _settings is null)
             {
@@ -89,25 +113,17 @@ public static class ExtentManager
         }
     }
 
-    public static void RecordScenarioStatus(string testClassName, Status status)
+    public void Flush()
     {
-        lock (Sync)
-        {
-            _hierarchy?.RecordScenarioStatus(testClassName, status);
-        }
-    }
-
-    public static void Flush()
-    {
-        lock (Sync)
+        lock (_sync)
         {
             _reports?.Flush();
         }
     }
 
-    public static void FinalizeReport()
+    public void FinalizeReport()
     {
-        lock (Sync)
+        lock (_sync)
         {
             if (_finalized)
             {
@@ -115,9 +131,9 @@ public static class ExtentManager
             }
 
             _reports?.Flush();
-            if (_reportPath is not null)
+            if (_reportPath is not null && _settings is not null)
             {
-                new ExtentReportDocumentComposer().Compose(_reportPath, _testAssembly, _settings!);
+                new Lifecycle.ExtentReportDocumentComposer().Compose(_reportPath, _settings);
             }
 
             _finalized = true;
@@ -126,7 +142,7 @@ public static class ExtentManager
 
     private static string ResolvePath(ReportingSettings settings)
     {
-        var resolved = new ReportPathResolver().Resolve(settings.ReportPath);
+        var resolved = new Artifacts.ReportPathResolver().Resolve(settings.ReportPath);
         if (!settings.TimestampEnabled)
         {
             return resolved;

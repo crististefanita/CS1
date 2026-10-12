@@ -1,5 +1,9 @@
-namespace Atf.Common.Validation;
+namespace Atf.Common.Errors;
 
+/// <summary>
+/// A structured validation diagnostic used when response data cannot satisfy
+/// a reusable API assertion or data extraction contract.
+/// </summary>
 public sealed class ApiValidationException(string rule, string expected, string actual)
     : Exception($"{rule}: expected '{expected}', actual '{actual}'.")
 {

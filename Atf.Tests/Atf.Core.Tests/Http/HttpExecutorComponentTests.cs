@@ -49,6 +49,30 @@ public sealed class HttpExecutorComponentTests
         Assert.Equal(1, transport.Calls);
     }
 
+    [Fact(DisplayName = "Executor stops retrying when cancellation arrives during the retry delay")]
+    public async Task ExecutorHonoursCancellationBeforeSecondAttempt()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var transport = new CancelAfterFirstResponseTransport(cancellation, Response(
+            HttpStatusCode.TooManyRequests,
+            "{\"error\":\"busy\"}",
+            new Dictionary<string, string> { ["Retry-After"] = "1" }));
+        var executor = CreateExecutor(new RecordingReporter(), transport, new RateLimitSettings
+        {
+            MaxRetries = 3,
+            DefaultDelaySeconds = 1,
+            MaxDelaySeconds = 1,
+            RetryStatuses = [429],
+            DelayHeaders = ["Retry-After"]
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => executor.ExecuteAsync(
+            new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous"),
+            cancellation.Token));
+
+        Assert.Equal(1, transport.Calls);
+    }
+
     [Fact(DisplayName = "Executor preserves request JSON evidence and route metadata")]
     public async Task ExecutorReportsRequestAndRouteEvidence()
     {
@@ -155,6 +179,24 @@ public sealed class HttpExecutorComponentTests
         {
             Calls++;
             return Task.FromResult((_responses.Count > 1 ? _responses.Dequeue() : _responses.Peek()) with { Url = url });
+        }
+    }
+
+    private sealed class CancelAfterFirstResponseTransport(
+        CancellationTokenSource cancellation,
+        ApiResponse response) : IApiTransport
+    {
+        public int Calls { get; private set; }
+
+        public Task<ApiResponse> SendAsync(
+            ApiRequest request,
+            string url,
+            string authProfile,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            cancellation.Cancel();
+            return Task.FromResult(response with { Url = url });
         }
     }
 

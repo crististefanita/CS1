@@ -1,3 +1,4 @@
+using Atf.Common.Errors;
 using Atf.Common.Lifecycle;
 using Atf.Common.Validation;
 using Atf.Core.Http;
@@ -32,6 +33,47 @@ public sealed class ValidationAndLifecycleTests
         Assert.Equal(3, reporter.Tables[0].Count);
         Assert.Contains("Validation failed.", reporter.Failures);
         Assert.Empty(reporter.Passes);
+        Assert.Equal(["start:Validate contract", "complete:Fail"], reporter.StepEvents);
+    }
+
+    [Fact(DisplayName = "Passing validation closes its Extent step before the next validator")]
+    public void PassingValidationClosesItsStep()
+    {
+        var reporter = new RecordingReporter();
+
+        ValidationTable.Run(reporter, "Validate: status=200", table =>
+        {
+            table.Check("HTTP status", "200 OK", "200 OK", () => true);
+        });
+
+        ValidationTable.Run(reporter, "Validate: content-type", table =>
+        {
+            table.Check("Content-Type", "application/json", "application/json", () => true);
+        });
+
+        Assert.Equal(
+            [
+                "start:Validate: status=200",
+                "complete:Pass",
+                "start:Validate: content-type",
+                "complete:Pass"
+            ],
+            reporter.StepEvents);
+    }
+
+    [Fact(DisplayName = "Unexpected validator exceptions close the step as failed")]
+    public void UnexpectedValidatorExceptionClosesStepAsFailed()
+    {
+        var reporter = new RecordingReporter();
+
+        Assert.Throws<InvalidOperationException>(() => ValidationTable.Run(
+            reporter,
+            "Validate: unexpected",
+            _ => throw new InvalidOperationException("validator exploded")));
+
+        Assert.Equal(["start:Validate: unexpected", "complete:Fail"], reporter.StepEvents);
+        Assert.Single(reporter.Tables);
+        Assert.False(Assert.Single(reporter.Tables[0]).Passed);
     }
 
     [Fact(DisplayName = "Cleanup registry runs owned resources in reverse order and is reusable")]
@@ -72,8 +114,10 @@ public sealed class ValidationAndLifecycleTests
         public List<string> Failures { get; } = [];
         public List<string> Passes { get; } = [];
         public List<string> Warnings { get; } = [];
+        public List<string> StepEvents { get; } = [];
 
-        public void StartStep(string title) { }
+        public void StartStep(string title) => StepEvents.Add($"start:{title}");
+        public void CompleteStep(AtfReportStatus status) => StepEvents.Add($"complete:{status}");
         public void Detail(string key, string value) { }
         public void Json(string label, string json) { }
         public void AssertionTable(IReadOnlyCollection<AtfAssertion> assertions) => Tables.Add(assertions);

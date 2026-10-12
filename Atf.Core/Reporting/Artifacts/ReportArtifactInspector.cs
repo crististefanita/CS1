@@ -33,9 +33,16 @@ public sealed class ReportArtifactInspector
             ["scrollable-json"] = html.Contains("helm-scroll-block-body", StringComparison.Ordinal),
             ["assertion-table"] = html.Contains("helm-validation-table", StringComparison.Ordinal),
             ["technical-trace"] = html.Contains("TECHNICAL TRACE", StringComparison.Ordinal),
+            ["composite-summary-cleanup"] = html.Contains("removeCompositeScenarioSummary", StringComparison.Ordinal),
+            ["phase-shells-collapsed"] = html.Contains("body.classList.remove('show')", StringComparison.Ordinal)
+                && html.Contains("header.setAttribute('aria-expanded', 'false')", StringComparison.Ordinal),
             ["timestamp-column-hidden"] = html.Contains("timestamp-col", StringComparison.Ordinal)
                 && html.Contains("display: none !important", StringComparison.Ordinal),
-            ["inner-phase-rail-removed"] = html.Contains("border-left: 0 !important", StringComparison.Ordinal)
+            ["inner-phase-rail-removed"] = html.Contains("border-left: 0 !important", StringComparison.Ordinal),
+            ["sibling-execution-hierarchy"] = html.Contains("configureExecutionHierarchy", StringComparison.Ordinal)
+                && html.Contains("data-atf-node-role=\"request\"", StringComparison.Ordinal)
+                && html.Contains("data-atf-node-role=\"validation\"", StringComparison.Ordinal)
+                && html.Contains("data-atf-parent-phase", StringComparison.Ordinal)
         };
 
         return new ReportArtifactInspection(fullPath, checks);

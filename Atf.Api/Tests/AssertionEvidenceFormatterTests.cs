@@ -69,6 +69,7 @@ public sealed class AssertionEvidenceFormatterTests
         ]);
 
         Assert.Contains("class='helm-evidence-table helm-trace-table'", html);
+        Assert.Contains("class='helm-evidence-table-wrap helm-trace-table-wrap'", html);
         Assert.Contains("<th>FIELD</th><th>VALUE</th>", html);
         Assert.Contains("helm-trace-table", html);
         Assert.Contains("<th scope='row'>METHOD</th><td data-field='method'>GET</td>", html);
@@ -78,7 +79,7 @@ public sealed class AssertionEvidenceFormatterTests
         Assert.Contains("<th scope='row'>ATTEMPT</th><td data-field='attempt'>1</td>", html);
         Assert.Contains("<th scope='row'>RESPONSE STATUS</th><td data-field='response.status'>200</td>", html);
         Assert.Contains("<th scope='row'>CONTENT TYPE</th><td data-field='response.content.type'>application/json</td>", html);
-        Assert.Contains("<th scope='row'>RESPONSE DURATION</th><td data-field='response.duration.ms'>1750</td>", html);
+        Assert.Contains("<th scope='row'>RESPONSE DURATION (ms)</th><td data-field='response.duration.ms'>1750</td>", html);
         Assert.DoesNotContain("<th scope='row'>ROUTE</th>", html);
         Assert.DoesNotContain("REQUEST TYPE", html);
         Assert.DoesNotContain("AUTH MODE", html);

@@ -1,5 +1,3 @@
-using System.Reflection;
-
 namespace Atf.Core.Reporting.Lifecycle;
 
 /// <summary>
@@ -20,7 +18,7 @@ internal sealed class ExtentReportDocumentComposer
         _assetCleaner = assetCleaner ?? new ReportAssetCleaner();
     }
 
-    public void Compose(string reportPath, Assembly? testAssembly, ReportingSettings settings)
+    public void Compose(string reportPath, ReportingSettings settings)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         ArgumentNullException.ThrowIfNull(settings);
@@ -30,14 +28,13 @@ internal sealed class ExtentReportDocumentComposer
         html = _assetInliner.Inline(html);
         html = EnsureDarkExtentTheme(html);
 
-        var testTotal = AtfTestCaseInventoryReader.Read(testAssembly).TotalTestCases;
         html = html.Replace(
             "</head>",
             AtfReportTheme.BuildCss() + Environment.NewLine + "</head>",
             StringComparison.OrdinalIgnoreCase);
         html = html.Replace(
             "</body>",
-            ExtentReportClientBehaviour.Build(testTotal, settings) + Environment.NewLine + "</body>",
+            ExtentReportClientBehaviour.Build(settings) + Environment.NewLine + "</body>",
             StringComparison.OrdinalIgnoreCase);
 
         File.WriteAllText(reportPath, html);

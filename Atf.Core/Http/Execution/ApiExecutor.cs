@@ -47,68 +47,38 @@ public sealed class ApiExecutor : IApiExecutor
     public async Task<ApiExecutionResult> ExecuteAsync(ApiRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var url = _urlBuilder.Build(request);
-        var title = $"{request.Method.Method.ToUpperInvariant()} {request.Path}";
         var authProfile = request.AuthProfile ?? _settings.DefaultAuthProfile;
-        _reporter.StartStep(title);
-        if (request.Route is not null)
-        {
-            _reporter.Detail("route.name", request.Route.Name);
-            _reporter.Detail("route.resource", request.Route.Resource);
-            _reporter.Detail("route.operation", request.Route.Operation);
-            _reporter.Detail("route.path.template", request.Route.PathTemplate);
-            _reporter.Detail("route.auth.type", request.Route.Authentication.TypeName);
-            _reporter.Detail("route.auth.requirement", request.Route.Authentication.Requirement.ToString().ToLowerInvariant());
-            _reporter.Detail("route.auth.profile", request.Route.Authentication.Profile);
-            _reporter.Detail("route.auth.policy", request.Route.AuthPolicy);
-        }
-        _reporter.Detail("request.type", $"HTTP {request.Method.Method.ToUpperInvariant()}");
-        _reporter.Detail("method", request.Method.Method.ToUpperInvariant());
-        _reporter.Detail("path", request.Path);
-        _reporter.Detail("url", url);
-        _reporter.Detail("auth.profile", authProfile);
-        _reporter.Detail("auth.mode", _authenticator.DescribeMode(authProfile));
-        _reporter.Detail("auth.token.state", _authenticator.DescribeTokenState(authProfile));
-        if (!string.IsNullOrWhiteSpace(request.BodyJson))
-        {
-            _reporter.Json("request.body", JsonFormatter.Pretty(request.BodyJson));
-        }
-
+        var report = new ApiExecutionReporter(_reporter);
         var retryEvents = new List<RetryEvent>();
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
+            var url = _urlBuilder.Build(request);
+            report.Start(request, url, authProfile, _authenticator);
+
             for (var attempt = 0; ; attempt++)
             {
-                _reporter.Detail("attempt", (attempt + 1).ToString());
+                report.Attempt(attempt);
                 var response = await _transport.SendAsync(request, url, authProfile, cancellationToken);
-                _reporter.Detail("response.status", response.Status.ToString());
-                if (response.Headers.TryGetValue("Content-Type", out var contentType))
-                {
-                    _reporter.Detail("response.content.type", contentType);
-                }
-                _reporter.Detail("response.duration.ms", response.Duration.TotalMilliseconds.ToString("F0"));
 
                 var decision = _retryPolicy.Decide(response, attempt);
                 if (!decision.ShouldRetry)
                 {
                     stopwatch.Stop();
-                    _reporter.Detail("exchange.duration.ms", stopwatch.Elapsed.TotalMilliseconds.ToString("F0"));
                 }
 
-                _reporter.Json("response.body", JsonFormatter.Pretty(response.Body));
+                report.Response(response, stopwatch.Elapsed);
 
                 if (!decision.ShouldRetry)
                 {
-                    _reporter.Info("HTTP exchange completed; contract validation pending.");
+                    report.Completed();
                     return new(response, attempt + 1, stopwatch.Elapsed, retryEvents);
                 }
 
                 var retryEvent = new RetryEvent(attempt + 1, response.Status, decision.Header, decision.Delay, decision.Reason);
                 retryEvents.Add(retryEvent);
-                _reporter.Detail("rate-limit.retry.delay.ms", decision.Delay.TotalMilliseconds.ToString("F0"));
-                _reporter.Detail("rate-limit.retry.reason", decision.Reason);
+                report.Retry(retryEvent);
                 await Task.Delay(decision.Delay, cancellationToken);
             }
         }
@@ -117,15 +87,7 @@ public sealed class ApiExecutor : IApiExecutor
             // Reporting is diagnostic infrastructure. A faulty reporter must
             // never replace the transport/authentication exception that the
             // caller needs to diagnose.
-            try
-            {
-                _reporter.Fail("HTTP exchange failed.", exception);
-            }
-            catch
-            {
-                // Preserve the original exception and stack trace.
-            }
-
+            report.Failed(exception);
             throw;
         }
     }

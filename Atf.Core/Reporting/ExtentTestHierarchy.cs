@@ -40,16 +40,20 @@ internal sealed class ExtentTestHierarchy
         }
 
         var scenario = classTest.CreateNode(WebUtility.HtmlEncode(scenarioName), description);
-        return new ExtentTestScope(scenario, testClassName, assertionMaxDisplayCharacters);
+        return new ExtentTestScope(
+            scenario,
+            testClassName,
+            RecordScenarioStatus,
+            assertionMaxDisplayCharacters);
     }
 
-    public void RecordScenarioStatus(string testClassName, Status status)
+    public void RecordScenarioStatus(string testClassName, AtfReportStatus status)
     {
         if (!_classTests.TryGetValue(testClassName, out var classTest))
         {
             return;
         }
 
-        classTest.Model.Status = _classStatuses.Record(testClassName, status);
+        classTest.Model.Status = ExtentStatusMapper.ToExtent(_classStatuses.Record(testClassName, status));
     }
 }

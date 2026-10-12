@@ -43,20 +43,103 @@ public sealed class ApiScenarioPhaseLayoutTests
         scope.StartStep(ApiScenarioPhaseLayout.Setup);
         scope.StartStep("GET /public/v2/posts");
         scope.Info("HTTP exchange completed.");
-        scope.CompleteStep(Status.Pass);
+        scope.CompleteStep(AtfReportStatus.Pass);
 
         scope.StartStep(ApiScenarioPhaseLayout.TestBody);
-        scope.CompleteStep(Status.Pass);
+        scope.CompleteStep(AtfReportStatus.Pass);
 
         scope.StartStep(ApiScenarioPhaseLayout.Teardown);
-        scope.CompleteStep(Status.Pass);
-        scope.CompleteScenario(Status.Pass);
+        scope.CompleteStep(AtfReportStatus.Pass);
+        scope.CompleteScenario(AtfReportStatus.Pass);
 
         Assert.Equal(
             ["SETUP", "TEST BODY", "TEARDOWN"],
             scenario.Model.Children.Select(child => child.Name).ToArray());
         Assert.Single(scenario.Model.Children[0].Children);
         Assert.Empty(scenario.Model.Children[1].Children);
+        Assert.Empty(scenario.Model.Children[2].Children);
+    }
+
+    [Fact(DisplayName = "Contract validations are sibling steps beneath the HTTP phase")]
+    public void Request_and_validations_are_phase_siblings()
+    {
+        var reports = new ExtentReports();
+        var classTest = reports.CreateTest("ApiLifecycleAndCombinationsTests");
+        var scenario = classTest.CreateNode("GET users — collection contract");
+        using var scope = new ExtentTestScope(scenario, "ApiLifecycleAndCombinationsTests");
+
+        scope.StartStep(ApiScenarioPhaseLayout.TestBody);
+        scope.StartStep("GET /public/v2/users");
+        scope.Info("HTTP exchange completed; contract validation pending.");
+
+        scope.StartStep("Validate: user collection contract");
+        scope.AssertionTable(
+        [
+            new AtfAssertion("HTTP status", "200 OK", "200 OK", true),
+            new AtfAssertion("JSON schema", "matched", "matched", true)
+        ]);
+        scope.Pass("2 validations passed.");
+        scope.CompleteStep(AtfReportStatus.Pass);
+
+        scope.StartStep("Validate: content-type contains application/json");
+        scope.AssertionTable(
+        [
+            new AtfAssertion("Content-Type", "contains application/json", "application/json", true)
+        ]);
+        scope.Pass("1 validation passed.");
+        scope.CompleteStep(AtfReportStatus.Pass);
+        scope.CompletePhase(ApiScenarioPhaseLayout.TestBody, AtfReportStatus.Pass);
+        scope.CompleteScenario(AtfReportStatus.Pass);
+
+        var testBody = scenario.Model.Children.Single();
+        Assert.Equal(
+            [
+                "GET /public/v2/users",
+                "Validate: user collection contract",
+                "Validate: content-type contains application/json"
+            ],
+            testBody.Children.Select(child => child.Name).ToArray());
+
+        var request = testBody.Children[0];
+        Assert.Equal("GET /public/v2/users", request.Name);
+        Assert.Empty(request.Children);
+        Assert.Equal(
+            ["Validate: user collection contract", "Validate: content-type contains application/json"],
+            testBody.Children.Skip(1).Select(child => child.Name).ToArray());
+    }
+
+    [Fact(DisplayName = "Starting a new lifecycle phase closes the previous phase before creating the sibling")]
+    public void StartingNewPhaseClosesPreviousPhase()
+    {
+        var reports = new ExtentReports();
+        var scenario = reports.CreateTest("ApiLifecycleAndCombinationsTests")
+            .CreateNode("POSTS API — setup → test → teardown");
+        using var scope = new ExtentTestScope(scenario, "ApiLifecycleAndCombinationsTests");
+
+        scope.StartStep(ApiScenarioPhaseLayout.Setup);
+        scope.StartStep("GET /public/v2/posts");
+        scope.CompleteStep(AtfReportStatus.Pass);
+
+        // The scenario runner starts the next phase without requiring the
+        // caller to remember to close SETUP explicitly.
+        scope.StartStep(ApiScenarioPhaseLayout.TestBody);
+        scope.StartStep("GET /public/v2/posts/1");
+        scope.StartStep("Validate: status=200");
+        scope.CompleteStep(AtfReportStatus.Pass);
+
+        scope.StartStep(ApiScenarioPhaseLayout.Teardown);
+        scope.CompleteStep(AtfReportStatus.Pass);
+        scope.CompleteScenario(AtfReportStatus.Pass);
+
+        Assert.Equal(
+            ["SETUP", "TEST BODY", "TEARDOWN"],
+            scenario.Model.Children.Select(child => child.Name).ToArray());
+        Assert.Equal("GET /public/v2/posts", scenario.Model.Children[0].Children.Single().Name);
+        var testBody = scenario.Model.Children[1];
+        Assert.Equal("GET /public/v2/posts/1", testBody.Children[0].Name);
+        Assert.Empty(testBody.Children[0].Children);
+        Assert.Equal("Validate: status=200", testBody.Children[1].Name);
+        Assert.Empty(testBody.Children[1].Children);
         Assert.Empty(scenario.Model.Children[2].Children);
     }
 }

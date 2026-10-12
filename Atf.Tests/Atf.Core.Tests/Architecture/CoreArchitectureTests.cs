@@ -9,6 +9,19 @@ namespace Atf.Core.Tests.Architecture;
 
 public sealed class CoreArchitectureTests
 {
+    [Fact(DisplayName = "ATF reporting contracts use runner-neutral status values")]
+    public void ReportingContractsDoNotExposeExtentStatus()
+    {
+        var statusParameter = typeof(IAtfReporter)
+            .GetMethod(nameof(IAtfReporter.CompleteStep))!
+            .GetParameters()
+            .Single()
+            .ParameterType;
+
+        Assert.Equal(typeof(AtfReportStatus), statusParameter);
+        Assert.NotEqual("Status", statusParameter.FullName);
+    }
+
     [Fact(DisplayName = "Report theme uses one central font family and central report colors")]
     public void ReportThemeUsesCentralTypographyAndPalette()
     {
@@ -42,6 +55,7 @@ public sealed class CoreArchitectureTests
         Assert.Contains("border-color: var(--atf-reference-border) !important", css, StringComparison.Ordinal);
         Assert.Contains("background: var(--atf-panel) !important", css, StringComparison.Ordinal);
         Assert.Contains("border-color: var(--atf-border) !important", css, StringComparison.Ordinal);
+        Assert.DoesNotContain(".test-view .test-content-detail .card[data-atf-phase] .accordion .node", css, StringComparison.Ordinal);
         Assert.Contains(".test-view .test-content-detail .card > .card-header .card-title .node", css, StringComparison.Ordinal);
         Assert.Contains("color: var(--atf-text) !important", css, StringComparison.Ordinal);
         Assert.DoesNotContain("Extent's native nested API cards", css, StringComparison.Ordinal);

@@ -1,5 +1,7 @@
 namespace Atf.Core.Configuration.Models;
 
+using Atf.Core.Configuration;
+
 public sealed class AtfModuleSettings
 {
     public AtfModuleConfig Config { get; init; } = new();
@@ -50,9 +52,9 @@ public sealed class AuthProfileSettings
 
 public sealed class RouteSettings
 {
-    public const string DefaultUsersPath = "/public/v2/users";
-    public const string DefaultPostsPath = "/public/v2/posts";
-    public const string DefaultUserPostsPath = "/public/v2/users/{userId}/posts";
+    public const string DefaultUsersPath = ApiRoutePaths.UsersCollection;
+    public const string DefaultPostsPath = ApiRoutePaths.PostsCollection;
+    public const string DefaultUserPostsPath = ApiRoutePaths.UserPostsCollection;
 
     public string Users { get; init; } = DefaultUsersPath;
     public string Posts { get; init; } = DefaultPostsPath;

@@ -18,6 +18,11 @@ public interface IAtfReporter
     int AssertionMaxDisplayCharacters => ReportingDefaults.AssertionMaxDisplayCharacters;
 
     void StartStep(string title);
+    /// <summary>
+    /// Closes the active technical/business step without forcing reporters
+    /// that do not render a tree to maintain lifecycle state.
+    /// </summary>
+    void CompleteStep(AtfReportStatus status) { }
     void Detail(string key, string value);
     void Json(string label, string json);
     void AssertionTable(IReadOnlyCollection<AtfAssertion> assertions);
