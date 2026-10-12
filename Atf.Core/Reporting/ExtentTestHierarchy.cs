@@ -10,6 +10,7 @@ namespace Atf.Core.Reporting;
 /// </summary>
 internal sealed class ExtentTestHierarchy
 {
+    private readonly object _sync = new();
     private readonly Dictionary<string, ExtentTest> _classTests = new(StringComparer.Ordinal);
     private readonly ReportStatusAggregator _classStatuses = new();
 
@@ -21,39 +22,45 @@ internal sealed class ExtentTestHierarchy
         IEnumerable<string> categories,
         int assertionMaxDisplayCharacters = ReportingDefaults.AssertionMaxDisplayCharacters)
     {
-        ArgumentNullException.ThrowIfNull(reports);
-        ArgumentException.ThrowIfNullOrWhiteSpace(testClassName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(scenarioName);
-        ArgumentNullException.ThrowIfNull(categories);
-
-        if (!_classTests.TryGetValue(testClassName, out var classTest))
+        lock (_sync)
         {
-            classTest = reports.CreateTest(testClassName, description);
-            _classTests[testClassName] = classTest;
-        }
+            ArgumentNullException.ThrowIfNull(reports);
+            ArgumentException.ThrowIfNullOrWhiteSpace(testClassName);
+            ArgumentException.ThrowIfNullOrWhiteSpace(scenarioName);
+            ArgumentNullException.ThrowIfNull(categories);
 
-        foreach (var category in categories
-                     .Where(category => !string.IsNullOrWhiteSpace(category))
-                     .Distinct(StringComparer.OrdinalIgnoreCase))
-        {
-            classTest.AssignCategory(category);
-        }
+            if (!_classTests.TryGetValue(testClassName, out var classTest))
+            {
+                classTest = reports.CreateTest(testClassName, description);
+                _classTests[testClassName] = classTest;
+            }
 
-        var scenario = classTest.CreateNode(WebUtility.HtmlEncode(scenarioName), description);
-        return new ExtentTestScope(
-            scenario,
-            testClassName,
-            RecordScenarioStatus,
-            assertionMaxDisplayCharacters);
+            foreach (var category in categories
+                         .Where(category => !string.IsNullOrWhiteSpace(category))
+                         .Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                classTest.AssignCategory(category);
+            }
+
+            var scenario = classTest.CreateNode(WebUtility.HtmlEncode(scenarioName), description);
+            return new ExtentTestScope(
+                scenario,
+                testClassName,
+                RecordScenarioStatus,
+                assertionMaxDisplayCharacters);
+        }
     }
 
     public void RecordScenarioStatus(string testClassName, AtfReportStatus status)
     {
-        if (!_classTests.TryGetValue(testClassName, out var classTest))
+        lock (_sync)
         {
-            return;
-        }
+            if (!_classTests.TryGetValue(testClassName, out var classTest))
+            {
+                return;
+            }
 
-        classTest.Model.Status = ExtentStatusMapper.ToExtent(_classStatuses.Record(testClassName, status));
+            classTest.Model.Status = ExtentStatusMapper.ToExtent(_classStatuses.Record(testClassName, status));
+        }
     }
 }

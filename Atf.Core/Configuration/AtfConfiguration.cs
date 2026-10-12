@@ -52,6 +52,20 @@ public sealed class AtfConfiguration
         {
             throw new InvalidOperationException("Reporting:AssertionMaxDisplayCharacters must be positive.");
         }
+
+        if (string.IsNullOrWhiteSpace(Api.Redaction.Replacement))
+        {
+            throw new InvalidOperationException("Modules:Api:Api:Redaction:Replacement is required.");
+        }
+
+        var supportedAuthTypes = new[] { "none", "bearer", "apikey", "basic", "custom" };
+        foreach (var (name, profile) in Api.AuthProfiles)
+        {
+            if (!supportedAuthTypes.Contains(profile.Type, StringComparer.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Unsupported auth profile type '{profile.Type}' for '{name}'. Supported types: {string.Join(", ", supportedAuthTypes)}.");
+            }
+        }
     }
 
     private AtfModuleSettings GetModule(string moduleId) =>

@@ -176,6 +176,7 @@ Detailed guides:
 
 - [Architecture and reporting guide](docs/ATF_Architecture.md)
 - [Constructive quality assessment and refactoring backlog](docs/ATF_Quality_Assessment.md)
+- [ATF best practices — OOP, annotations, validation and test lifecycle](docs/README_Atf_BestPractices.md)
 - [Atf.Tests/README.md](Atf.Tests/README.md)
 - [Atf.Core/README.md](Atf.Core/README.md)
 - [Atf.Common/README.md](Atf.Common/README.md)

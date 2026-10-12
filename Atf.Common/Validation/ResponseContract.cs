@@ -1,4 +1,5 @@
 using Atf.Core.Http;
+using Atf.Common.Validation.Contracts;
 using System.Net;
 
 namespace Atf.Common.Validation;

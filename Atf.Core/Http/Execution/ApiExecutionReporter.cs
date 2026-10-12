@@ -1,5 +1,6 @@
 using Atf.Core.Http.Transport;
 using Atf.Core.Reporting;
+using Atf.Core.Security;
 
 namespace Atf.Core.Http.Execution;
 
@@ -14,10 +15,12 @@ namespace Atf.Core.Http.Execution;
 internal sealed class ApiExecutionReporter
 {
     private readonly IAtfReporter _reporter;
+    private readonly SensitiveDataRedactor _redactor;
 
-    public ApiExecutionReporter(IAtfReporter reporter)
+    public ApiExecutionReporter(IAtfReporter reporter, SensitiveDataRedactor? redactor = null)
     {
         _reporter = reporter ?? throw new ArgumentNullException(nameof(reporter));
+        _redactor = redactor ?? new SensitiveDataRedactor();
     }
 
     public void Start(ApiRequest request, string url, string authProfile, IApiAuthenticator authenticator)
@@ -97,9 +100,9 @@ internal sealed class ApiExecutionReporter
         Try(() => _reporter.CompleteStep(AtfReportStatus.Fail));
     }
 
-    private void Detail(string key, string value) => Try(() => _reporter.Detail(key, value));
+    private void Detail(string key, string value) => Try(() => _reporter.Detail(key, _redactor.RedactField(key, value)));
 
-    private void Json(string label, string json) => Try(() => _reporter.Json(label, json));
+    private void Json(string label, string json) => Try(() => _reporter.Json(label, _redactor.RedactJson(json)));
 
     private static string Title(ApiRequest request) =>
         $"{request.Method.Method.ToUpperInvariant()} {request.Path}";

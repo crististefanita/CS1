@@ -2,6 +2,9 @@
 
 The test strategy and the browser-validated report contract are documented in
 the [architecture and reporting guide](../docs/ATF_Architecture.md).
+The normative rules for cohesive OOP design, meaningful annotations, aggregate
+validations and test lifecycle are in the
+[ATF best-practices README](../docs/README_Atf_BestPractices.md).
 
 Aceasta este secțiunea dedicată testării ATF-ului însuși, nu testării unui API produs. Ea protejează contractele reutilizabile ale soluției înainte de rularea scenariilor live din `Atf.Api`.
 

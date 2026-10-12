@@ -66,25 +66,27 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
                 return;
             }
 
-            var path = ResolvePath(settings);
+            var settingsSnapshot = settings.Snapshot();
+            var apiSnapshot = api?.Snapshot();
+            var path = ResolvePath(settingsSnapshot);
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             var reporter = new ExtentSparkReporter(path);
-            reporter.Config.DocumentTitle = settings.DocumentTitle;
-            reporter.Config.ReportName = settings.ReportName;
+            reporter.Config.DocumentTitle = settingsSnapshot.DocumentTitle;
+            reporter.Config.ReportName = settingsSnapshot.ReportName;
             reporter.Config.OfflineMode = true;
-            if (!string.IsNullOrWhiteSpace(settings.TimestampFormat))
+            if (!string.IsNullOrWhiteSpace(settingsSnapshot.TimestampFormat))
             {
-                reporter.Config.TimeStampFormat = settings.TimestampFormat;
+                reporter.Config.TimeStampFormat = settingsSnapshot.TimestampFormat;
             }
 
             var reports = new ExtentReports();
             reports.AttachReporter(reporter);
-            new Lifecycle.ExtentReportEnvironment().Apply(reports, api);
+            new Lifecycle.ExtentReportEnvironment().Apply(reports, apiSnapshot);
 
             _reporter = reporter;
             _reports = reports;
             _hierarchy = new ExtentTestHierarchy();
-            _settings = settings;
+            _settings = settingsSnapshot;
             _reportPath = path;
             _finalized = false;
         }

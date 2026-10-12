@@ -58,6 +58,45 @@ public sealed class ConfiguredApiAuthenticator : IApiAuthenticator
             return;
         }
 
+        if (string.Equals(profile.Type, "apiKey", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(profile.Type, "apikey", StringComparison.OrdinalIgnoreCase))
+        {
+            var key = _tokenReader(TokenVariable(profile));
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                var header = string.IsNullOrWhiteSpace(profile.HeaderName) ? "X-API-Key" : profile.HeaderName;
+                message.Headers.TryAddWithoutValidation(header, key);
+            }
+
+            return;
+        }
+
+        if (string.Equals(profile.Type, "basic", StringComparison.OrdinalIgnoreCase))
+        {
+            var username = _tokenReader(profile.UsernameEnvironmentVariable ?? "ATF_API_USERNAME");
+            var password = _tokenReader(profile.PasswordEnvironmentVariable ?? "ATF_API_PASSWORD");
+            if (!string.IsNullOrWhiteSpace(username) || !string.IsNullOrWhiteSpace(password))
+            {
+                var encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
+                message.Headers.Authorization = new AuthenticationHeaderValue("Basic", encoded);
+            }
+
+            return;
+        }
+
+        if (string.Equals(profile.Type, "custom", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (var header in profile.Headers)
+            {
+                if (!string.IsNullOrWhiteSpace(header.Key) && header.Value is not null)
+                {
+                    message.Headers.TryAddWithoutValidation(header.Key, ResolveConfiguredValue(header.Value));
+                }
+            }
+
+            return;
+        }
+
         throw new InvalidOperationException($"Unsupported auth profile type '{profile.Type}'.");
     }
 
@@ -71,12 +110,30 @@ public sealed class ConfiguredApiAuthenticator : IApiAuthenticator
             return "not applicable";
         }
 
-        if (string.Equals(profile.Type, "bearer", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(profile.Type, "bearer", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(profile.Type, "apiKey", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(profile.Type, "apikey", StringComparison.OrdinalIgnoreCase))
         {
             var variable = TokenVariable(profile);
             return string.IsNullOrWhiteSpace(_tokenReader(variable))
                 ? $"missing ({variable})"
-                : "bearer token available";
+                : string.Equals(profile.Type, "bearer", StringComparison.OrdinalIgnoreCase)
+                    ? "bearer token available"
+                    : "api key available";
+        }
+
+        if (string.Equals(profile.Type, "basic", StringComparison.OrdinalIgnoreCase))
+        {
+            var username = profile.UsernameEnvironmentVariable ?? "ATF_API_USERNAME";
+            var password = profile.PasswordEnvironmentVariable ?? "ATF_API_PASSWORD";
+            return string.IsNullOrWhiteSpace(_tokenReader(username)) || string.IsNullOrWhiteSpace(_tokenReader(password))
+                ? $"missing ({username}/{password})"
+                : "basic credentials available";
+        }
+
+        if (string.Equals(profile.Type, "custom", StringComparison.OrdinalIgnoreCase))
+        {
+            return profile.Headers.Count == 0 ? "custom headers not configured" : "custom headers configured";
         }
 
         return "unsupported profile type";
@@ -91,6 +148,16 @@ public sealed class ConfiguredApiAuthenticator : IApiAuthenticator
         string.IsNullOrWhiteSpace(profile.TokenEnvironmentVariable)
             ? _settings.TokenEnvironmentVariable
             : profile.TokenEnvironmentVariable;
+
+    private string ResolveConfiguredValue(string value)
+    {
+        if (value.StartsWith("${", StringComparison.Ordinal) && value.EndsWith('}'))
+        {
+            return _tokenReader(value[2..^1]) ?? string.Empty;
+        }
+
+        return value;
+    }
 }
 
 public interface IApiUrlBuilder

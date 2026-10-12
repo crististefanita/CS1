@@ -1,6 +1,7 @@
 using Atf.Core.Configuration;
 using Atf.Core.Reporting;
 using Atf.Core.Resilience;
+using Atf.Core.Security;
 using System.Diagnostics;
 
 namespace Atf.Core.Http.Execution;
@@ -20,7 +21,7 @@ public sealed class ApiExecutor : IApiExecutor
             client,
             settings,
             reporter,
-            new ConfiguredApiAuthenticator(settings),
+            null,
             null,
             null)
     {
@@ -30,25 +31,26 @@ public sealed class ApiExecutor : IApiExecutor
         HttpClient client,
         ApiSettings settings,
         IAtfReporter reporter,
-        IApiAuthenticator authenticator,
+        IApiAuthenticator? authenticator,
         IApiTransport? transport = null,
         IApiUrlBuilder? urlBuilder = null)
     {
         _client = client ?? throw new ArgumentNullException(nameof(client));
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        var snapshot = settings?.Snapshot() ?? throw new ArgumentNullException(nameof(settings));
+        _settings = snapshot;
         _reporter = reporter ?? throw new ArgumentNullException(nameof(reporter));
-        _authenticator = authenticator ?? throw new ArgumentNullException(nameof(authenticator));
-        _transport = transport ?? new HttpClientTransport(client, authenticator);
-        _urlBuilder = urlBuilder ?? new ApiUrlBuilder(settings);
-        _retryPolicy = new RateLimitRetryPolicy(settings.RateLimit);
-        _client.Timeout = TimeSpan.FromSeconds(settings.TimeoutSeconds);
+        _authenticator = authenticator ?? new ConfiguredApiAuthenticator(snapshot);
+        _transport = transport ?? new HttpClientTransport(client, _authenticator);
+        _urlBuilder = urlBuilder ?? new ApiUrlBuilder(snapshot);
+        _retryPolicy = new RateLimitRetryPolicy(snapshot.RateLimit);
+        _client.Timeout = TimeSpan.FromSeconds(snapshot.TimeoutSeconds);
     }
 
     public async Task<ApiExecutionResult> ExecuteAsync(ApiRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         var authProfile = request.AuthProfile ?? _settings.DefaultAuthProfile;
-        var report = new ApiExecutionReporter(_reporter);
+        var report = new ApiExecutionReporter(_reporter, new SensitiveDataRedactor(_settings.Redaction));
         var retryEvents = new List<RetryEvent>();
         var stopwatch = Stopwatch.StartNew();
 

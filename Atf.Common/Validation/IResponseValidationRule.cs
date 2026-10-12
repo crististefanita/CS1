@@ -1,6 +1,6 @@
 using Atf.Core.Http;
 
-namespace Atf.Common.Validation;
+namespace Atf.Common.Validation.Contracts;
 
 /// <summary>
 /// One framework-neutral rule evaluated against exactly one HTTP response.
