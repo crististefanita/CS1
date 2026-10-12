@@ -432,7 +432,7 @@ The order matters: declarative YAML or additional endpoint generators should not
 ### Suggested implementation sequence
 
 ```mermaid
-flow LR
+flowchart LR
     A[redaction + explicit outcome state] --> B[semantic DOM artifact checks]
     B --> C[error/pagination/schema contract matrix]
     C --> D[parallel-safe report run context]
