@@ -1,5 +1,6 @@
 using Atf.Common.Errors;
 using Atf.Core.Reporting;
+using System.Collections.ObjectModel;
 
 namespace Atf.Common.Validation;
 
@@ -14,6 +15,7 @@ public sealed class ValidationTable
 
     private readonly List<AtfAssertion> _rows = [];
     private readonly List<Exception> _failures = [];
+    private readonly HashSet<string> _assertionNames = new(StringComparer.OrdinalIgnoreCase);
 
     public ValidationTable(int maxDisplayedCharacters = DefaultMaxDisplayedCharacters)
     {
@@ -25,8 +27,10 @@ public sealed class ValidationTable
         MaxDisplayedCharacters = maxDisplayedCharacters;
     }
 
-    public IReadOnlyList<AtfAssertion> Rows => _rows;
+    public IReadOnlyList<AtfAssertion> Rows => new ReadOnlyCollection<AtfAssertion>(_rows);
     public bool HasFailures => _rows.Any(row => !row.Passed);
+    public bool HasAssertions => _rows.Count > 0;
+    public bool IsFinished { get; private set; }
     public int MaxDisplayedCharacters { get; }
 
     public string Preview(string value)
@@ -56,6 +60,8 @@ public sealed class ValidationTable
 
     public void Add(string name, string expected, string actual, bool passed)
     {
+        EnsureWritable();
+        AddIdentity(name);
         _rows.Add(new AtfAssertion(name, expected, actual, passed));
         if (!passed)
         {
@@ -65,6 +71,8 @@ public sealed class ValidationTable
 
     public void AddFailure(string name, string expected, string actual, Exception exception)
     {
+        EnsureWritable();
+        AddIdentity(name);
         _rows.Add(new AtfAssertion(name, expected, $"{actual}\n{exception.GetType().Name}: {exception.Message}", false));
         _failures.Add(exception);
     }
@@ -89,7 +97,7 @@ public sealed class ValidationTable
             configure(table);
             table.Finish(reporter);
         }
-        catch (Exception exception) when (!table.Finished)
+        catch (Exception exception) when (!table.IsFinished)
         {
             status = AtfReportStatus.Fail;
             table.AddFailure("Validation execution", "no unexpected exception", exception.Message, exception);
@@ -110,28 +118,52 @@ public sealed class ValidationTable
         }
     }
 
-    private bool Finished { get; set; }
-
     private void Finish(IAtfReporter reporter)
     {
+        if (!HasAssertions)
+        {
+            Add(
+                "Validation assertions",
+                "at least one assertion",
+                "0 assertions registered",
+                passed: false);
+        }
+
         if (HasFailures)
         {
             var failure = FirstFailure();
-            Finished = true;
+            IsFinished = true;
             reporter.AssertionTable(_rows);
             reporter.Fail("Validation failed.", failure);
             throw failure;
         }
 
-        Finished = true;
+        IsFinished = true;
         reporter.AssertionTable(_rows);
         reporter.Pass($"{_rows.Count} validations passed.");
     }
 
     private void FinishUnexpected(IAtfReporter reporter, Exception exception)
     {
-        Finished = true;
+        IsFinished = true;
         reporter.AssertionTable(_rows);
         reporter.Fail("Validation failed.", exception);
+    }
+
+    private void EnsureWritable()
+    {
+        if (IsFinished)
+        {
+            throw new InvalidOperationException("A ValidationTable cannot be changed after it is published.");
+        }
+    }
+
+    private void AddIdentity(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        if (!_assertionNames.Add(name.Trim()))
+        {
+            throw new InvalidOperationException($"Duplicate assertion '{name}' is not allowed in one ValidationTable.");
+        }
     }
 }

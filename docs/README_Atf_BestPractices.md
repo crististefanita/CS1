@@ -131,7 +131,24 @@ Pentru fiecare adnotare trebuie să putem răspunde în 10 secunde:
 
 Dacă răspunsul este „doar marchează că acesta este un framework test”,
 adnotarea nu adaugă informație. Categoria, numele proiectului și README-ul
-sunt suficiente. Adnotările utile trebuie să fie rare, semantice și stabile.
+sunt suficiente. În mod explicit, tag-ul `framework` și variantele sale
+(`Framework`, `[Framework]`, `[Trait("Category", "Framework")]`) sunt interzise
+în scenarii, configurație și raportare. Identitatea proiectului de test și
+namespace-ul spun deja că testăm ATF-ul; tag-ul trebuie să aducă o informație
+operațională suplimentară.
+
+Exemple:
+
+| Situație | Decizie | Motiv |
+|---|---|---|
+| `framework` / `Framework` | interzis | duplică proiectul și nu schimbă comportamentul |
+| `smoke` | permis | permite filtrarea unei suite rapide și stabile |
+| `lifecycle` | permis | descrie forma execuției și navigarea raportului |
+| `negative` / `auth` / `contract` | permis | descrie intenția verificată |
+
+Regula este protejată de `AnnotationPolicyTests`: dacă tag-ul generic reapare
+în scenariile API sau în ordinea de tag-uri, testele de arhitectură eșuează.
+Adnotările utile trebuie să fie rare, semantice și stabile.
 
 ### 2.4 Un test API adnotat trebuie să se încheie cu cel puțin o validare
 
@@ -217,24 +234,34 @@ Cele trei verificări sunt corecte semantic, dar produc evidence fragmentată ș
 Separă mesele doar când există responses diferite sau o limită reală de
 contract: de exemplu request-ul de creare și request-ul ulterior de read-back.
 
-### 2.6 Request-ul rămâne contextul activ până la validarea lui
+### 2.6 Request-ul deține validarea response-ului
 
 Raportul trebuie să fie lizibil ca structură:
 
 ```text
 TEST BODY
-├── GET /users
-│   ├── TECHNICAL TRACE
-│   └── RESPONSE JSON
-└── Validate: user collection contract
-    └── ASSERTION TABLE
+└── GET /users
+    ├── TECHNICAL TRACE
+    ├── RESPONSE JSON
+    └── Validate: user collection contract
+        └── ASSERTION TABLE
 ```
 
-Executorul publică evidence-ul tehnic, dar nu închide request-ul înainte ca
-validatorul să-și publice rezultatul. Validatorul își închide propriul nod, iar
-faza închide contextul execuției după ce requestul și validarea au fost publicate.
-Această regulă previne validări afișate ca descendenți ai requestului sau atașate
-unui request greșit.
+Executorul publică trace-ul și payload-urile pe request și păstrează requestul
+activ până când validatorul își publică evidence-ul. Validatorul deschide un
+un sibling direct după request și își închide propriul nod după tabelul
+agregat. Această regulă este contractul normativ al
+ATF-ului și previne validări afișate sub fază greșită sau atașate unui request
+greșit.
+
+```text
+phase
+└── HTTP request
+    ├── TECHNICAL TRACE
+    ├── REQUEST / RESPONSE JSON
+    └── Validate: contract
+        └── ASSERTION TABLE
+```
 
 ### 2.7 Scenariile nu controlează infrastructura
 
@@ -305,6 +332,30 @@ Checklist pentru fiecare test API:
 
 ## 4. Contracte pentru documentație și diagrame
 
+### Sursa de adevăr
+
+Pentru a evita reguli contradictorii, documentația are următoarele roluri:
+
+| Document | Rol |
+|---|---|
+| root `README.md` | onboarding, navigare și contracte principale |
+| `docs/ATF_Architecture.md` | modelul de obiecte și dependențe |
+| `docs/README_Atf_BestPractices.md` | reguli normative de design, testare și review |
+| `docs/ATF_Quality_Assessment.md` | scoruri, riscuri și backlog; nu redefinește ierarhia |
+| module/test README-uri | ghiduri locale, fără reguli care contrazic documentul normativ |
+
+Ierarhia curentă care trebuie folosită în toate README-urile este:
+
+```text
+    scenario → SETUP / TEST BODY / TEARDOWN → request + validation sibling
+request → technical trace + JSON evidence
+validation sibling → one aggregate assertion table
+```
+
+Toate README-urile trebuie să descrie validarea ca „validation sibling”; formularea „validation child” este
+depășită și trebuie corectată la modelul phase-sibling: validarea este următorul
+frate direct al requestului, iar faza rămâne proprietara ordinii lifecycle.
+
 Fiecare modul public trebuie să aibă un README care răspunde clar la:
 
 1. ce responsabilitate deține modulul;
@@ -330,6 +381,22 @@ flowchart TD
 
 O diagramă este utilă numai dacă reflectă obiectele reale. La fiecare refactor,
 README-ul și diagramele trebuie actualizate împreună cu contractele și testele.
+
+### Contract de mentenanță pentru diagrame
+
+Pentru fiecare diagramă nouă sau modificată:
+
+1. se identifică owner-ul: arhitectură, modul, testare sau raportare;
+2. se verifică termenii față de contractul normativ de mai sus;
+3. se păstrează o reprezentare text când Mermaid nu este randat;
+4. se evită simboluri Mermaid ambigue în label-uri, în special `|`, `<`, `>` și
+   paranteze nequotate;
+5. se verifică faptul că diagrama nu introduce clase sau fluxuri inexistente;
+6. se actualizează aceeași schimbare în README-ul local și în checklist-ul de
+   acceptare, fără a copia statistici volatile.
+
+O diagramă veche care contrazice codul nu este „context istoric” dacă este
+prezentată fără avertisment; trebuie corectată sau marcată explicit ca istorică.
 
 ## 5. Reguli de testare a framework-ului
 
@@ -359,7 +426,7 @@ Un test live care trece nu compensează lipsa acestor dovezi offline.
 | test body are validare? | contract/business validation vizibilă | doar request + cleanup |
 | response-ul are o masă agregată? | un validator, un tabel | status/header/json în noduri separate |
 | teardown-ul este suplimentar? | cleanup/read-back best effort | singura dovadă a testului |
-| raportul păstrează ownership-ul? | phase → request + validation; evidence sub request, tabel sub validation | validation mutată sub request greșit |
+| raportul păstrează ownership-ul? | phase → request + validation sibling; evidence sub request și tabel sub validation | validări combinate între răspunsuri |
 | secretele sunt protejate? | redaction central, testată | token în trace/JSON/exception |
 | README-ul explică fluxul? | diagramă + contract + failure path | descriere de fișiere fără model |
 
@@ -383,6 +450,19 @@ testele și raportul spun aceeași poveste.
 
 ## 8. Direcții de îmbunătățire prioritare
 
+### Găuri cunoscute care trebuie urmărite de agentul care modifică codul
+
+Acest README descrie regula dorită; testele de arhitectură trebuie să o aplice
+efectiv. În special:
+
+- pragul de package boundary trebuie să fie același peste tot: maximum 8 tipuri
+  top-level directe;
+- testele trebuie să verifice și `Atf.Api`, nu numai Core și Common;
+- redaction-ul trebuie acoperit pentru JSON, query, headers și exceptions;
+- un test API fără validare în `TEST BODY` trebuie respins structural;
+- numărul de teste și verdicturile trebuie citite din artifactul generat, nu
+  copiate manual în README.
+
 1. **P0 — redaction centralizat:** headers, URLs, JSON și exceptions trebuie să
    treacă prin aceeași politică testabilă.
 2. **P0 — outcome explicit:** transport success, contract success, skip,
@@ -399,3 +479,4 @@ testele și raportul spun aceeași poveste.
 Aceste direcții păstrează funcționalitatea, dar reduc ambiguitatea: fiecare
 responsabilitate are un owner, fiecare regulă are o dovadă, iar raportul reflectă
 exact ceea ce a fost testat.
+

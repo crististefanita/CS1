@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Atf.Core\Atf.Core.csproj" />
     <ProjectReference Include="..\Atf.Common\Atf.Common.csproj" />
+    <ProjectReference Include="..\Atf.Reporting.Extent\Atf.Reporting.Extent.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\Atf.Core\Configuration\appsettings*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

@@ -5,21 +5,26 @@ measure maintainability and diagnostic confidence, not the number of passing
 live tests. A high score means the contract is explicit, isolated and protected
 by deterministic tests; it does not mean that no further work is useful.
 
+Pentru auditul OOP cu măsurători pe clase și planul de extragere a
+colaboratorilor, vezi [ATF refactoring assessment and OOP roadmap](ATF_Refactoring_Assessment.md).
+Acest document păstrează backlog-ul operațional; documentul nou păstrează
+diagnosticul detaliat al responsabilităților.
+
 ## Executive verdict
 
 | Area | Score | Direct feedback |
 |---|---:|---|
 | Layering and dependency direction | 86 | Core/Common/Api boundaries are now visible and mostly one-way. Keep the composition root strict. |
-| OOP and responsibility cohesion | 78 | Routes, services, steps, validators and adapters are good seams. The report theme and client behaviour are still large presentation modules. |
+| OOP and responsibility cohesion | 64 | Routes, services, steps, validators and adapters have good seams, but `ExtentTestScope`, the lifecycle adapter and the raw CSS/JS builders still aggregate too many responsibilities. |
 | HTTP execution and resilience | 82 | Transport, auth, URL building and retry are injectable and deterministic. Cancellation/timeout and reporter-failure contracts now have explicit coverage. |
 | Validation model | 84 | `ValidationTable` is the right aggregation boundary. Scenario code still needs discipline to call one composite validator per contract. |
-| Reporting correctness | 82 | Request-owned validation, collapsed evidence and final-artifact checks are strong. Browser hydration remains a separate verification layer. |
+| Reporting correctness | 86 | Request/validation sibling ownership, collapsed evidence and final-artifact checks are explicit. Browser hydration remains a separate verification layer. |
 | Report visual consistency | 80 | Central tokens and self-contained HTML reduce drift. CSS/JS should eventually be split into named presentation components. |
 | Testability | 81 | Offline tests cover core seams and structure. Missing matrices remain around cancellation, masking, empty collections and cleanup isolation. |
 | Documentation and onboarding | 84 | README files now describe contracts and diagrams. The next improvement is executable examples and a single “first change” path. |
 | Security and diagnostic hygiene | 74 | Token descriptions are safe and the report is self-contained. Add systematic secret masking and tests for headers/query/body values. |
-| CI and quality gates | 62 | Local gates are clear, but repository-level CI/analyzer enforcement is not yet a hard contract. |
-| **Overall** | **80** | A solid framework foundation; the remaining risk is concentrated in presentation-module size, diagnostic data policy and unautomated quality gates. |
+| Local quality gates | 70 | Build and test commands are documented locally; no remote CI workflow is part of this repository contract. |
+| **Overall** | **76** | A solid framework foundation; the remaining risk is concentrated in oversized presentation/lifecycle modules, diagnostic data policy and unautomated quality gates. |
 
 The blunt conclusion: the framework is no longer a collection of test helpers,
 but it is not yet a fully governed platform. The next gains come from making
@@ -57,19 +62,17 @@ flowchart TD
     Phase --> Request[HTTP request]
     Request --> Trace[TECHNICAL TRACE]
     Request --> Json[REQUEST / RESPONSE JSON]
-    Phase --> Validation[Validation node]
+    Phase --> Validation[One contract validation sibling]
     Validation --> Table[One aggregated assertion table]
-    Phase --> More[Additional validation sibling]
 ```
 
-The invariant is `phase → request + validation siblings`, not a flat list and not one
-child node per assertion. The request remains the active execution context while
-response evidence is published; the validation is then created under the same phase
-and is associated with that response by execution order and contract title.
-Each validation closes itself in `finally`, preventing validation A from
-swallowing validation B as its child. Composite validators should therefore
-combine status, headers, schema and JSON-path checks into one table whenever
-they describe the same contract.
+The invariant is `phase → request + contract validation sibling → one table`, not a flat
+list and not one child node per assertion. The request owns transport evidence;
+the validation is created as the request's next phase sibling and is bound to the same
+`ApiResponse` by the composite contract.
+The validation closes itself in `finally`, while the next request or phase closes
+the request. Composite validators must combine status, headers, schema and
+JSON-path checks into one table whenever they describe the same contract.
 
 ## What is already protected
 
@@ -79,20 +82,24 @@ The current deterministic suite covers:
 - URL/query construction and injected transport/authenticator boundaries;
 - bounded rate-limit retries and server/fallback delay selection;
 - JSON pretty printing and configurable assertion previews;
-- phase sibling layout and request-associated validation nodes;
+- phase layout and phase-sibling validation nodes;
 - collapsed report evidence, nested card click delegation and JSON overflow;
 - central typography/color tokens and absence of horizontal page overflow;
 - self-contained HTML, no external `extent` folder and no open evidence nodes;
 - reporter failures not replacing a successful transport outcome;
 - cleanup reverse ordering and continuation after a cleanup failure.
 
-Run the offline gates from the isolated build location:
+Run the offline gates from the repository root. When an active run must be
+kept isolated, use a separate checkout or build-output directory; the commands
+remain repository-relative:
 
 ```powershell
-dotnet build C:\work\ex\.net\.tmp\Atf\Atf.slnx --configuration Release --no-restore --nologo
-dotnet test C:\work\ex\.net\.tmp\Atf\Atf.Tests\Atf.Core.Tests\Atf.Core.Tests.csproj --configuration Release --no-build --no-restore
-dotnet test C:\work\ex\.net\.tmp\Atf\Atf.Tests\Atf.Common.Tests\Atf.Common.Tests.csproj --configuration Release --no-build --no-restore
-dotnet test C:\work\ex\.net\.tmp\Atf\Atf.Api\Atf.Api.csproj --configuration Release --no-build --no-restore
+dotnet build Atf.slnx --configuration Release --no-restore --nologo
+dotnet test Atf.Tests/Atf.Core.Tests/Atf.Core.Tests.csproj --configuration Release --no-build --no-restore
+dotnet test Atf.Tests/Atf.Common.Tests/Atf.Common.Tests.csproj --configuration Release --no-build --no-restore
+dotnet test Atf.Tests/Atf.Reporting.Extent.Tests/Atf.Reporting.Extent.Tests.csproj --configuration Release --no-build --no-restore
+dotnet test Atf.Api/Atf.Api.csproj --configuration Release --no-build --no-restore
+dotnet test Atf.slnx --configuration Release --no-build --no-restore
 ```
 
 ## Aggressive improvement backlog
@@ -110,7 +117,7 @@ dotnet test C:\work\ex\.net\.tmp\Atf\Atf.Api\Atf.Api.csproj --configuration Rele
    as the original exception while the report is best-effort.
 4. **Keep the final artifact as a gate.** Every report-rendering change needs
    structural Extent tests, static artifact inspection and one browser smoke
-   run that expands phase → request + validation siblings and evidence blocks.
+   run that expands phase → request + validation sibling and evidence blocks.
 
 ### P1 — improve maintainability and OOP
 
@@ -125,7 +132,7 @@ dotnet test C:\work\ex\.net\.tmp\Atf\Atf.Api\Atf.Api.csproj --configuration Rele
    labels stable for backward-compatible reports.
 4. Add a `ScenarioValueBag` scoped to `ApiScenarioContext` for captured ids and
    correlation values. It must be isolated per scenario and never static.
-5. Add analyzer/format gates and a repository CI workflow. Warnings should be
+5. Add analyzer/format gates as explicit local commands. Warnings should be
    reviewed before enabling warnings-as-errors globally; do it in two stages.
 
 ### P2 — expand API confidence
@@ -165,5 +172,5 @@ The next refactor is complete only when:
 5. a long JSON block scrolls vertically and does not widen the page;
 6. one composite contract produces one aggregated table;
 7. the README diagrams still describe the actual object graph;
-8. no active run in `C:\work\ex\.net\Atf` was stopped or overwritten.
+8. no active run in the repository was stopped or overwritten.
 

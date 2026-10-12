@@ -40,6 +40,41 @@ public sealed class ResponseContractTests
         Assert.Throws<InvalidOperationException>(() => contract.ExpectJsonPath("$.id"));
     }
 
+    [Fact(DisplayName = "Empty response contracts are rejected before a response can pass")]
+    public void ResponseContractRejectsEmptyContract()
+    {
+        var contract = new ResponseContract();
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            contract.Evaluate(Response("{}"), new ValidationTable()));
+
+        Assert.Contains("at least one validation rule", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Duplicate response validation rules are rejected at composition time")]
+    public void ResponseContractRejectsDuplicateRules()
+    {
+        var contract = new ResponseContract().ExpectStatus(HttpStatusCode.OK);
+
+        var exception = Assert.Throws<InvalidOperationException>(() => contract.ExpectStatus(HttpStatusCode.OK));
+
+        Assert.Contains("Duplicate response validation rule", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Contract validation emits exactly one aggregate table")]
+    public void ContractValidatorsProduceExactlyOneTable()
+    {
+        var reporter = new RecordingReporter();
+        var contract = new ResponseContract()
+            .ExpectStatus(HttpStatusCode.OK)
+            .ExpectContentType("application/json");
+
+        ApiAssertions.Contract(reporter, Response("{}"), "Validate: one table", contract);
+
+        Assert.Single(reporter.Tables);
+        Assert.Equal(2, reporter.Tables[0].Count);
+    }
+
     [Fact(DisplayName = "Pre-composed response contract uses the same single evidence table")]
     public void PreComposedContractUsesOneTable()
     {

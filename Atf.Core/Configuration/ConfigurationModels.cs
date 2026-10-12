@@ -1,6 +1,7 @@
 namespace Atf.Core.Configuration.Models;
 
 using Atf.Core.Configuration;
+using Atf.Core.Configuration.Security;
 
 public sealed class AtfModuleSettings
 {
@@ -47,25 +48,6 @@ public sealed class ApiSettings
             pair => pair.Key,
             pair => pair.Value.Snapshot(),
             StringComparer.OrdinalIgnoreCase)
-    };
-}
-
-public sealed class RedactionSettings
-{
-    public bool Enabled { get; init; } = true;
-    public string Replacement { get; init; } = "[REDACTED]";
-    public string[] SensitiveKeys { get; init; } =
-    [
-        "access_token", "api_key", "apikey", "authorization", "client_secret",
-        "password", "refresh_token", "secret", "token", "email", "email_address",
-        "phone", "phone_number"
-    ];
-
-    public RedactionSettings Snapshot() => new()
-    {
-        Enabled = Enabled,
-        Replacement = Replacement,
-        SensitiveKeys = SensitiveKeys.ToArray()
     };
 }
 

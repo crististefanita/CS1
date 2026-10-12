@@ -20,7 +20,7 @@ flowchart TD
 
 | Layer | Owns | Does not own |
 |---|---|---|
-| `Atf.Core` | configuration, URL building, authentication ports, transport, retry/polling, reporting ports, Extent integration | product routes, schemas, business fixtures |
+| `Atf.Core` | configuration, URL building, authentication ports, transport, retry/polling and renderer-neutral reporting ports | product routes, schemas, business fixtures |
 | `Atf.Common` | route catalog, typed services, semantic steps, validators, fixtures, cleanup | xUnit orchestration, raw Extent markup, secrets |
 | `Atf.Api` | test classes, scenario intent, categories and live coverage | `HttpClient`, endpoint literals, report layout |
 | `Atf.Tests` | deterministic unit/component/architecture tests | live service coverage |
@@ -63,10 +63,12 @@ HTTP exchange completed  !=  contract satisfied  !=  scenario passed
 ```
 
 `ApiExecutor` owns transport facts and leaves the HTTP execution context open while
-its evidence is published. The validator then opens an aggregate validation node as
-a sibling of that request under the same phase. This is why the final report is
-`phase → request + validation`, with `request → evidence` and `validation → table`,
-while assertions for the same response remain rows in one table.
+its evidence is published. The validator then opens one aggregate validation node
+as the next direct sibling of the request that produced the response, under the same phase. This is
+why the final report is phase -> request + validation sibling -> table, while assertions
+for the same response remain rows in one table.
+
+The normative details are maintained in [ATF_Reporting_Contract.md](ATF_Reporting_Contract.md).
 
 ## 3. Route and configuration vocabulary
 
@@ -148,11 +150,11 @@ flowchart TD
     Scenario --> Teardown[TEARDOWN\ncollapsed phase shell]
     Setup --> SetupRequest[API request]
     SetupRequest --> SetupTrace[trace + JSON evidence]
-    Setup --> SetupValidation[aggregate contract validation]
+    Setup --> SetupValidation[aggregate contract validation sibling]
     SetupValidation --> SetupTable[one assertion table]
     Body --> BodyRequest[API request]
     BodyRequest --> BodyTrace[trace + JSON evidence]
-    Body --> BodyValidation[aggregate contract validation]
+    Body --> BodyValidation[aggregate contract validation sibling]
     BodyValidation --> BodyTable[one assertion table]
     Teardown --> Cleanup[cleanup / verification]
 ```
@@ -162,16 +164,16 @@ The visual rules are intentional:
 1. The composite scenario does not render a redundant parent `Scenario passed`
    event table. Its verdict is already visible in the scenario header.
 2. `SETUP`, `TEST BODY` and `TEARDOWN` are compact, collapsed phase shells.
-3. An API request owns its transport/response evidence. Its aggregate validation
-   is a sibling under the same phase and owns the assertion table for that response.
+3. An API request owns its transport/response evidence. Exactly one aggregate
+    validation sibling immediately follows the request under the same phase and owns the assertion table for that response.
 4. Request details, response details, JSON and assertion evidence are collapsed
    evidence blocks; opening a node reveals forensic information on demand.
 5. Empty phases are not manufactured.
 6. The phase order is canonical: setup, body, teardown.
 
 The browser behaviour is implemented by
-`Atf.Core/Reporting/Theme/ExtentReportClientBehaviour.cs`; the structure is
-created by `ExtentTestScope` and `ApiScenarioPhaseLayout`.
+`Atf.Reporting.Extent/Reporting/Theme/ExtentReportClientBehaviour.cs`; the structure is
+created by the Extent adapter's `ExtentTestScope` and Core's `ApiScenarioPhaseLayout`.
 
 ## 5. Evidence contract
 
@@ -223,7 +225,8 @@ stateDiagram-v2
 
 ```mermaid
 flowchart LR
-    Scope[ExtentTestScope] --> Lifecycle[ExtentReportLifecycle]
+    Core[Atf.Core reporting ports] --> Scope[Atf.Reporting.Extent ExtentTestScope]
+    Scope --> Lifecycle[ExtentReportLifecycle]
     Lifecycle --> Composer[ExtentReportDocumentComposer]
     Composer --> Inline[ExtentAssetInliner]
     Composer --> Theme[AtfReportTheme + AtfReportColors]
@@ -274,9 +277,9 @@ Use the cheapest proof that can detect the defect:
 
 | Concern | Test location | Proof |
 |---|---|---|
-| phase vocabulary/order | `Atf.Api/Tests/ApiScenarioPhaseLayoutTests.cs` | canonical labels and request/validation sibling tree |
+| phase vocabulary/order | `Atf.Api.Tests/ApiScenarioPhaseLayoutTests.cs` | canonical labels and phase/request/validation ownership tree |
 | automatic phase closure | same test class | starting a new phase closes the prior frame |
-| HTTP/validation ownership semantics | API/Core reporting structure tests | validation is phase-owned and request-associated; phase closes after aggregate evidence |
+| HTTP/validation ownership semantics | API/Core reporting structure tests | validation is the request's next direct phase sibling; phase closes after aggregate evidence |
 | collapse and summary behaviour | `ReportingComponentTests` | generated client contract contains the browser rules |
 | final artifact | `ReportArtifactInspectorTests` | embedded theme, no asset folder, phase contract |
 | JSON and evidence safety | reporting/evidence tests | escaping, wrapping, one assertion table |
@@ -289,11 +292,13 @@ Run the deterministic suites before a live run:
 dotnet test .\Atf.Tests\Atf.Core.Tests\Atf.Core.Tests.csproj --no-restore
 dotnet test .\Atf.Tests\Atf.Common.Tests\Atf.Common.Tests.csproj --no-restore
 dotnet test .\Atf.Api\Atf.Api.csproj --no-build --no-restore
+dotnet test .\Atf.Api.Tests\Atf.Api.Tests.csproj --no-build --no-restore
+dotnet test .\Atf.Tests\Atf.Reporting.Extent.Tests\Atf.Reporting.Extent.Tests.csproj --no-build --no-restore
 ```
 
 After a live run, inspect the generated file rather than relying only on the
 runner summary. Verify the left class grouping, one scenario tree, collapsed
-phase shells, phase-owned aggregate validation, JSON scroll behaviour, dark
+phase shells, phase-sibling aggregate validation, JSON scroll behaviour, dark
 surfaces, assertion table and absence of `artifacts/reports/extent`.
 
 ## 9. Adding a new API module
@@ -311,3 +316,4 @@ surfaces, assertion table and absence of `artifacts/reports/extent`.
 
 The module contributes domain language. Core remains unchanged unless the new
 behavior is genuinely product-neutral.
+

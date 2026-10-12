@@ -6,7 +6,7 @@ using Xunit;
 namespace Atf.Api;
 
 [Collection("API ATF")]
-public sealed class UsersApiTests(ITestOutputHelper output, Atf.Core.Reporting.ExtentCollectionFixture fixture)
+public sealed class UsersApiTests(ITestOutputHelper output, Atf.Reporting.Extent.ExtentCollectionFixture fixture)
     : ApiTestBase(output, fixture)
 {
     [Fact(DisplayName = "Users: list returns a valid JSON collection")]

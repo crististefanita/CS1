@@ -8,16 +8,24 @@ using Xunit.Sdk;
 
 namespace Atf.Api.Infrastructure;
 
-public abstract class ApiTestBase(ITestOutputHelper output, ExtentCollectionFixture fixture)
+public abstract class ApiTestBase
 {
     private sealed class ScenarioSkipException(string message) : Exception(message);
 
-    protected ExtentCollectionFixture Fixture { get; } = RegisterTestAssembly(fixture);
+    private readonly ITestOutputHelper _output;
+
+    protected ApiTestBase(ITestOutputHelper output, Atf.Reporting.Extent.ExtentCollectionFixture fixture)
+    {
+        _output = output ?? throw new ArgumentNullException(nameof(output));
+        Fixture = RegisterTestAssembly(fixture ?? throw new ArgumentNullException(nameof(fixture)));
+    }
+
+    protected Atf.Reporting.Extent.ExtentCollectionFixture Fixture { get; }
     protected Atf.Core.Configuration.AtfConfiguration Configuration => Fixture.Configuration;
 
-    private static ExtentCollectionFixture RegisterTestAssembly(ExtentCollectionFixture fixture)
+    private Atf.Reporting.Extent.ExtentCollectionFixture RegisterTestAssembly(Atf.Reporting.Extent.ExtentCollectionFixture fixture)
     {
-        fixture.RegisterTestAssembly(typeof(ApiTestBase).Assembly);
+        fixture.RegisterTestAssembly(GetType().Assembly);
         return fixture;
     }
 
@@ -91,7 +99,7 @@ public abstract class ApiTestBase(ITestOutputHelper output, ExtentCollectionFixt
                 }
                 catch (Exception teardownException)
                 {
-                    output.WriteLine($"Teardown infrastructure failure: {teardownException}");
+                    _output.WriteLine($"Teardown infrastructure failure: {teardownException}");
                     if (failure is null && skip is null)
                     {
                         failure = teardownException;

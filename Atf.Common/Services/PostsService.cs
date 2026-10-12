@@ -1,5 +1,6 @@
 using Atf.Core.Configuration;
 using Atf.Core.Http;
+using Atf.Common.Data;
 using Atf.Common.Models;
 using Atf.Common.Routing;
 using System.Text.Json;
@@ -19,7 +20,7 @@ public sealed class PostsService(IApiExecutor executor, ApiRoutes routes)
 
     public Task<ApiExecutionResult> CreateForUserAsync(int userId, PostRequest request, string? authProfile = null, CancellationToken ct = default)
     {
-        var json = JsonSerializer.Serialize(request, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var json = JsonSerializer.Serialize(request, AtfJsonOptions.Web);
         return executor.ExecuteAsync(routes.UserPostCreate.CreateRequest(authProfile, json, values: [(ApiRouteTokens.UserId, userId)]), ct);
     }
 }

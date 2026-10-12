@@ -56,21 +56,35 @@ internal sealed class ApiExecutionReporter
         }
     }
 
-    public void Attempt(int attempt) => Detail("attempt", (attempt + 1).ToString());
+    public void Attempt(int attempt)
+    {
+        var attemptNumber = (attempt + 1).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Detail("attempt", attemptNumber);
+        Detail($"attempt.{attemptNumber}.number", attemptNumber);
+    }
 
-    public void Response(ApiResponse response, TimeSpan exchangeDuration)
+    public void Response(int attempt, ApiResponse response, TimeSpan exchangeDuration)
     {
         ArgumentNullException.ThrowIfNull(response);
 
-        Detail("response.status", response.Status.ToString());
+        var attemptNumber = attempt.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var status = response.Status.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var responseDuration = response.Duration.TotalMilliseconds.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
+        var totalDuration = exchangeDuration.TotalMilliseconds.ToString("F0", System.Globalization.CultureInfo.InvariantCulture);
+
+        Detail("response.status", status);
+        Detail($"attempt.{attemptNumber}.response.status", status);
         var contentType = response.Header("Content-Type");
         if (!string.IsNullOrWhiteSpace(contentType))
         {
             Detail("response.content.type", contentType);
+            Detail($"attempt.{attemptNumber}.response.content.type", contentType);
         }
 
-        Detail("response.duration.ms", response.Duration.TotalMilliseconds.ToString("F0"));
-        Detail("exchange.duration.ms", exchangeDuration.TotalMilliseconds.ToString("F0"));
+        Detail("response.duration.ms", responseDuration);
+        Detail("exchange.duration.ms", totalDuration);
+        Detail($"attempt.{attemptNumber}.response.duration.ms", responseDuration);
+        Detail($"attempt.{attemptNumber}.exchange.duration.ms", totalDuration);
         Json("response.body", JsonFormatter.Pretty(response.Body));
     }
 
@@ -78,16 +92,19 @@ internal sealed class ApiExecutionReporter
     {
         ArgumentNullException.ThrowIfNull(retryEvent);
 
-        Detail("rate-limit.retry.delay.ms", retryEvent.Delay.TotalMilliseconds.ToString("F0"));
+        Detail("rate-limit.retry.delay.ms", retryEvent.Delay.TotalMilliseconds.ToString("F0", System.Globalization.CultureInfo.InvariantCulture));
         Detail("rate-limit.retry.reason", retryEvent.Reason);
+        Detail($"attempt.{retryEvent.Attempt}.retry.status", retryEvent.StatusCode.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Detail($"attempt.{retryEvent.Attempt}.retry.delay.ms", retryEvent.Delay.TotalMilliseconds.ToString("F0", System.Globalization.CultureInfo.InvariantCulture));
+        Detail($"attempt.{retryEvent.Attempt}.retry.reason", retryEvent.Reason);
         Try(() => _reporter.Info(_redactor.RedactText(
             $"Attempt {retryEvent.Attempt} → HTTP {retryEvent.StatusCode} → retry in {retryEvent.Delay.TotalMilliseconds:F0} ms ({retryEvent.Reason})")));
     }
 
     /// <summary>
     /// Marks transport completion without closing the request node. The
-    /// response-owned contract validation is intentionally attached below the
-    /// request; the next request or phase closes the request after validation.
+    /// response contract validation is opened next as a child of the active
+    /// request; the next request or phase then continues from the phase boundary.
     /// </summary>
     public void Completed() => Try(() =>
     {
@@ -100,7 +117,7 @@ internal sealed class ApiExecutionReporter
         // Exception.ToString() can contain a URL, header value or server
         // payload. The caller still receives the original exception; only the
         // copy sent to the reporting port is sanitized.
-        var safeException = new Exception(_redactor.RedactText(exception.ToString()));
+        var safeException = new InvalidOperationException(_redactor.RedactText(exception.ToString()));
         Try(() => _reporter.Fail("HTTP exchange failed.", safeException));
         Try(() => _reporter.CompleteStep(AtfReportStatus.Fail));
     }

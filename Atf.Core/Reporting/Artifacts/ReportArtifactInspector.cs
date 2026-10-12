@@ -1,3 +1,6 @@
+using System.Net;
+using System.Text.RegularExpressions;
+
 namespace Atf.Core.Reporting.Artifacts;
 
 /// <summary>
@@ -7,7 +10,7 @@ namespace Atf.Core.Reporting.Artifacts;
 /// </summary>
 public sealed class ReportArtifactInspector
 {
-    public ReportArtifactInspection Inspect(string reportPath)
+    public static ReportArtifactInspection Inspect(string reportPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
 
@@ -28,11 +31,17 @@ public sealed class ReportArtifactInspector
                 && html.Contains("--atf-bg: var(--atf-dark)", StringComparison.Ordinal),
             ["self-contained"] = !externalExtentReference,
             ["extent-folder-removed"] = !Directory.Exists(Path.Combine(reportDirectory, "extent")),
-            ["collapsed-evidence"] = html.Contains("details class='step-detail'", StringComparison.Ordinal)
-                && !html.Contains("details class='step-detail' open", StringComparison.Ordinal),
-            ["scrollable-json"] = html.Contains("helm-scroll-block-body", StringComparison.Ordinal),
-            ["assertion-table"] = html.Contains("helm-validation-table", StringComparison.Ordinal),
+            ["collapsed-evidence"] = HasCollapsedDetails(html),
+            ["scrollable-json"] = HasScrollableJsonBlock(html),
+            ["assertion-table"] = HasAssertionTable(html),
+            ["assertion-table-headers"] = HasAssertionTableHeaders(html),
+            ["page-horizontal-overflow-guard"] = HasPageHorizontalOverflowGuard(html),
             ["technical-trace"] = html.Contains("TECHNICAL TRACE", StringComparison.Ordinal),
+            ["response-duration-ms"] = html.Contains("RESPONSE DURATION (ms)", StringComparison.Ordinal),
+            ["no-generic-framework-tag"] = !HasGenericFrameworkTag(html),
+            ["accessible-evidence-titles"] = HasAccessibleEvidenceTitles(html),
+            ["semantic-execution-roles"] = HasSemanticExecutionRoles(html),
+            ["secondary-overview-collapsed"] = HasCollapsedSecondaryOverview(html),
             ["composite-summary-cleanup"] = html.Contains("removeCompositeScenarioSummary", StringComparison.Ordinal),
             ["phase-shells-collapsed"] = html.Contains("body.classList.remove('show')", StringComparison.Ordinal)
                 && html.Contains("header.setAttribute('aria-expanded', 'false')", StringComparison.Ordinal),
@@ -40,13 +49,156 @@ public sealed class ReportArtifactInspector
                 && html.Contains("display: none !important", StringComparison.Ordinal),
             ["inner-phase-rail-removed"] = html.Contains("border-left: 0 !important", StringComparison.Ordinal),
             ["response-owned-execution-hierarchy"] = html.Contains("configureExecutionHierarchy", StringComparison.Ordinal)
-                && html.Contains("data-atf-node-role=\"request\"", StringComparison.Ordinal)
-                && html.Contains("data-atf-node-role=\"validation\"", StringComparison.Ordinal)
-                && html.Contains("data-atf-parent-node', 'request", StringComparison.Ordinal)
+                && HasSemanticExecutionRoles(html),
         };
 
         return new ReportArtifactInspection(fullPath, checks);
     }
+
+    private static bool HasCollapsedDetails(string html)
+    {
+        var details = Regex.Matches(
+            html,
+            "<details\\b(?<attributes>[^>]*)>",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        var stepDetails = details
+            .Cast<Match>()
+            .Where(match => HasClass(match.Groups["attributes"].Value, "step-detail"))
+            .ToArray();
+
+        return stepDetails.Length > 0 && stepDetails.All(match =>
+            !Regex.IsMatch(match.Groups["attributes"].Value, "(?:^|\\s)open(?:\\s|=|$)", RegexOptions.IgnoreCase));
+    }
+
+    private static bool HasScrollableJsonBlock(string html) =>
+        html.Contains("helm-scroll-block-body", StringComparison.Ordinal)
+        && (Regex.IsMatch(
+                html,
+                "\\.helm-scroll-block-body\\s*\\{[^}]*overflow-y\\s*:\\s*auto[^}]*overflow-x\\s*:\\s*hidden",
+                RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant)
+            || Regex.IsMatch(
+                html,
+                "\\.helm-scroll-block-body\\s*\\{[^}]*overflow-x\\s*:\\s*hidden[^}]*overflow-y\\s*:\\s*auto",
+                RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant));
+
+    private static bool HasAssertionTable(string html) =>
+        Regex.IsMatch(
+            html,
+            "<table\\b[^>]*class\\s*=\\s*(['\"])[^'\"]*\\bhelm-validation-table\\b[^'\"]*\\1[^>]*>",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    private static bool HasAssertionTableHeaders(string html)
+    {
+        foreach (Match table in Regex.Matches(
+                     html,
+                     "<table\\b[^>]*class\\s*=\\s*(['\"])[^'\"]*\\bhelm-validation-table\\b[^'\"]*\\1[^>]*>(?<body>.*?)</table>",
+                     RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant))
+        {
+            var header = Regex.Match(
+                table.Groups["body"].Value,
+                "<thead\\b[^>]*>(?<head>.*?)</thead>",
+                RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+            if (!header.Success)
+            {
+                continue;
+            }
+
+            var cells = Regex.Matches(
+                    header.Groups["head"].Value,
+                    "<th\\b[^>]*>(?<text>.*?)</th>",
+                    RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant)
+                .Cast<Match>()
+                .Select(cell => NormalizeCellText(cell.Groups["text"].Value))
+                .ToArray();
+
+            if (cells.SequenceEqual(["ASSERTION", "EXPECTED", "ACTUAL", "RESULT"], StringComparer.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasPageHorizontalOverflowGuard(string html) =>
+        Regex.IsMatch(
+            html,
+            "(?:html\\s*,\\s*body|\\.test-wrapper[^{}]*\\.test-content[^{}]*\\.test-content-detail)[^{]*\\{[^}]*overflow-x\\s*:\\s*hidden",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+    private static bool HasGenericFrameworkTag(string html) =>
+        Regex.IsMatch(
+            html,
+            "(?:tag\\s*=\\s*(['\"])[^'\"]*\\bframework\\b[^'\"]*\\1"
+                + "|<a\\b[^>]*class\\s*=\\s*(['\"])[^'\"]*\\bdropdown-item\\b[^'\"]*\\2[^>]*>\\s*framework\\s*</a>"
+                + "|<[^>]*class\\s*=\\s*(['\"])[^'\"]*\\bbadge\\b[^'\"]*\\3[^>]*>\\s*(?:<[^>]+>\\s*)*framework\\s*(?:<[^>]+>\\s*)*</[^>]+>)",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+    private static bool HasAccessibleEvidenceTitles(string html) =>
+        Regex.IsMatch(
+            html,
+            "<span\\b[^>]*class\\s*=\\s*(['\"])[^'\"]*\\bse-title\\b[^'\"]*\\1[^>]*title\\s*=\\s*(['\"])[^'\"]*\\2[^>]*aria-label\\s*=\\s*(['\"])[^'\"]*\\3",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+    private static bool HasSemanticExecutionRoles(string html)
+    {
+        static bool HasRole(string value, string role) => Regex.IsMatch(
+            value,
+            $"data-atf-node-role\\s*=\\s*(['\"]){Regex.Escape(role)}\\1",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        var materializedRoles = HasRole(html, "phase")
+            && HasRole(html, "request")
+            && HasRole(html, "validation")
+            && Regex.IsMatch(
+                html,
+                "data-atf-parent-node\\s*=\\s*(['\"])phase\\1",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+            && Regex.IsMatch(
+                html,
+                "data-atf-node-role\\s*=\\s*(['\"])validation\\1[^>]*data-atf-parent-node\\s*=\\s*(['\"])phase\\2",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+        var clientContract = html.Contains("configureExecutionHierarchy", StringComparison.Ordinal)
+            && html.Contains("phaseCard.setAttribute('data-atf-node-role', 'phase')", StringComparison.Ordinal)
+            && html.Contains("stepCard.setAttribute('data-atf-node-role', 'request')", StringComparison.Ordinal)
+            && html.Contains("stepCard.setAttribute('data-atf-parent-node', 'phase')", StringComparison.Ordinal)
+            && html.Contains("validationCard.setAttribute('data-atf-node-role', 'validation')", StringComparison.Ordinal)
+            && html.Contains("validationCard.setAttribute('data-atf-parent-node', 'phase')", StringComparison.Ordinal);
+
+        return materializedRoles || clientContract;
+    }
+
+    private static bool HasCollapsedSecondaryOverview(string html)
+    {
+        var disclosures = Regex.Matches(
+                html,
+                "<details\\b(?<attributes>[^>]*)>",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+            .Cast<Match>()
+            .Where(match => HasClass(match.Groups["attributes"].Value, "atf-secondary-overview"))
+            .ToArray();
+
+        var materialized = disclosures.Length >= 2
+            && disclosures.All(match => !Regex.IsMatch(
+                match.Groups["attributes"].Value,
+                "(?:^|\\s)open(?:\\s|=|$)",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
+
+        var clientContract = html.Contains("className = 'atf-secondary-overview'", StringComparison.Ordinal)
+            && html.Contains("header.setAttribute('aria-expanded', 'false')", StringComparison.Ordinal);
+
+        return materialized || clientContract;
+    }
+
+    private static bool HasClass(string attributes, string className) =>
+        Regex.IsMatch(
+            attributes,
+            $"\\bclass\\s*=\\s*(['\"]).*?\\b{Regex.Escape(className)}\\b.*?\\1",
+            RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
+
+    private static string NormalizeCellText(string html) =>
+        Regex.Replace(WebUtility.HtmlDecode(Regex.Replace(html, "<.*?>", string.Empty)), "\\s+", " ").Trim().ToUpperInvariant();
 
     private static bool ContainsExternalExtentReference(string html) =>
         html.Contains("href=\"extent/", StringComparison.OrdinalIgnoreCase)

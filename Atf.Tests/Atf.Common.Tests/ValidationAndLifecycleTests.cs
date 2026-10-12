@@ -90,6 +90,9 @@ public sealed class ValidationAndLifecycleTests
         Assert.Equal(["post", "user"], order);
         Assert.False(registry.HasPending);
         Assert.Equal(2, reporter.Passes.Count);
+        Assert.Equal(
+            ["start:Cleanup: DELETE post/2", "complete:Pass", "start:Cleanup: DELETE user/1", "complete:Pass"],
+            reporter.StepEvents);
     }
 
     [Fact(DisplayName = "Cleanup registry keeps cleanup best-effort when one action fails")]
@@ -106,6 +109,45 @@ public sealed class ValidationAndLifecycleTests
         Assert.Equal(["post"], order);
         Assert.Contains(reporter.Warnings, warning => warning.Contains("blocked", StringComparison.Ordinal));
         Assert.False(registry.HasPending);
+        Assert.Contains("complete:Warning", reporter.StepEvents);
+    }
+
+    [Fact(DisplayName = "Cleanup registry is idempotent after the first run")]
+    public async Task CleanupRegistryDoesNotRunTwice()
+    {
+        var reporter = new RecordingReporter();
+        var registry = new CleanupRegistry(reporter);
+        var calls = 0;
+        registry.Own("user", "1", () => { calls++; return Task.CompletedTask; });
+
+        await registry.RunAsync();
+        await registry.RunAsync();
+
+        Assert.Equal(1, calls);
+        Assert.Single(reporter.Passes);
+    }
+
+    [Fact(DisplayName = "Cleanup registries remain isolated between scenarios")]
+    public async Task CleanupRegistriesAreIsolated()
+    {
+        var firstReporter = new RecordingReporter();
+        var secondReporter = new RecordingReporter();
+        var first = new CleanupRegistry(firstReporter);
+        var second = new CleanupRegistry(secondReporter);
+        var firstCalls = 0;
+        var secondCalls = 0;
+
+        first.Own("user", "first", () => { firstCalls++; return Task.CompletedTask; });
+        second.Own("user", "second", () => { secondCalls++; return Task.CompletedTask; });
+
+        await first.RunAsync();
+
+        Assert.Equal(1, firstCalls);
+        Assert.Equal(0, secondCalls);
+        Assert.Single(firstReporter.Passes);
+        Assert.Empty(secondReporter.Passes);
+        Assert.False(first.HasPending);
+        Assert.True(second.HasPending);
     }
 
     private sealed class RecordingReporter : IAtfReporter

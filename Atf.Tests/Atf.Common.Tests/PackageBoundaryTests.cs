@@ -5,7 +5,7 @@ namespace Atf.Common.Tests.Architecture;
 public sealed class PackageBoundaryTests
 {
     [Fact]
-    public void Common_namespaces_keep_at_most_eight_top_level_types()
+    public void CommonNamespacesKeepAtMostEightTopLevelTypes()
     {
         var violations = typeof(ApiRoutes)
             .Assembly

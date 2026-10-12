@@ -8,13 +8,13 @@ namespace Atf.Core.Http.Execution;
 
 public sealed class ApiExecutor : IApiExecutor
 {
-    private readonly HttpClient _client;
     private readonly ApiSettings _settings;
     private readonly IAtfReporter _reporter;
     private readonly RateLimitRetryPolicy _retryPolicy;
     private readonly IApiTransport _transport;
     private readonly IApiAuthenticator _authenticator;
     private readonly IApiUrlBuilder _urlBuilder;
+    private readonly TimeSpan _timeout;
 
     public ApiExecutor(HttpClient client, ApiSettings settings, IAtfReporter reporter)
         : this(
@@ -35,7 +35,7 @@ public sealed class ApiExecutor : IApiExecutor
         IApiTransport? transport = null,
         IApiUrlBuilder? urlBuilder = null)
     {
-        _client = client ?? throw new ArgumentNullException(nameof(client));
+        ArgumentNullException.ThrowIfNull(client);
         var snapshot = settings?.Snapshot() ?? throw new ArgumentNullException(nameof(settings));
         _settings = snapshot;
         _reporter = reporter ?? throw new ArgumentNullException(nameof(reporter));
@@ -43,7 +43,10 @@ public sealed class ApiExecutor : IApiExecutor
         _transport = transport ?? new HttpClientTransport(client, _authenticator);
         _urlBuilder = urlBuilder ?? new ApiUrlBuilder(snapshot);
         _retryPolicy = new RateLimitRetryPolicy(snapshot.RateLimit);
-        _client.Timeout = TimeSpan.FromSeconds(snapshot.TimeoutSeconds);
+        // The HttpClient can be shared by several executors. Mutating its
+        // global Timeout here creates a cross-run race; the execution budget
+        // belongs to this immutable executor snapshot instead.
+        _timeout = TimeSpan.FromSeconds(snapshot.TimeoutSeconds);
     }
 
     public async Task<ApiExecutionResult> ExecuteAsync(ApiRequest request, CancellationToken cancellationToken = default)
@@ -53,6 +56,9 @@ public sealed class ApiExecutor : IApiExecutor
         var report = new ApiExecutionReporter(_reporter, new SensitiveDataRedactor(_settings.Redaction));
         var retryEvents = new List<RetryEvent>();
         var stopwatch = Stopwatch.StartNew();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(_timeout);
+        var executionToken = timeout.Token;
 
         try
         {
@@ -62,7 +68,7 @@ public sealed class ApiExecutor : IApiExecutor
             for (var attempt = 0; ; attempt++)
             {
                 report.Attempt(attempt);
-                var response = await _transport.SendAsync(request, url, authProfile, cancellationToken);
+                var response = await _transport.SendAsync(request, url, authProfile, executionToken);
 
                 var decision = _retryPolicy.Decide(response, attempt);
                 if (!decision.ShouldRetry)
@@ -70,7 +76,7 @@ public sealed class ApiExecutor : IApiExecutor
                     stopwatch.Stop();
                 }
 
-                report.Response(response, stopwatch.Elapsed);
+                report.Response(attempt + 1, response, stopwatch.Elapsed);
 
                 if (!decision.ShouldRetry)
                 {
@@ -81,7 +87,7 @@ public sealed class ApiExecutor : IApiExecutor
                 var retryEvent = new RetryEvent(attempt + 1, response.Status, decision.Header, decision.Delay, decision.Reason);
                 retryEvents.Add(retryEvent);
                 report.Retry(retryEvent);
-                await Task.Delay(decision.Delay, cancellationToken);
+                await Task.Delay(decision.Delay, executionToken);
             }
         }
         catch (Exception exception)
@@ -98,6 +104,11 @@ public sealed class ApiExecutor : IApiExecutor
 
 public static class JsonFormatter
 {
+    private static readonly System.Text.Json.JsonSerializerOptions PrettyOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public static string Pretty(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -108,10 +119,7 @@ public static class JsonFormatter
         try
         {
             using var document = System.Text.Json.JsonDocument.Parse(json);
-            return System.Text.Json.JsonSerializer.Serialize(document.RootElement, new System.Text.Json.JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+            return System.Text.Json.JsonSerializer.Serialize(document.RootElement, PrettyOptions);
         }
         catch (System.Text.Json.JsonException)
         {

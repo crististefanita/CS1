@@ -10,7 +10,7 @@ public static class EvidenceTableFormatter
 {
     private const decimal MeaningfulExchangeDeltaMs = 50m;
 
-    private static readonly IReadOnlyDictionary<string, string> FriendlyNames =
+    private static readonly Dictionary<string, string> FriendlyNames =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["route.name"] = "ROUTE",

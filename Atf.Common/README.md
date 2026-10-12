@@ -166,9 +166,9 @@ sequenceDiagram
 ```
 
 `ValidationTable.Run` closes its own reporter step in a `finally` boundary. That
-contract is required even when a test has several validations after one response:
-`GET` remains open, while `Validate: status`, `Validate: JSONPath` and
-`Validate: schema` become children of that request. Prefer one
+contract is required even when a test has several assertions after one response:
+`GET` remains the active execution context while the validation step is published
+as a direct child of that request. Prefer one
 `ContractValidators.*` method when the checks describe one response contract;
 the method emits one validation node and one aggregated table. Use separate
 validation methods only when the report needs a genuinely distinct contract
@@ -205,10 +205,28 @@ ApiAssertions.Contract(reporter, response, "Validate: post item contract", contr
     .JsonPathExists("$.user_id"));
 ```
 
-Do not aggregate assertions from different HTTP responses. They remain separate
-request-owned validation nodes so the report still answers exactly which exchange was
-validated. The legacy single-check helpers remain available and delegate to the
-same grouping primitive for compatibility.
+Do not aggregate assertions from different HTTP responses. Each response is
+represented by one request plus one phase-sibling contract validation, so
+the report still answers which exchange was validated. The legacy single-check helpers remain available and
+delegate to the same grouping primitive for compatibility.
+
+## JSON policy
+
+Fixture deserialization and request DTO serialization use the shared
+`AtfJsonOptions` policy. `CaseInsensitive` is reserved for reading external
+fixtures; `Web` is the single camelCase contract for request bodies. Services
+must not create ad-hoc `JsonSerializerOptions` instances because that makes
+the payload contract drift between modules and makes report evidence harder to
+compare.
+
+```mermaid
+flowchart LR
+    Fixture[fixture JSON] --> CaseInsensitive[AtfJsonOptions.CaseInsensitive]
+    DTO[request DTO] --> Web[AtfJsonOptions.Web]
+    CaseInsensitive --> Model[typed model]
+    Web --> Body[HTTP request body]
+    Body --> Report[redacted REQUEST JSON evidence]
+```
 
 ## Lifecycle and cleanup
 
@@ -305,4 +323,5 @@ Recommended component tests, in order:
 - add explicit non-empty/empty collection semantics instead of relying on vacuous `All(...)` behavior;
 - add capture/variable scope for values such as created ids, with cleanup values isolated per scenario;
 - add contract tests for `PUT`, `PATCH`, `DELETE` and nested create flows, not only request construction.
+
 

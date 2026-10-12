@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Atf.Common.Data;
 
 public static class FixtureReader
@@ -17,9 +15,7 @@ public static class FixtureReader
 
     public static T Read<T>(string path)
     {
-        return JsonSerializer.Deserialize<T>(ReadRaw(path), new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        }) ?? throw new InvalidOperationException($"Fixture '{path}' deserialized to null.");
+        return System.Text.Json.JsonSerializer.Deserialize<T>(ReadRaw(path), AtfJsonOptions.CaseInsensitive)
+            ?? throw new InvalidOperationException($"Fixture '{path}' deserialized to null.");
     }
 }

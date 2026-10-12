@@ -67,7 +67,14 @@ public sealed class ConfigurationAndResilienceTests
                 {
                     Config = new AtfModuleConfig
                     {
-                        Api = new ApiSettings { BaseUrl = "https://example.test" },
+                        Api = new ApiSettings
+                        {
+                            BaseUrl = "https://example.test",
+                            AuthProfiles = new(StringComparer.OrdinalIgnoreCase)
+                            {
+                                ["default"] = new AuthProfileSettings { Type = "none" }
+                            }
+                        },
                         Reporting = new ReportingSettings
                         {
                             Engine = "extent",
@@ -83,6 +90,124 @@ public sealed class ConfigurationAndResilienceTests
         Assert.Contains("AssertionMaxDisplayCharacters", exception.Message, StringComparison.Ordinal);
     }
 
+    [Fact(DisplayName = "Configuration rejects an unconfigured default auth profile")]
+    public void ConfigurationRejectsMissingDefaultAuthProfile()
+    {
+        var configuration = new AtfConfiguration
+        {
+            Modules = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["api"] = new AtfModuleSettings
+                {
+                    Config = new AtfModuleConfig
+                    {
+                        Api = new ApiSettings { BaseUrl = "https://example.test" },
+                        Reporting = new ReportingSettings { Engine = "extent" }
+                    }
+                }
+            }
+        };
+
+        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+
+        Assert.Contains("DefaultAuthProfile", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Configuration rejects local-path redaction without a replacement")]
+    public void ConfigurationRejectsInvalidLocalPathReplacement()
+    {
+        var configuration = ValidConfiguration(new ApiSettings
+        {
+            BaseUrl = "https://example.test",
+            Redaction = new Atf.Core.Configuration.Security.RedactionSettings
+            {
+                RedactLocalPaths = true,
+                LocalPathReplacement = " "
+            }
+        });
+
+        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+
+        Assert.Contains("LocalPathReplacement", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Configuration rejects retry budgets whose maximum is below the default")]
+    public void ConfigurationRejectsInvalidRetryIntervals()
+    {
+        var configuration = ValidConfiguration(new ApiSettings
+        {
+            BaseUrl = "https://example.test",
+            RateLimit = new RateLimitSettings { DefaultDelaySeconds = 5, MaxDelaySeconds = 2 }
+        });
+
+        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+
+        Assert.Contains("MaxDelaySeconds", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Theory(DisplayName = "Configuration rejects invalid report file contracts")]
+    [InlineData("artifacts/report.json", "valid")]
+    [InlineData("artifacts/report.html", "'bad")]
+    public void ConfigurationRejectsInvalidReportPathOrTimestamp(string reportPath, string timestamp)
+    {
+        var configuration = new AtfConfiguration
+        {
+            Modules = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["api"] = new AtfModuleSettings
+                {
+                    Config = new AtfModuleConfig
+                    {
+                        Api = new ApiSettings
+                        {
+                            BaseUrl = "https://example.test",
+                            AuthProfiles = new(StringComparer.OrdinalIgnoreCase)
+                            {
+                                ["default"] = new AuthProfileSettings { Type = "none" }
+                            }
+                        },
+                        Reporting = new ReportingSettings
+                        {
+                            Engine = "extent",
+                            ReportPath = reportPath,
+                            TimestampFormat = timestamp
+                        }
+                    }
+                }
+            }
+        };
+
+        Assert.Throws<InvalidOperationException>(configuration.Validate);
+    }
+
+    [Fact(DisplayName = "Configuration validates authentication-specific required properties")]
+    public void ConfigurationValidatesAuthProfileProperties()
+    {
+        var basic = ValidConfiguration(new ApiSettings
+        {
+            BaseUrl = "https://example.test",
+            AuthProfiles = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["default"] = new AuthProfileSettings { Type = "basic" }
+            }
+        });
+
+        var basicException = Assert.Throws<InvalidOperationException>(basic.Validate);
+        Assert.Contains("UsernameEnvironmentVariable", basicException.Message, StringComparison.Ordinal);
+
+        var apiKey = ValidConfiguration(new ApiSettings
+        {
+            BaseUrl = "https://example.test",
+            AuthProfiles = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["default"] = new AuthProfileSettings { Type = "apikey" }
+            }
+        });
+
+        var apiKeyException = Assert.Throws<InvalidOperationException>(apiKey.Validate);
+        Assert.Contains("HeaderName", apiKeyException.Message, StringComparison.Ordinal);
+    }
+
     [Fact(DisplayName = "Configuration loader applies ATF environment overrides")]
     public void ConfigurationLoaderAppliesEnvironmentOverride()
     {
@@ -96,7 +221,10 @@ public sealed class ConfigurationAndResilienceTests
               "Modules": {
                 "Api": {
                   "Config": {
-                    "Api": { "BaseUrl": "https://file.example.test" },
+                    "Api": {
+                      "BaseUrl": "https://file.example.test",
+                      "AuthProfiles": { "default": { "Type": "none" } }
+                    },
                     "Reporting": { "Engine": "extent" }
                   }
                 }
@@ -268,16 +396,24 @@ public sealed class ConfigurationAndResilienceTests
         Assert.Equal("<empty>", JsonFormatter.Pretty("  "));
     }
 
-    private static AtfConfiguration ValidConfiguration(ApiSettings api, string engine = "extent") => new()
+    private static AtfConfiguration ValidConfiguration(ApiSettings api, string engine = "extent")
     {
-        Modules = new(StringComparer.OrdinalIgnoreCase)
+        if (!api.AuthProfiles.ContainsKey(api.DefaultAuthProfile))
         {
-            ["api"] = new AtfModuleSettings
-            {
-                Config = new AtfModuleConfig { Api = api, Reporting = new ReportingSettings { Engine = engine } }
-            }
+            api.AuthProfiles[api.DefaultAuthProfile] = new AuthProfileSettings { Type = "none" };
         }
-    };
+
+        return new AtfConfiguration
+        {
+            Modules = new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["api"] = new AtfModuleSettings
+                {
+                    Config = new AtfModuleConfig { Api = api, Reporting = new ReportingSettings { Engine = engine } }
+                }
+            }
+        };
+    }
 
     private static ApiResponse Response(HttpStatusCode status, IReadOnlyDictionary<string, string>? headers = null) =>
         new(status, "{}", headers ?? new Dictionary<string, string>(), TimeSpan.Zero, "https://example.test");

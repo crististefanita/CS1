@@ -55,7 +55,7 @@ internal static class ValidationChecks
         table.Check(
             "Response body",
             $"contains {expected}",
-            table.Preview(response.Body),
+            response.Body,
             () => response.Body.Contains(expected, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -93,11 +93,11 @@ internal static class ValidationChecks
             var json = JToken.Parse(response.Body);
             var valid = json.IsValid(schema, out IList<string> messages);
             var actual = valid ? "schema matched" : string.Join(" | ", messages);
-            table.Add("JSON schema", schemaPath, table.Preview(actual), valid);
+            table.Add("JSON schema", schemaPath, actual, valid);
         }
         catch (Exception exception)
         {
-            table.AddFailure("JSON schema", schemaPath, table.Preview(response.Body), exception);
+            table.AddFailure("JSON schema", schemaPath, response.Body, exception);
         }
     }
 
@@ -114,11 +114,11 @@ internal static class ValidationChecks
             var root = JToken.Parse(response.Body);
             var token = root.SelectToken(path);
             var actual = token?.ToString() ?? "<missing>";
-            table.Add(name, expected, table.Preview(actual), predicate(token));
+            table.Add(name, expected, actual, predicate(token));
         }
         catch (Exception exception)
         {
-            table.AddFailure(name, expected, table.Preview(response.Body), exception);
+            table.AddFailure(name, expected, response.Body, exception);
         }
     }
 }

@@ -97,8 +97,8 @@ public sealed class ValidationComponentTests
         Assert.Contains("created", reporter.Tables[1].Single().Actual, StringComparison.Ordinal);
     }
 
-    [Fact(DisplayName = "Assertion actual values respect the reporter display limit")]
-    public void AssertionActualValuesRespectConfiguredDisplayLimit()
+    [Fact(DisplayName = "Assertion actual values remain complete before HTML rendering")]
+    public void AssertionActualValuesRemainCompleteBeforeHtmlRendering()
     {
         var reporter = new RecordingReporter { AssertionMaxDisplayCharacters = 32 };
         var body = "[{\"user_id\":8663020,\"title\":\"" + new string('x', 200) + "\"}]";
@@ -111,8 +111,8 @@ public sealed class ValidationComponentTests
             "different"));
 
         var actual = Assert.Single(reporter.Tables.Single()).Actual;
-        Assert.Equal(32, actual.Length);
-        Assert.EndsWith("…", actual, StringComparison.Ordinal);
+        Assert.Equal(256, actual.Length);
+        Assert.Contains(new string('x', 200), actual, StringComparison.Ordinal);
     }
 
     [Fact(DisplayName = "JSON path assertion fails with an explicit missing token")]
@@ -230,6 +230,7 @@ public sealed class ValidationComponentTests
         public List<string> Passes { get; } = [];
 
         public void StartStep(string title) { }
+        public void CompleteStep(AtfReportStatus status) { }
         public void Detail(string key, string value) { }
         public void Json(string label, string json) { }
         public void AssertionTable(IReadOnlyCollection<AtfAssertion> assertions) => Tables.Add(assertions);

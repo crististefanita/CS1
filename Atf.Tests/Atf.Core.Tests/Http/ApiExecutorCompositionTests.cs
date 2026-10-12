@@ -191,6 +191,7 @@ public sealed class ApiExecutorCompositionTests
                 throw new InvalidOperationException("report json failed");
             }
         }
+        public void CompleteStep(AtfReportStatus status) { }
         public void AssertionTable(IReadOnlyCollection<AtfAssertion> assertions) { }
         public void Info(string message) => Infos.Add(message);
         public void Pass(string message) { }

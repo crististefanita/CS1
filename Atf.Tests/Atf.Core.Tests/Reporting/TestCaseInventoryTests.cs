@@ -23,17 +23,17 @@ public sealed class TestCaseInventoryTests
     private sealed class SyntheticCases
     {
         [Fact]
-        public void Fact() { }
+        public static void FactCase() { }
 
         [Theory]
         [InlineData(1)]
         [InlineData(2)]
-        public void Theory(int value) { }
+        public static void TheoryCase(int value) { }
 
         [Theory]
-        public void TheoryWithoutInlineData() { }
+        public static void TheoryWithoutInlineDataCase() { }
 
-        public void Helper() { }
+        public static void HelperCase() { }
     }
 
     [AttributeUsage(AttributeTargets.Method)]

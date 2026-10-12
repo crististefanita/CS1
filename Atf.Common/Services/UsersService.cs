@@ -1,8 +1,8 @@
 using Atf.Core.Configuration;
 using Atf.Core.Http;
+using Atf.Common.Data;
 using Atf.Common.Models;
 using Atf.Common.Routing;
-using System.Net.Http.Json;
 using System.Text.Json;
 
 namespace Atf.Common.Services;
@@ -34,7 +34,7 @@ public sealed class UsersService(IApiExecutor executor, ApiRoutes routes)
         CancellationToken ct,
         params (string Token, object Value)[] values)
     {
-        var json = JsonSerializer.Serialize(body, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var json = JsonSerializer.Serialize(body, AtfJsonOptions.Web);
         return executor.ExecuteAsync(route.CreateRequest(authProfile, json, values: values), ct);
     }
 }

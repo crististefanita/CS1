@@ -56,5 +56,5 @@ public static class ContractValidators
     public static ResponseContract UserPostsBelongToUserContract(int userId) => new ResponseContract()
         .ExpectStatus(HttpStatusCode.OK)
         .ExpectContentType("application/json")
-        .ExpectEveryArrayItem("$", "user_id", userId.ToString());
+        .ExpectEveryArrayItem("$", "user_id", userId.ToString(System.Globalization.CultureInfo.InvariantCulture));
 }

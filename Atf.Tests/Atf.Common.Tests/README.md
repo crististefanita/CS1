@@ -35,8 +35,8 @@ flowchart LR
 - services preserve route metadata, auth profile and typed JSON payload;
 - `ApiModule` exposes steps while hiding executor wiring;
 - validators publish all rows and raise `ApiValidationException` only after evidence;
-- every validation opens and closes exactly one reporter step, including unexpected exceptions;
-- consecutive validations remain siblings instead of nesting under the previous validation;
+- every response contract opens and closes exactly one aggregate reporter step, including unexpected exceptions;
+- consecutive response contracts remain isolated under their own request and never combine rows;
 - assertion `ACTUAL` values use the reporter's configured maximum length, so the
   diagnostic table stays readable without changing assertion semantics;
 - malformed response shapes are contract failures;
@@ -61,14 +61,11 @@ Keep the test seam at `IApiExecutor`. Inspect the produced `ApiRequest` and `Api
 
 ```mermaid
 flowchart TD
-    Request[HTTP request step] --> CloseRequest[CompleteStep]
-    CloseRequest --> Status[Validate: status]
-    Status --> CloseStatus[CompleteStep]
-    CloseStatus --> Schema[Validate: schema]
-    Schema --> CloseSchema[CompleteStep]
-    Request --> Status[status row]
-    Request --> Json[JSON/schema rows]
-    Status -. sibling validation .- Json
+    Request[HTTP request step] --> Evidence[trace + response JSON]
+    Evidence --> Contract[one response contract]
+    Contract --> Table[one ValidationTable]
+    Table --> CloseContract[CompleteStep]
+    CloseContract --> Next[next request or phase closes request]
 ```
 
 The recording reporter asserts the lifecycle events, not an implementation detail:

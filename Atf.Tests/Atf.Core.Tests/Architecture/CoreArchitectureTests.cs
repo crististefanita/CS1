@@ -33,45 +33,6 @@ public sealed class CoreArchitectureTests
         Assert.DoesNotContain("AventStack", returnType.AssemblyQualifiedName ?? string.Empty, StringComparison.Ordinal);
     }
 
-    [Fact(DisplayName = "Report theme uses one central font family and central report colors")]
-    public void ReportThemeUsesCentralTypographyAndPalette()
-    {
-        var css = AtfReportTheme.BuildCss();
-
-        Assert.Contains($"--atf-font-sans: {AtfReportTypography.SansFontFamily};", css, StringComparison.Ordinal);
-        Assert.Contains($"--atf-font-code: {AtfReportTypography.CodeFontFamily};", css, StringComparison.Ordinal);
-        Assert.Contains($"--atf-font-base-size: {AtfReportTypography.BaseFontSize};", css, StringComparison.Ordinal);
-        Assert.Contains($"--atf-overview-font-size: {AtfReportTypography.OverviewFontSize};", css, StringComparison.Ordinal);
-        Assert.Contains($"--atf-json-font-size: {AtfReportTypography.JsonFontSize};", css, StringComparison.Ordinal);
-        Assert.Contains($"--atf-border: {AtfReportColors.Border};", css, StringComparison.Ordinal);
-        Assert.Contains($"--atf-reference-border: {AtfReportColors.ReferenceBorder};", css, StringComparison.Ordinal);
-        Assert.Contains($"--atf-text: {AtfReportColors.Text};", css, StringComparison.Ordinal);
-        Assert.DoesNotContain("font-family: Inter, ui-sans-serif", css, StringComparison.Ordinal);
-        Assert.DoesNotContain("font-family: 'Segoe UI', 'Inter', 'Helvetica Neue', Arial, sans-serif !important;", css, StringComparison.Ordinal);
-    }
-
-    [Fact(DisplayName = "Report theme keeps the reference overview layout and nested dark surface")]
-    public void ReportThemeKeepsReferenceOverviewLayout()
-    {
-        var css = AtfReportTheme.BuildCss();
-
-        Assert.Contains("grid-template-columns: repeat(4, minmax(0, 1fr))", css, StringComparison.Ordinal);
-        Assert.Contains("@media (max-width: 1100px)", css, StringComparison.Ordinal);
-        Assert.Contains(".atf-tag-card .card-header", css, StringComparison.Ordinal);
-        Assert.Contains("background: var(--atf-panel-2) !important", css, StringComparison.Ordinal);
-        Assert.Contains("background: rgba(255,255,255,.018) !important", css, StringComparison.Ordinal);
-        Assert.Contains(".dashboard-view .card > .card-body h3", css, StringComparison.Ordinal);
-        Assert.Contains(".dashboard-view .card > .card-header p", css, StringComparison.Ordinal);
-        Assert.Contains(".dashboard-view .row > .col-md-3 > .card", css, StringComparison.Ordinal);
-        Assert.Contains("border-color: var(--atf-reference-border) !important", css, StringComparison.Ordinal);
-        Assert.Contains("background: var(--atf-panel) !important", css, StringComparison.Ordinal);
-        Assert.Contains("border-color: var(--atf-border) !important", css, StringComparison.Ordinal);
-        Assert.DoesNotContain(".test-view .test-content-detail .card[data-atf-phase] .accordion .node", css, StringComparison.Ordinal);
-        Assert.Contains(".test-view .test-content-detail .card > .card-header .card-title .node", css, StringComparison.Ordinal);
-        Assert.Contains("color: var(--atf-text) !important", css, StringComparison.Ordinal);
-        Assert.DoesNotContain("Extent's native nested API cards", css, StringComparison.Ordinal);
-    }
-
     [Fact(DisplayName = "Configuration loader binds module-owned settings and validates the contract")]
     public void ConfigurationLoaderBindsModuleSettings()
     {
@@ -83,7 +44,16 @@ public sealed class CoreArchitectureTests
               "Modules": {
                 "Api": {
                   "Config": {
-                    "Api": { "BaseUrl": "https://example.test" },
+                    "Api": {
+                      "BaseUrl": "https://example.test",
+                      "Redaction": {
+                        "RedactLocalPaths": false,
+                        "LocalPathReplacement": "[PATH]"
+                      },
+                      "AuthProfiles": {
+                        "default": { "Type": "none" }
+                      }
+                    },
                     "Reporting": { "Engine": "extent" }
                   }
                 }
@@ -97,6 +67,8 @@ public sealed class CoreArchitectureTests
 
             Assert.Equal("https://example.test", configuration.Api.BaseUrl);
             Assert.Equal("extent", configuration.Reporting.Engine);
+            Assert.False(configuration.Api.Redaction.RedactLocalPaths);
+            Assert.Equal("[PATH]", configuration.Api.Redaction.LocalPathReplacement);
         }
         finally
         {
@@ -276,7 +248,7 @@ public sealed class CoreArchitectureTests
             File.WriteAllText(report, "<html></html>");
             File.WriteAllText(Path.Combine(assets.FullName, "spark.css"), "body{}");
 
-            new ReportAssetCleaner().Clean(report);
+            ReportAssetCleaner.Clean(report);
 
             Assert.False(Directory.Exists(assets.FullName));
             Assert.True(File.Exists(report));

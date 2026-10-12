@@ -2,6 +2,7 @@ using Atf.Core.Configuration;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
+using Atf.Core.Http.Transport.Authentication;
 
 namespace Atf.Core.Http.Transport;
 
@@ -42,101 +43,16 @@ public sealed class ConfiguredApiAuthenticator : IApiAuthenticator
     public void Apply(HttpRequestMessage message, string profileName)
     {
         var profile = GetProfile(profileName);
-        if (string.Equals(profile.Type, "none", StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        if (string.Equals(profile.Type, "bearer", StringComparison.OrdinalIgnoreCase))
-        {
-            var token = _tokenReader(TokenVariable(profile));
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-            }
-
-            return;
-        }
-
-        if (string.Equals(profile.Type, "apiKey", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(profile.Type, "apikey", StringComparison.OrdinalIgnoreCase))
-        {
-            var key = _tokenReader(TokenVariable(profile));
-            if (!string.IsNullOrWhiteSpace(key))
-            {
-                var header = string.IsNullOrWhiteSpace(profile.HeaderName) ? "X-API-Key" : profile.HeaderName;
-                message.Headers.TryAddWithoutValidation(header, key);
-            }
-
-            return;
-        }
-
-        if (string.Equals(profile.Type, "basic", StringComparison.OrdinalIgnoreCase))
-        {
-            var username = _tokenReader(profile.UsernameEnvironmentVariable ?? "ATF_API_USERNAME");
-            var password = _tokenReader(profile.PasswordEnvironmentVariable ?? "ATF_API_PASSWORD");
-            if (!string.IsNullOrWhiteSpace(username) || !string.IsNullOrWhiteSpace(password))
-            {
-                var encoded = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}"));
-                message.Headers.Authorization = new AuthenticationHeaderValue("Basic", encoded);
-            }
-
-            return;
-        }
-
-        if (string.Equals(profile.Type, "custom", StringComparison.OrdinalIgnoreCase))
-        {
-            foreach (var header in profile.Headers)
-            {
-                if (!string.IsNullOrWhiteSpace(header.Key) && header.Value is not null)
-                {
-                    message.Headers.TryAddWithoutValidation(header.Key, ResolveConfiguredValue(header.Value));
-                }
-            }
-
-            return;
-        }
-
-        throw new InvalidOperationException($"Unsupported auth profile type '{profile.Type}'.");
+        ApiAuthenticationStrategyCatalog.Resolve(profile).Apply(message, profile, _settings, _tokenReader);
     }
 
-    public string DescribeMode(string profileName) => GetProfile(profileName).Type;
+    public string DescribeMode(string profileName) => ApiAuthenticationStrategyCatalog.Resolve(GetProfile(profileName)).Name;
 
     public string DescribeTokenState(string profileName)
     {
         var profile = GetProfile(profileName);
-        if (string.Equals(profile.Type, "none", StringComparison.OrdinalIgnoreCase))
-        {
-            return "not applicable";
-        }
-
-        if (string.Equals(profile.Type, "bearer", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(profile.Type, "apiKey", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(profile.Type, "apikey", StringComparison.OrdinalIgnoreCase))
-        {
-            var variable = TokenVariable(profile);
-            return string.IsNullOrWhiteSpace(_tokenReader(variable))
-                ? $"missing ({variable})"
-                : string.Equals(profile.Type, "bearer", StringComparison.OrdinalIgnoreCase)
-                    ? "bearer token available"
-                    : "api key available";
-        }
-
-        if (string.Equals(profile.Type, "basic", StringComparison.OrdinalIgnoreCase))
-        {
-            var username = profile.UsernameEnvironmentVariable ?? "ATF_API_USERNAME";
-            var password = profile.PasswordEnvironmentVariable ?? "ATF_API_PASSWORD";
-            return string.IsNullOrWhiteSpace(_tokenReader(username)) || string.IsNullOrWhiteSpace(_tokenReader(password))
-                ? $"missing ({username}/{password})"
-                : "basic credentials available";
-        }
-
-        if (string.Equals(profile.Type, "custom", StringComparison.OrdinalIgnoreCase))
-        {
-            return profile.Headers.Count == 0 ? "custom headers not configured" : "custom headers configured";
-        }
-
-        return "unsupported profile type";
+        return ApiAuthenticationStrategyCatalog.Resolve(profile)
+            .DescribeTokenState(profile, _settings, _tokenReader);
     }
 
     private AuthProfileSettings GetProfile(string profileName) =>
@@ -144,20 +60,6 @@ public sealed class ConfiguredApiAuthenticator : IApiAuthenticator
             ? profile
             : throw new InvalidOperationException($"Auth profile '{profileName}' is not configured.");
 
-    private string TokenVariable(AuthProfileSettings profile) =>
-        string.IsNullOrWhiteSpace(profile.TokenEnvironmentVariable)
-            ? _settings.TokenEnvironmentVariable
-            : profile.TokenEnvironmentVariable;
-
-    private string ResolveConfiguredValue(string value)
-    {
-        if (value.StartsWith("${", StringComparison.Ordinal) && value.EndsWith('}'))
-        {
-            return _tokenReader(value[2..^1]) ?? string.Empty;
-        }
-
-        return value;
-    }
 }
 
 public interface IApiUrlBuilder

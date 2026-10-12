@@ -29,11 +29,11 @@ UsersApiTests
     SETUP
       API request
         technical trace + JSON evidence
-        contract validation
+        Validate: contract
     TEST BODY
       API request
         technical trace + JSON evidence
-        contract validation
+        Validate: contract
     TEARDOWN
       cleanup / verification
 ```
@@ -43,10 +43,10 @@ The scenario verdict is visible in the scenario header. For composite lifecycle
 scenarios the generic parent `Scenario passed` event table is removed because it
 duplicates that verdict. Opening a scenario exposes compact phase shells; each
 phase and its child steps remain collapsed until opened. The executor keeps the
-HTTP node open after response evidence is published; the aggregate validator is
-then opened as a child of that request. Multiple assertions therefore remain rows
-inside one table, while a later HTTP response receives its own request-owned
-validation node.
+HTTP node open while response evidence is published; the aggregate validator is
+then rendered as the next direct sibling of that request under the same phase.
+Multiple assertions therefore remain rows inside one table, while a later HTTP
+response receives its own request/validation sibling pair.
 
 ## Scenario rules
 
@@ -59,8 +59,10 @@ await RunScenarioAsync(
     async context =>
     {
         var response = await context.Users.ListAsync();
-        ApiAssertions.Status(context.Reporter, response, HttpStatusCode.OK);
-        JsonSchemaAssertions.Matches(context.Reporter, response, schemaPath);
+        ApiAssertions.Contract(context.Reporter, response, "Validate: user collection contract", contract => contract
+            .Status(HttpStatusCode.OK)
+            .ContentTypeContains("application/json")
+            .JsonSchema(schemaPath));
     });
 ```
 
@@ -115,7 +117,7 @@ contract test concern, not a reporting convenience.
 - `ApiLifecycleAndCombinationsTests`: setup/body/teardown composition, cleanup ownership and phase combinations.
 - `ApiExecutorReportingTests`: request-step completion and diagnostic contract.
 - `ApiRoutesTests`: route catalog contract.
-- `ApiScenarioPhaseLayoutTests`: Extent hierarchy plus request-owned aggregate validation contract.
+- `ApiScenarioPhaseLayoutTests`: phase hierarchy plus request/validation sibling order and aggregate-table contract.
 - `AssertionEvidenceFormatterTests`: assertion/evidence HTML contract.
 
 The reusable validator-step lifecycle is tested in
@@ -132,6 +134,10 @@ dotnet test .\Atf.Api\Atf.Api.csproj --filter "Category=combination"
 ```
 
 Every new live scenario should have a stable semantic name, focused categories, a read-only path where possible, explicit cleanup ownership and at least one deterministic component test.
+
+Do not add a generic `framework` tag or annotation. The project and namespace
+already identify these as ATF scenarios; a tag is allowed only when it changes
+filtering, execution policy or report navigation and has an observable test.
 
 ## Failure rendering fixture
 
@@ -156,7 +162,7 @@ Remove-Item Env:ATF_ENABLE_FAILURE_DEMOS
 The expected report contains four failed scenarios, a failed Overview status,
 red failure badges, and a `❌` result in the assertion table. The four cases
 also prove that SETUP, TEST BODY, and TEARDOWN remain individually visible and
-collapsed by default. Never enable this fixture in a regular CI quality gate.
+collapsed by default. Keep this fixture out of the regular local quality gate.
 
 ## Reporting acceptance
 
@@ -169,7 +175,7 @@ Before accepting a reporting change:
 
 The report must show the xUnit class in the left navigation, the scenario below it,
 the scenario verdict in the header, lifecycle phases as siblings, compact collapsed
-phase shells, request-owned validation, no generic
+phase shells, phase-sibling validation, no generic
 `Execution summary` rows on lifecycle containers or on the last request, one technical trace per exchange, dark wrapped
 scrollable JSON, one assertion table, no external Extent folder and no token value.
 
@@ -181,8 +187,8 @@ flowchart TD
     Test --> Phase[SETUP / TEST BODY / TEARDOWN]
     Phase --> Exchange[HTTP step\nmethod + path + auth + duration]
     Exchange --> Details[collapsed request/response details]
-    Exchange --> Validation[validation step]
-    Validation --> Table[ASSERTION | EXPECTED | ACTUAL | ✅/❌]
+    Exchange --> Validation[phase-sibling validation]
+    Validation --> Table["ASSERTION / EXPECTED / ACTUAL / RESULT"]
 ```
 
 Interpretarea trebuie făcută în această ordine: întâi verdictul testului, apoi
@@ -200,12 +206,12 @@ funcțional. Nodurile sunt collapsed by default pentru ca raportul să rămână
 | resilience | offline retry policy tests | live-safe 429 simulation through a fake transport profile |
 | report | real Extent HTML generated after live run | automated DOM-level overview/overflow assertions |
 
-The current Extent baseline should therefore be read from the direct scenario
-cards in the report: `13 API scenarios`, with `12 passed + 1 skipped` in the
-latest run. The xUnit assembly also contains offline API contract tests, so its
-runner total is larger; those unit cases are not additional API scenarios in the
-Extent navigation tree. The native overview is reconciled from these same direct
-scenario cards instead of counting the three class-root containers.
+The current Extent baseline must be read from the direct scenario cards in the
+generated report, not copied into this README. The xUnit assembly also contains
+offline API contract tests, so its runner total is intentionally larger; those
+unit cases are not additional API scenarios in the Extent navigation tree. The
+native overview is reconciled from the same direct scenario cards instead of
+counting class-root containers.
 
 ## Teste live care lipsesc
 
@@ -244,4 +250,5 @@ sequenceDiagram
 ```
 
 The original scenario/contract failure remains authoritative. A cleanup warning must be visible in Extent but must not erase the root cause.
+
 

@@ -1,6 +1,7 @@
 using Atf.Api.Infrastructure;
 using Atf.Common.Validation;
 using System.Net;
+using System.Globalization;
 using Xunit;
 
 namespace Atf.Api;
@@ -8,7 +9,7 @@ namespace Atf.Api;
 [Collection("API ATF")]
 public sealed class ApiLifecycleAndCombinationsTests(
     ITestOutputHelper output,
-    Atf.Core.Reporting.ExtentCollectionFixture fixture)
+    Atf.Reporting.Extent.ExtentCollectionFixture fixture)
     : ApiTestBase(output, fixture)
 {
     [Fact(DisplayName = "API lifecycle: setup, body and teardown are grouped")]
@@ -19,13 +20,13 @@ public sealed class ApiLifecycleAndCombinationsTests(
 
         return RunScenarioAsync(
             "Users API — setup → body → teardown",
-            ["api", "users", "lifecycle", "framework"],
+            ["api", "users", "lifecycle"],
             setup: async context =>
             {
                 var list = await context.Users.ListAsync(authProfile: "anonymous");
                 ContractValidators.UserCollection(context.Reporter, list.Response);
                 state.UserId = JsonResponseData.FirstArrayItemInt(list.Response, "id");
-                context.Reporter.Detail("fixture.userId", state.UserId.ToString());
+                context.Reporter.Detail("fixture.userId", state.UserId.ToString(CultureInfo.InvariantCulture));
                 context.Reporter.Detail("fixture.source", "GET /public/v2/users");
             },
             body: async context =>
@@ -95,7 +96,7 @@ public sealed class ApiLifecycleAndCombinationsTests(
 
         return RunScenarioAsync(
             $"{resource.ToUpperInvariant()} API — {PhaseShape(includeSetup, includeTeardown)}",
-            ["api", resource, "lifecycle", "combination", "framework"],
+            ["api", resource, "lifecycle", "combination"],
             setup,
             async context =>
             {
@@ -104,6 +105,14 @@ public sealed class ApiLifecycleAndCombinationsTests(
                     var seed = resource.Equals("users", StringComparison.OrdinalIgnoreCase)
                         ? await context.Users.ListAsync(authProfile: "anonymous")
                         : await context.Posts.ListAsync(authProfile: "anonymous");
+                    if (resource.Equals("users", StringComparison.OrdinalIgnoreCase))
+                    {
+                        ContractValidators.UserCollection(context.Reporter, seed.Response);
+                    }
+                    else
+                    {
+                        ContractValidators.PostCollection(context.Reporter, seed.Response);
+                    }
                     state.Id = JsonResponseData.FirstArrayItemInt(seed.Response, "id");
                 }
 
@@ -144,7 +153,7 @@ public sealed class ApiLifecycleAndCombinationsTests(
 
         return RunScenarioAsync(
             "Users lifecycle — setup → test → cleanup teardown",
-            ["api", "users", "lifecycle", "write", "framework"],
+            ["api", "users", "lifecycle", "write"],
             setup: async context =>
             {
                 RequireWriteToken(context);
@@ -162,7 +171,7 @@ public sealed class ApiLifecycleAndCombinationsTests(
                     .RootElement.GetProperty("id")
                     .GetInt32();
 
-                context.Cleanup.Own("users", state.UserId.ToString(), async () =>
+                context.Cleanup.Own("users", state.UserId.ToString(CultureInfo.InvariantCulture), async () =>
                 {
                     var cleanup = await context.Users.DeleteAsync(state.UserId);
                     if (cleanup.Response.Status is not ((int)HttpStatusCode.NoContent) and not ((int)HttpStatusCode.NotFound))
@@ -171,7 +180,7 @@ public sealed class ApiLifecycleAndCombinationsTests(
                     }
                 });
 
-                context.Reporter.Detail("fixture.userId", state.UserId.ToString());
+                context.Reporter.Detail("fixture.userId", state.UserId.ToString(CultureInfo.InvariantCulture));
                 context.Reporter.Detail("fixture.cleanup", "registered");
             },
             body: async context =>

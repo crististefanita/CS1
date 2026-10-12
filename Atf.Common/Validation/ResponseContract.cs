@@ -13,6 +13,7 @@ namespace Atf.Common.Validation;
 public sealed class ResponseContract
 {
     private readonly List<IResponseValidationRule> _rules = [];
+    private readonly HashSet<string> _ruleKeys = new(StringComparer.Ordinal);
     private bool _evaluated;
 
     public IReadOnlyList<IResponseValidationRule> Rules => _rules;
@@ -20,7 +21,7 @@ public sealed class ResponseContract
     public ResponseContract ExpectStatus(HttpStatusCode expected)
     {
         EnsureBuildable();
-        _rules.Add(new DelegateRule("HTTP status", (response, table) => ValidationChecks.Status(table, response, expected)));
+        AddRule($"status:{expected}", new DelegateRule("HTTP status", (response, table) => ValidationChecks.Status(table, response, expected)));
         return this;
     }
 
@@ -29,7 +30,7 @@ public sealed class ResponseContract
         ArgumentNullException.ThrowIfNull(expected);
         EnsureBuildable();
         var allowed = expected.ToArray();
-        _rules.Add(new DelegateRule("HTTP status", (response, table) => ValidationChecks.StatusOneOf(table, response, allowed)));
+        AddRule($"status-one-of:{string.Join(',', allowed)}", new DelegateRule("HTTP status", (response, table) => ValidationChecks.StatusOneOf(table, response, allowed)));
         return this;
     }
 
@@ -37,7 +38,7 @@ public sealed class ResponseContract
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(expected);
         EnsureBuildable();
-        _rules.Add(new DelegateRule("Content-Type", (response, table) => ValidationChecks.ContentTypeContains(table, response, expected)));
+        AddRule($"content-type:{expected.Trim()}", new DelegateRule("Content-Type", (response, table) => ValidationChecks.ContentTypeContains(table, response, expected)));
         return this;
     }
 
@@ -45,7 +46,7 @@ public sealed class ResponseContract
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         EnsureBuildable();
-        _rules.Add(new DelegateRule($"Header {name}", (response, table) => ValidationChecks.HeaderPresent(table, response, name)));
+        AddRule($"header:{name.Trim().ToUpperInvariant()}", new DelegateRule($"Header {name}", (response, table) => ValidationChecks.HeaderPresent(table, response, name)));
         return this;
     }
 
@@ -53,7 +54,7 @@ public sealed class ResponseContract
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(expected);
         EnsureBuildable();
-        _rules.Add(new DelegateRule("Response body", (response, table) => ValidationChecks.BodyContains(table, response, expected)));
+        AddRule($"body-contains:{expected}", new DelegateRule("Response body", (response, table) => ValidationChecks.BodyContains(table, response, expected)));
         return this;
     }
 
@@ -61,7 +62,7 @@ public sealed class ResponseContract
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         EnsureBuildable();
-        _rules.Add(new DelegateRule($"JSONPath exists: {path}", (response, table) => ValidationChecks.JsonPathExists(table, response, path)));
+        AddRule($"json-path-exists:{path.Trim()}", new DelegateRule($"JSONPath exists: {path}", (response, table) => ValidationChecks.JsonPathExists(table, response, path)));
         return this;
     }
 
@@ -70,7 +71,7 @@ public sealed class ResponseContract
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         ArgumentNullException.ThrowIfNull(expected);
         EnsureBuildable();
-        _rules.Add(new DelegateRule($"JSONPath equals: {path}", (response, table) => ValidationChecks.JsonPathEquals(table, response, path, expected)));
+        AddRule($"json-path-equals:{path.Trim()}:{expected}", new DelegateRule($"JSONPath equals: {path}", (response, table) => ValidationChecks.JsonPathEquals(table, response, path, expected)));
         return this;
     }
 
@@ -80,7 +81,7 @@ public sealed class ResponseContract
         ArgumentException.ThrowIfNullOrWhiteSpace(property);
         ArgumentNullException.ThrowIfNull(expected);
         EnsureBuildable();
-        _rules.Add(new DelegateRule($"Every {path} item {property}", (response, table) => ValidationChecks.EveryArrayItemEquals(table, response, path, property, expected)));
+        AddRule($"every-array:{path.Trim()}:{property.Trim()}:{expected}", new DelegateRule($"Every {path} item {property}", (response, table) => ValidationChecks.EveryArrayItemEquals(table, response, path, property, expected)));
         return this;
     }
 
@@ -88,7 +89,7 @@ public sealed class ResponseContract
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(schemaPath);
         EnsureBuildable();
-        _rules.Add(new DelegateRule("JSON schema", (response, table) => ValidationChecks.JsonSchema(table, response, schemaPath)));
+        AddRule($"schema:{schemaPath.Trim()}", new DelegateRule("JSON schema", (response, table) => ValidationChecks.JsonSchema(table, response, schemaPath)));
         return this;
     }
 
@@ -99,6 +100,11 @@ public sealed class ResponseContract
         if (_evaluated)
         {
             throw new InvalidOperationException("A response contract can be evaluated only once.");
+        }
+
+        if (_rules.Count == 0)
+        {
+            throw new InvalidOperationException("A response contract must contain at least one validation rule.");
         }
 
         _evaluated = true;
@@ -114,6 +120,16 @@ public sealed class ResponseContract
         {
             throw new InvalidOperationException("A response contract cannot be changed after evaluation.");
         }
+    }
+
+    private void AddRule(string key, IResponseValidationRule rule)
+    {
+        if (!_ruleKeys.Add(key))
+        {
+            throw new InvalidOperationException($"Duplicate response validation rule '{rule.Name}' is not allowed in one contract.");
+        }
+
+        _rules.Add(rule);
     }
 
     private sealed class DelegateRule(string name, Action<ApiResponse, ValidationTable> evaluator) : IResponseValidationRule

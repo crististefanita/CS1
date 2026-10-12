@@ -34,12 +34,7 @@ Core does not know product route names, domain models, business schemas or scena
 | `RateLimitRetryPolicy` | strategy | Decides bounded retry behavior for configured statuses |
 | `Polling` | deadline policy | Polls until satisfied or until the deadline |
 | `IAtfReporter` | reporting port | Receives evidence without exposing Extent to domain code |
-| `ExtentReportLifecycle` | adapter | Maps the lifecycle port to Extent |
-| `ExtentTestScope` | scoped adapter | Maps steps, JSON, tables and status to one scenario node |
-| `ExtentEvidenceRenderer` | presentation component | Owns the safe, collapsed HTML envelope for evidence |
-| `AtfReportColors` | palette constants | Single source of truth for report colors and alpha surfaces |
-| `AtfReportTheme` | theme provider | Expands the palette into the stylesheet |
-| `ExtentAssetInliner` | artifact adapter | Embeds Extent CSS, JavaScript, fonts and logo |
+| `SensitiveDataRedactor` | boundary policy | Sanitizes structured and free-form evidence before it reaches a reporter |
 | `ReportArtifactInspector` | executable specification | Verifies the HTML users actually open |
 
 ## Exchange sequence
@@ -69,12 +64,11 @@ sequenceDiagram
 ```
 
 `HTTP exchange completed` does not imply `functional contract passed`. The executor
-publishes transport evidence and keeps the HTTP node open with an informational
-status; `Atf.Common` then opens one or more validation steps beneath that request
-and decides whether the response satisfies the requested contract. Each validation
-step closes immediately after its aggregated assertion table is published. The
-rendered hierarchy is therefore `phase → request → validation, validation`, with
-the request owning the complete exchange and each validation owning its own table.
+publishes transport evidence with an informational status; `Atf.Common` then opens
+exactly one aggregate contract validation as the next sibling of that request under the same
+phase and decides whether that response satisfies the requested contract.
+The validation closes immediately after its table is published. The rendered
+hierarchy is `phase → request + contract validation sibling → one table`.
 
 `ApiExecutionReporter` is the execution-side adapter. It maps request/response
 facts to stable report properties, request JSON, response JSON and retry
@@ -107,12 +101,24 @@ Modules:Api:Config:Reporting
   Engine = extent, ReportPath, TimestampEnabled
   TimestampFormat, DocumentTitle, ReportName
   AssertionMaxDisplayCharacters
+
+Modules:Api:Config:Api:Redaction
+  Enabled, Replacement
+  RedactLocalPaths, LocalPathReplacement
+  SensitiveKeys, PiiEnabled, PiiKeys
 ```
 
 The loader validates the absolute base URL, positive timeout/polling/rate-limit values,
 the positive assertion display limit and the Extent-only reporting policy before the
 fixture can start. `AssertionMaxDisplayCharacters` changes only the rendered `ACTUAL`
 preview; it never changes the response used by a validator.
+
+Redaction is applied only to the copy sent to reporting. Secret keys and transport
+credentials are masked by default; PII masking is explicit through `PiiEnabled` so
+teams can choose whether business identifiers remain available for diagnostics.
+Local Windows paths in exception evidence are masked by default as
+`[LOCAL_PATH]` while preserving the source line suffix. Set
+`RedactLocalPaths=false` only for a deliberately local diagnostic run.
 
 Configuration contract:
 
@@ -135,33 +141,36 @@ flowchart LR
 
 ```text
 IAtfReporter                 framework-neutral evidence API
+IAtfScenarioScope            scenario lifecycle port
        |
-ExtentTestScope              scenario-scoped adapter
+Atf.Reporting.Extent         concrete Extent adapter assembly
        |
-IAtfReportSession            isolated report session contract
-ExtentReportLifecycle        Extent-backed session adapter
-AtfReportTheme               centralized palette + CSS provider
-ExtentEvidenceRenderer       evidence HTML presentation component
-ExtentAssetInliner           offline asset embedding component
-       |
-ExtentSparkReporter         HTML generation
+ExtentSparkReporter          HTML generation
        |
 ApplyCustomTheme + inline    final HTML normalization
        |
-ReportAssetCleaner           remove sibling extent asset folder
+ReportAssetCleaner            remove sibling extent asset folder
        |
-ReportArtifactInspector      verify consumer-facing contract
+ReportArtifactInspector       verify consumer-facing contract
 ```
 
 The final report must be one timestamped, self-contained HTML file; Extent assets are embedded; no `extent` folder is delivered; all surfaces share `--atf-dark`; class → scenario → phase → API step is preserved; request/response/JSON/assertion evidence is collapsed by default; JSON is wrapped and vertically scrollable; technical trace and assertions are compact tables.
 
-The reporter renders evidence. It must not decide business validity. Validators own the assertion result. Lifecycle phases are structural containers: they do not render a generic `Execution summary · N fields` row. Context-only fields (fixture ids, combination shape and similar runner metadata) are suppressed even when they arrive while the last HTTP node is still active; technical evidence belongs to the HTTP or validation child that produced it.
+The reporter renders evidence. It must not decide business validity. Validators own the assertion result. Lifecycle phases are structural containers: they do not render a generic `Execution summary · N fields` row. Context-only fields (fixture ids, combination shape and similar runner metadata) are suppressed even when they arrive while the last HTTP node is still active; technical evidence belongs to the HTTP request, while its contract validation is the next phase sibling that owns the aggregate assertion table.
 
 The embedded client script also has one canonical `directScenarioCards(item)` selector. Overview totals and the secondary tag audit must count the same direct scenario nodes; they must never infer totals from class containers or accidentally call an undefined selector.
 
 Evidence ownership is also a security boundary: the current implementation reports
-token availability rather than token content. The next hardening step is one redaction
-pipeline applied before `Detail`, `Json`, exception text and configuration snapshots.
+token availability rather than token content and applies one redaction pipeline before
+`Detail`, `Json`, assertion values, retry diagnostics and exception text. Structured
+JSON is traversed recursively; free-form text also masks authorization headers, API
+keys, cookies, query-string secrets and email addresses. The original request and
+exception remain untouched for execution semantics, while only the reporter copy is
+sanitized.
+
+Retry history is emitted as explicit informational evidence (`Attempt N → HTTP status
+→ retry in delay`) so the final response and the path taken to reach it are both
+visible without turning transport diagnostics into a functional pass.
 
 ## Test map
 
@@ -171,7 +180,7 @@ CoreArchitectureTests          URL/auth/transport/path/asset policies
 HttpExecutorComponentTests     retry result, route metadata and evidence
 ApiExecutorCompositionTests    injected ports and exception preservation
 ReportingComponentTests         status aggregation and evidence classification
-ReportingStructureTests         phase siblings and active-step evidence
+ReportingStructureTests         phase/request + validation ownership and active-step evidence
 ReportArtifactInspectorTests    final HTML contract
 ReportingLifecycleComponentTests fixture composition and finalization
 ```
@@ -192,7 +201,7 @@ A new Core policy is acceptable only when it is product-neutral, exposed through
 | URL/auth | path and query are encoded; secrets are described only by state | `CoreArchitectureTests`, `HttpExecutorComponentTests` |
 | execution | transport is replaceable; retry result is explicit; reporter cannot replace the original exception | `ApiExecutorCompositionTests`, `HttpExecutorComponentTests` |
 | resilience | retry status, delay source, cap and budget are deterministic | `ConfigurationAndResilienceTests`, `CoreArchitectureTests` |
-| reporting | status aggregation is failure-first; request and validation are phase siblings | `ReportingComponentTests`, `ReportingStructureTests`, `ApiExecutorReportingTests` |
+| reporting | status aggregation is failure-first; one response produces one aggregate validation table on the next sibling under the same phase | `ReportingComponentTests`, `ReportingStructureTests`, `ApiExecutorReportingTests` |
 | artifact | final HTML is self-contained and follows the visual/report contract | `ReportArtifactInspectorTests` |
 
 ## Test additions recommended for Core
@@ -218,5 +227,10 @@ The highest-value additions are deterministic and do not require a live endpoint
 
 ### Remaining safe increments
 
-The current kernel intentionally supports `none` and `bearer` authentication, JSON configuration and an Extent-backed lifecycle adapter. Reporting presentation is split into `AtfReportTheme`, `ExtentEvidenceRenderer` and `ExtentAssetInliner`; `IAtfReportSession` is the isolated run-scoped boundary and no static Extent manager owns test state. Future increments should add a central secret redactor, explicit transport correlation state, a schema-backed configuration provider and a dedicated Extent adapter assembly behind contracts and deterministic tests.
+The current kernel intentionally supports `none` and `bearer` authentication,
+JSON configuration and renderer-neutral reporting ports. The Extent lifecycle,
+presentation and asset inlining are implemented by `Atf.Reporting.Extent`; no
+static Extent manager owns test state. Future renderers must depend on the same
+Core contracts and deterministic artifact tests.
+
 

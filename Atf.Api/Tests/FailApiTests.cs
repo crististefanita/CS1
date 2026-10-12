@@ -11,7 +11,7 @@ namespace Atf.Api;
 /// They are skipped by default so a normal API run remains a trustworthy signal.
 /// </summary>
 [Collection("API ATF")]
-public sealed class FailApiTests(ITestOutputHelper output, Atf.Core.Reporting.ExtentCollectionFixture fixture)
+public sealed class FailApiTests(ITestOutputHelper output, Atf.Reporting.Extent.ExtentCollectionFixture fixture)
     : ApiTestBase(output, fixture)
 {
     [Fact(DisplayName = "Failure demo: setup exception")]
