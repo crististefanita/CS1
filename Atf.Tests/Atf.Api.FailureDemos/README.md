@@ -1,15 +1,15 @@
 # Atf.Api.FailureDemos
 
-This is the deliberate red-team suite for the reporting contract. It is isolated
-from `Atf.Api` so a normal API run cannot become red because of an intentional
-failure demonstration.
+Aceasta este suita red-team deliberată pentru contractul de raportare. Este
+izolată de `Atf.Api`, astfel încât o rulare API normală să nu devină roșie din
+cauza unei demonstrații intenționat eșuate.
 
-It is a test/support project, not a runtime framework module. It is already
-grouped under `Atf.Tests/Atf.Api.FailureDemos`; the opt-in switch and
-the red-team intent must remain unchanged. These demos must never be used as
-evidence that the normal acceptance suite is healthy.
+Este un proiect de test/suport, nu un modul de runtime. Este deja grupat sub
+`Atf.Tests/Atf.Api.FailureDemos`; comutatorul opt-in și intenția red-team trebuie
+păstrate neschimbate. Aceste demonstrații nu trebuie folosite niciodată ca
+dovadă că suita normală de acceptanță este sănătoasă.
 
-## Audit contract
+## Contract de audit
 
 Failure demos verify observability, not business correctness. Fiecare demo trebuie
 să păstreze schematic în raport:
@@ -33,10 +33,10 @@ unei rulări normale.
 - reporter failure care nu maschează excepția demonstrată;
 - cleanup care rulează indiferent de failure-ul de reporting.
 
-It is intentionally not a sixth root module in the target tree. Failure demos
-are test data/scenarios with a special execution policy, not a runtime boundary;
-their separate root project is retained only until the `Atf.Tests` consolidation
-is performed.
+În mod intenționat, nu este al șaselea modul-rădăcină din arborele țintă.
+Demonstrațiile de failure sunt date/scenarii de test cu o politică specială de
+execuție, nu un boundary de runtime; proiectul separat este păstrat doar până la
+consolidarea în `Atf.Tests`.
 
 ```mermaid
 flowchart LR
@@ -51,9 +51,9 @@ flowchart LR
     Teardown --> Report
 ```
 
-The project is expected to finish with four failed tests. That non-zero exit code
-is intentional and proves that setup, contract, body and teardown failures remain
-visible in both xUnit and Extent.
+Proiectul trebuie să se încheie cu patru teste eșuate. Codul de ieșire nenul este
+intenționat și dovedește că failure-urile din setup, contract, body și teardown
+rămân vizibile atât în xUnit, cât și în Extent.
 
 ```powershell
 $env:ATF_ENABLE_FAILURE_DEMOS = "true"
@@ -61,5 +61,5 @@ dotnet test .\Atf.Tests\Atf.Api.FailureDemos\Atf.Api.FailureDemos.csproj --no-re
 $env:ATF_ENABLE_FAILURE_DEMOS = $null
 ```
 
-The normal quality gate is `Atf.Api`; it does not reference this project as a test
-fixture and therefore remains green when the diagnostic suite is not requested.
+Quality gate-ul normal este `Atf.Api`; nu referă acest proiect ca fixture de test
+și, prin urmare, rămâne verde când suita de diagnostic nu este solicitată.

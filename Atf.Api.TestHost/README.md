@@ -1,19 +1,19 @@
 # Atf.Api.TestHost
 
-`Atf.Api.TestHost` is the live acceptance composition adapter. It owns the
-xUnit fixture boundary and the current Extent implementation, while
-`Atf.Api` consumes only `IAtfApiReportSession` and `IAtfScenarioScope`.
+`Atf.Api.TestHost` este adaptorul de compoziție pentru acceptanța live. Deține
+boundary-ul fixture-ului xUnit și implementarea Extent curentă, în timp ce
+`Atf.Api` consumă doar `IAtfApiReportSession` și `IAtfScenarioScope`.
 
-It remains a separate project in the simplified target. Removing it would make
-`Atf.Api` construct or reference the concrete Extent renderer directly and
-would destroy the composition boundary. The project may later be renamed to
-`Atf.TestHost`, but that is naming-only and must not be mixed with lifecycle or
-reporting changes.
+Rămâne un proiect separat în arhitectura țintă simplificată. Eliminarea lui ar
+obliga `Atf.Api` să construiască sau să refere direct renderer-ul Extent concret
+și ar distruge boundary-ul de compoziție. Proiectul poate fi redenumit ulterior
+în `Atf.TestHost`, dar aceasta este doar o schimbare de nume și nu trebuie
+combinată cu modificări de lifecycle sau raportare.
 
-This is therefore one of the five architectural code directories retained at
-repository root: `Atf.Core`, `Atf.Api`, `Atf.Api.TestHost`,
-`Atf.Reporting.Extent` and `Atf.Tests`. `docs` and `artifacts` are support
-directories; module code and all ATF test projects are now grouped under
+Prin urmare, acesta este unul dintre cele cinci directoare arhitecturale de cod
+păstrate la rădăcina repository-ului: `Atf.Core`, `Atf.Api`, `Atf.Api.TestHost`,
+`Atf.Reporting.Extent` și `Atf.Tests`. `docs` și `artifacts` sunt directoare de
+suport; codul modulelor și toate proiectele de test ATF sunt grupate acum în
 `Atf.Api/Module` and `Atf.Tests` respectively.
 
 The dependency direction is intentional:
@@ -26,11 +26,11 @@ flowchart LR
     Extent --> Html[Single self-contained HTML artifact]
 ```
 
-This project is the only live-host composition layer that selects Extent. A
-future renderer can replace `ApiTestFixture` without changing API scenarios,
-steps, transport, or contract validation.
+Acest proiect este singurul layer de compoziție al host-ului live care selectează
+Extent. Un renderer viitor poate înlocui `ApiTestFixture` fără să schimbe
+scenariile API, pașii, transportul sau validarea contractelor.
 
-## Audit boundary — 2026-10-13
+## Boundary-ul de compoziție — 2026-10-13
 
 Host-ul este bine poziționat, dar trebuie să rămână strict un composition root:
 

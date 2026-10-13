@@ -71,45 +71,12 @@ dacă apare o regresie verificabilă.
 
 ## 4. Backlog activ, ordonat după câștig
 
-### OOP-01 — tranzițiile arborelui au fost extrase din `ExtentTestScope` — mitigated
+### OOP-01 — guardrail protejat, nu backlog
 
-`ExtentTestScope` este acum o fațadă subțire. Nu mai este monolitul
-inițial: stack-ul este în `ExtentScopeFrameStack`, evidence în
-`ExtentScopeEvidenceWriter`, status precedence în `ExtentScopeStatusPolicy`,
-tranzițiile în `ExtentScopeTreeCoordinator`, iar nodul vendor este ascuns prin
-`IExtentNodeAdapter`.
-
-Facade-ul păstrează lock-ul ca boundary de serializare, dar nu mai deține
-regulile de tranziție. Coordinatorul se ocupă exclusiv de
-`phase → request → validation`, închiderea implicită, drain și contractul de
-phase; nu cunoaște HTML sau verdicturi de business.
-
-```mermaid
-flowchart LR
-    Scope[ExtentTestScope facade] --> Gate[scope synchronization]
-    Scope --> Stack[ExtentScopeFrameStack]
-    Scope --> Transition[ExtentScopeTreeCoordinator]
-    Scope --> Evidence[ExtentScopeEvidenceWriter]
-    Scope --> Status[ExtentScopeStatusPolicy]
-    Transition --> Rule[phase/request/validation sibling rule]
-```
-
-Refactorul este implementat prin `ExtentScopeTreeCoordinator`; fațada publică
-rămâne neschimbată.
-
-Teste obligatorii înainte de mutare:
-
-- phase nou închide step-urile vechi fără a muta nodul în alt scenariu;
-- request nou închide request-ul anterior fără validation orfană;
-- validation este acceptată doar ca sibling direct al request-ului din aceeași fază;
-- tranziție invalidă nu schimbă stack-ul existent;
-- `Dispose` repetat și `CompleteScenario` repetat sunt idempotente;
-- două scope-uri cu gate-uri independente nu amestecă noduri sau statusuri.
-
-**Dovadă:** `ExtentScopeTreeCoordinatorTests` acoperă phase boundary, validation
-invalidă și drain-ul unui request neînchis; `ReportingStructureTests` păstrează
-contractul de sibling request/validation. Concurența filesystem rămâne separat
-în CON-01.
+`ExtentTestScope` este o fațadă; stack-ul, tranzițiile, evidence și status policy
+sunt colaboratori separați. `ExtentScopeTreeCoordinatorTests` și
+`ReportingStructureTests` protejează contractul `phase → request → validation`.
+Nu se mai extrag clase doar pentru reducerea numărului de linii.
 
 ### CON-01 — ownership-ul path/asset/cleanup în paralel — P1
 
