@@ -18,6 +18,22 @@ semantica rutelor, serializarea serviciilor, acțiunile semantice justificate,
 agregarea validărilor, fixture-urile/datele și cleanup-ul fără să contacteze un
 API live.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Test[Component test] --> Module[Atf.Api/Module]
+    Module --> Routes[Typed routes]
+    Module --> Services[Typed services]
+    Module --> Validation[Aggregated validation]
+    Module --> Cleanup[Cleanup registry]
+    Fake[Fake executor] -. seam .-> Module
+```
+
+Citește acest README în ordinea: boundary → fluxul componentelor → contracte
+protejate → matrice → rețeta de extindere. Testele rămân offline și verifică
+vocabularul modulului, nu randarea Extent sau disponibilitatea API-ului.
+
 ## Contracte protejate
 
 Testele protejează compoziția modulului, validarea și cleanup-ul fără să mute

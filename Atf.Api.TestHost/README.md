@@ -10,6 +10,22 @@ obliga `Atf.Api` să construiască sau să refere direct renderer-ul Extent conc
 în `Atf.TestHost`, dar aceasta este doar o schimbare de nume și nu trebuie
 combinată cu modificări de lifecycle sau raportare.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Config[Configuration snapshot] --> Fixture[ApiTestFixture]
+    Fixture --> Session[IAtfApiReportSession]
+    Session --> Extent[Atf.Reporting.Extent]
+    Extent --> Html[Artifact HTML autonom]
+    Api[Atf.Api scenarii] --> Scope[IAtfScenarioScope]
+    Scope --> Session
+```
+
+Citește acest README în ordinea: boundary de compoziție → ownership-ul
+fixture-ului → contractul de lifecycle → comanda de verificare. Host-ul leagă
+modulele; nu introduce reguli de business, transport sau markup în scenarii.
+
 Prin urmare, acesta este unul dintre cele cinci directoare arhitecturale de cod
 păstrate la rădăcina repository-ului: `Atf.Core`, `Atf.Api`, `Atf.Api.TestHost`,
 `Atf.Reporting.Extent` și `Atf.Tests`. `docs` și `artifacts` sunt directoare de

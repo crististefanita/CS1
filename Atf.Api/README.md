@@ -14,6 +14,24 @@ rapoarte și teste. Conceptual, conține atât modulul API, cât și scenariile 
 de acceptanță. O redenumire sau un merge de namespace trebuie tratate ca migrare
 mecanică, nu combinate cu un refactor de comportament.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Test[Scenariu xUnit] --> Module[Atf.Api/Module]
+    Module --> Service[Serviciu semantic]
+    Service --> Core[Atf.Core executor]
+    Core --> Host[Atf.Api.TestHost]
+    Host --> Report[Extent HTML]
+    Service --> Validate[Validation table]
+    Validate --> Report
+```
+
+Citește acest README în ordinea: boundary și ownership → lifecycle → reguli de
+scenariu → validări/adnotări → acceptanța raportului. Pentru adăugarea efectivă
+a unui test nou, pornește din [ghidul API](../docs/ATF_API_TEST_GUIDE.md), apoi
+revino aici pentru regulile specifice scenariilor live.
+
 ## Ownership și țintă
 
 ```text

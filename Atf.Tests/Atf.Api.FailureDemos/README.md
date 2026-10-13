@@ -24,6 +24,21 @@ legătura către testul din tab-ul Tests, să păstreze faza în care a apărut 
 să fie incluse în quality gate-ul normal și nu trebuie să influențeze totalurile
 unei rulări normale.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Demo[Failure demo opt-in] --> Phase[Phase/request failing]
+    Phase --> Evidence[Exception + evidence relevant]
+    Evidence --> Verdict[Final Fail observabil]
+    Cleanup[Cleanup] -. rulează independent .-> Verdict
+```
+
+Citește acest README în ordinea: scopul suitei → contractul de observabilitate
+→ cazurile protejate → regula de rulare opt-in. Aceste teste demonstrează
+diagnosticul failure-ului; nu validează business-ul API și nu reprezintă succesul
+suitei live.
+
 ### Cazuri protejate
 
 - setup exception fără body executat;

@@ -23,6 +23,23 @@ auth state, URL/query encoding, configuration snapshot, redaction și reporting
 ports. Testele pentru CSS, DOM, Extent selectors sau computed styles aparțin
 adaptorului și contractului DOM.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Config[Configuration] --> Policies[Renderer-neutral policies]
+    Policies --> Executor[HTTP executor]
+    Executor --> Resilience[Retry / timeout / cancellation]
+    Executor --> Reporting[Reporting ports]
+    Tests[Atf.Core.Tests] -. protejează .-> Policies
+    Tests -.-> Executor
+    Tests -.-> Reporting
+```
+
+Citește acest README în ordinea: scope → contracte → boundary renderer →
+comenzi. Orice test nou trebuie să izoleze o regulă a kernelului și să evite
+markup, selectori sau dependențe Extent.
+
 ## Contracte protejate
 
 ```mermaid

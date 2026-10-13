@@ -5,6 +5,22 @@ fără să pornească un serviciu, să deschidă socket-uri sau să genereze un 
 live. Este locul pentru teste de compoziție și layout care folosesc fakes; nu
 este locul pentru testele de business ale API-ului țintă.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Test[Offline component test] --> Lifecycle[Scenario lifecycle]
+    Lifecycle --> Executor[Fake IApiExecutor]
+    Lifecycle --> Reporter[Fake reporting ports]
+    Executor --> Evidence[Renderer-neutral evidence]
+    Reporter --> Contract[Observable API/report contract]
+    Evidence --> Contract
+```
+
+Citește acest README în ordinea: boundary → contracte protejate → matrice de
+acoperire → reguli de extindere → criteriul de finalizare. Dacă testul are nevoie
+de serviciu extern sau click-uri DOM, aparține altui boundary.
+
 Fluxul de lucru pentru un test API nou este descris în [ghidul pentru adăugarea
 unui test API](../../docs/ATF_API_TEST_GUIDE.md); acest README rămâne contractul
 testelor offline ale boundary-ului API.

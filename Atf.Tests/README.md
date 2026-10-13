@@ -11,6 +11,24 @@ produs. Ea protejează contractele reutilizabile ale soluției înainte de rular
 scenariilor live. Toate proiectele de testare ATF sunt grupate sub acest
 director; nu mai există proiecte de testare ATF la rădăcina repository-ului.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Core[Atf.Core] --> CoreTests[Atf.Core.Tests]
+    Module[Atf.Api/Module] --> CommonTests[Atf.Common.Tests]
+    Api[Atf.Api] --> ApiTests[Atf.Api.Tests]
+    Extent[Atf.Reporting.Extent] --> ExtentTests[Atf.Reporting.Extent.Tests]
+    CoreTests --> Gate[Contracte protejate]
+    CommonTests --> Gate
+    ApiTests --> Gate
+    ExtentTests --> Gate
+```
+
+Citește acest README în ordinea: ce testează fiecare proiect → boundary-ul
+testului → piramida unit/component/artifact → reguli de rulare → criteriul de
+finalizare. Un test trebuie să apere un contract, nu să repete implementarea.
+
 ## Organizare
 
 | Proiect | Tip dominant | Ce protejează |

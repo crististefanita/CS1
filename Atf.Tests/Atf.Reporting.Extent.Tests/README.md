@@ -7,6 +7,25 @@ Este proiectul pentru boundary-ul Extent, grupat fizic în
 `Atf.Tests/Atf.Reporting.Extent.Tests`; verificarea DOM în tab-ul MCP rămâne distinctă de
 inspecția statică a artifactului.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Scope[Extent scope] --> Tree[Phase/request/validation tree]
+    Scope --> Status[Status policy]
+    Scope --> Evidence[Evidence renderer]
+    Theme[Theme + client policy] --> Artifact[Final HTML]
+    Tree --> Artifact
+    Status --> Artifact
+    Evidence --> Artifact
+    Artifact --> Static[Static inspector]
+    Artifact --> MCP[TAB MCP DOM review]
+```
+
+Citește acest README în ordinea: contracte → seam-uri → artifact dinamic →
+metadata → rulare. Inspectorul static verifică markupul și cardinalitatea; TAB
+MCP rămâne autoritatea pentru click, collapse, filtrare și randare observabilă.
+
 ## Contracte protejate
 
 Testele de aici trebuie să protejeze arborele, statusul, evidence-ul și artifactul HTML,

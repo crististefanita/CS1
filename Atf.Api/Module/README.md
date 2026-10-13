@@ -7,6 +7,23 @@ conține Extent, xUnit lifecycle sau logică de produs.
 Pentru secvența completă de adăugare a unei operații API, de la rută până la
 validarea raportului, consultă [ghidul pentru adăugarea unui test API](../../docs/ATF_API_TEST_GUIDE.md).
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Scenario[Scenariu API] --> Module[Atf.Api/Module]
+    Module --> Routes[Routing]
+    Module --> Services[Services]
+    Module --> Validation[Validation table]
+    Module --> Cleanup[Lifecycle cleanup]
+    Routes --> Executor[Atf.Core executor]
+    Services --> Executor
+```
+
+Citește acest README în ordinea: ownership → contract validation → reguli OOP
+→ testare. Modulul exprimă vocabularul API; nu execută lifecycle xUnit și nu
+produce HTML Extent.
+
 ## Ownership și responsabilități
 
 ```mermaid

@@ -1,37 +1,129 @@
 # Configurable API ATF
 
-ATF este un framework .NET 9 pentru testarea API-urilor prin configurație,
-contracte de transport, validări agregate și raportare HTML Extent.
+> Un framework .NET 9 pentru teste API lizibile, configurabile și verificabile
+> până la nivelul raportului HTML final.
 
-Scopul lui este să ofere o limbă clară pentru scenarii API:
+ATF transformă un scenariu API într-un flux controlat: construiește requestul
+din configurație, execută schimbul printr-un transport înlocuibil, publică
+evidence renderer-neutral, agregă validările și îl prezintă în Extent fără să
+amestece responsabilitățile.
 
-```text
-scenario -> semantic step -> service -> route -> executor -> transport
-                                             |
-                                             +-> renderer-neutral evidence
+## 1. Modelul mental
 
-response -> grup de validare -> un tabel de assertions -> verdict de scenariu
-resource -> registru cleanup -> teardown în ordine inversă
+```mermaid
+flowchart TD
+    Scenario[Scenariu API] --> Phase[SETUP · TEST BODY · TEARDOWN]
+    Phase --> Action[Acțiune semantică]
+    Action --> Request[ApiRequest + route metadata]
+    Request --> Executor[ApiExecutor]
+    Executor --> Transport[HTTP transport + auth + retry]
+    Transport --> Response[ApiExecutionResult]
+    Response --> Evidence[Technical trace · response details · JSON]
+    Response --> Validation[Validări agregate]
+    Validation --> Assertions[Un tabel de assertions]
+    Assertions --> Verdict[Verdict funcțional]
+    Evidence --> Renderer[Port reporter]
+    Verdict --> Renderer
+    Resource[Resursă creată] --> Cleanup[Cleanup registry]
+    Cleanup --> Teardown[Teardown în ordine inversă]
 ```
 
-ATF nu este UI automation, nu este un client de business și nu trebuie să
-conțină logică specifică unui produs în kernelul reutilizabil.
+Regula centrală este separarea adevărurilor:
 
-## Principii de verificare
+```text
+HTTP exchange completed
+    ≠ contract satisfied
+    ≠ scenario passed
+```
 
-Contractele se confirmă din cod, teste și comportamentul observabil. README-ul
-nu păstrează totaluri, căi tehnice temporare, nume de rapoarte, capturi sau rezultate
-intermediare; acestea se calculează la verificarea live. Documentația păstrează
-doar reguli, ownership, dovezi cerute și criterii de acceptare.
+Un schimb HTTP poate fi executat corect, dar poate eșua contractul funcțional.
+ATF păstrează ambele informații fără să transforme evidence-ul într-un verdict.
+
+## 2. Ce deține fiecare zonă
+
+```mermaid
+flowchart LR
+    Core[Atf.Core<br/>kernel tehnic] --> Api[Atf.Api<br/>modulul principal]
+    Api --> Host[Atf.Api.TestHost<br/>composition root]
+    Host --> Extent[Atf.Reporting.Extent<br/>adapter HTML]
+    Tests[Atf.Tests<br/>teste de contract] -. protejează .-> Core
+    Tests -.-> Api
+    Tests -.-> Extent
+    Docs[docs<br/>contracte și ghiduri] -. explică .-> Core
+    Docs -. explică .-> Api
+    Docs -. explică .-> Extent
+```
+
+| Zonă | Întrebarea la care răspunde |
+|---|---|
+| `Atf.Core` | Cum executăm sigur un schimb API și cum expunem porturi neutre față de renderer? |
+| `Atf.Api` | Ce înseamnă semantic scenariul și ce rute, servicii și validatori folosește? |
+| `Atf.Api.TestHost` | Ce compoziție concretă pornește suitele live și ce reporter este ales? |
+| `Atf.Reporting.Extent` | Cum devine evidence-ul un arbore HTML navigabil și stabil? |
+| `Atf.Tests` | Ce contracte trebuie să rămână adevărate la fiecare refactorizare? |
+| `docs` | Care sunt regulile, responsabilitățile și criteriile de acceptare? |
+
+`Atf.Api` este modulul principal. `Atf.Core` nu cunoaște Extent, iar HTML-ul nu
+ajunge în serviciile API. Conținutul fostului `Atf.Common` este concentrat în
+`Atf.Api/Module`; nu reintroducem proiecte generice `Common`, `Shared` sau
+`Utils` fără un boundary consumat de cel puțin două module reale.
+
+## 3. Contractul unui test API
+
+Un test corect are o intenție semantică, cel puțin o validare în body și cleanup
+separat. Raportul trebuie să poată fi citit în aceeași ordine în care gândește
+testerul:
+
+```text
+TestCase
+├── SETUP
+│   └── Request(s)
+├── TEST BODY
+│   ├── Request
+│   │   ├── TECHNICAL TRACE
+│   │   ├── Response details
+│   │   └── Response JSON
+│   └── Validation(s) — frate direct al requestului, în aceeași fază
+│       └── aggregate assertion table
+└── TEARDOWN
+    └── Request(s)
+```
+
+Validările unui response sunt grupate într-un tabel agregat; nu împrăștiem
+assertions echivalente în noduri concurente. Teardown-ul poate adăuga cleanup sau
+read-back best-effort, dar nu înlocuiește validarea funcțională din body.
+
+## 4. Cum se verifică o schimbare
+
+Documentația nu păstrează totaluri, căi temporare sau scoruri. Acestea se
+calculează live din cod, teste și artifactul Extent:
+
+| Nivel | Ce trebuie demonstrat |
+|---|---|
+| semantic | lifecycle, verdict, precedență și tabel agregat |
+| component | colaborarea dintre module și porturi |
+| artifact | HTML autonom, cardinalitate și ierarhie |
+| DOM | collapse, filtrare, navigare și stiluri prin TAB MCP |
+| parallel | izolarea sesiunilor, path-urilor și cleanup-ului |
+| documentation | README-ul owner rămâne sincronizat cu implementarea |
+
+Formatul existent al raportului este contract extern: refactorizarea poate muta
+ownership-ul intern, dar nu schimbă fără motiv layout-ul, paleta, fonturile,
+textele, ordinea nodurilor sau interacțiunile.
+
+Pentru pașii de lucru și contractele detaliate:
+
+- [ghidul pentru adăugarea unui test API](docs/ATF_API_TEST_GUIDE.md);
+- [bunele practici și regulile OOP](docs/README_Atf_BestPractices.md);
+- [contractul de raportare](docs/ATF_Reporting_Contract.md);
+- [indexul documentației](docs/README.md);
+- [procedura de feedback](docs/feedback/README.md).
 
 ## Gard de siguranță pentru refactorizare
 
-Formatul raportului este tratat ca un contract existent. Nu
-redesenăm layout-ul, nu schimbăm paleta, fonturile, textele, ordinea nodurilor
-sau interacțiunile raportului. Documentația normativă din
-`docs/ATF_Reporting_Contract.md` definește formatul; documentele din
-`docs/feedback/` păstrează feedback-ul urmărit, procedura și dovada contractelor
-închise. RF-02–RF-06 sunt închise, iar registrul lifecycle este separat.
+Orice schimbare care modifică rezultatul observabil este regresie, nu simplă
+refactorizare. Refactorizările acceptate sunt limitate la ownership intern,
+dependențe, lifecycle, concurență, testabilitate și documentația acestor seam-uri.
 
 ```mermaid
 flowchart LR
@@ -40,45 +132,6 @@ flowchart LR
     Cohesion --> Tests[Teste unitare și de componentă]
     Tests --> Proof[Același rezultat observabil]
 ```
-
-Orice schimbare care modifică rezultatul observabil este regresie, nu refactorizare.
-Schimbările acceptate sunt limitate la ownership intern, dependențe, lifecycle,
-concurență, testabilitate și documentația acestor seam-uri.
-
-### Cum se citește feedback-ul live
-
-README-ul descrie contractele stabile; nu duplică aici backlog-ul. TODO-urile
-active se recitesc direct din cod și teste în:
-
-- [combinațiile de lifecycle și raportare](docs/feedback/Atf_Lifecycle_Combination.md);
-- [refactorizarea și responsabilitățile](docs/feedback/Atf_Refactoring_Feedback.md);
-- [ghidul obligatoriu de execuție](docs/feedback/Atf_Feedback_Execution_Guide.md);
-- [indexul și regulile feedback-ului](docs/feedback/README.md).
-
-Un item este eliminat numai după ce criteriul său este demonstrat prin testul
-indicat și prin artifactul relevant. Registrul lifecycle rămâne excepția
-dedicată formatului raportului; celelalte registre acoperă refactorizarea și
-porțile de calitate.
-
-### Contracte de verificare
-
-Feedback-ul se organizează după nivelul de dovadă, nu după o stare istorică:
-
-| Nivel | Contract verificat | Dovadă necesară |
-|---|---|---|
-| semantic | verdict, precedență, tabel agregat și izolare | teste unitare și de componentă pentru fiecare politică |
-| HTML | document autonom, roluri semantice și markup stabil | inspecție statică plus DOM pentru comportamentul interactiv |
-| soft assertion | rândurile eșuate rămân vizibile fără a pierde contextul | verificare în Overview, Tests, Fails și metadata |
-| security | date sensibile sunt mascate înainte de publicare | matrice de redaction pe toate suprafețele de evidence |
-
-`Warning/Other` este o stare semantică distinctă de verdictul funcțional, iar
-`ReportArtifactInspector` verifică structura statică; comportamentul DOM necesită
-o dovadă interactivă separată în tab-ul MCP. Acest vocabular este obligatoriu în
-README-urile modulelor.
-
-Direcțiile de refactorizare, backlog-ul și metodologia verificării live sunt în
-[registrul de feedback](docs/feedback/README.md) și în
-[TODO-urile de refactorizare](docs/feedback/Atf_Refactoring_Feedback.md).
 
 ## Arhitectura reală a proiectului
 

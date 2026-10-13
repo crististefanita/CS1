@@ -9,6 +9,23 @@ Acest proiect rămâne separat și în arhitectura simplificată. El este bounda
 vendorului: orice HTML, CSS, JavaScript, asset, selector sau verificare specifică
 artifactului Extent aparține aici, nu în `Atf.Core` sau `Atf.Api`.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Ports[Atf.Core reporting ports] --> Adapter[Extent adapter]
+    Adapter --> Tree[Phase/request/validation tree]
+    Adapter --> Evidence[Trace + JSON + assertion table]
+    Adapter --> Theme[Theme + client behavior]
+    Tree --> Html[HTML autonom]
+    Evidence --> Html
+    Theme --> Html
+```
+
+Citește acest README în ordinea: contract înghețat → ownership și seam-uri →
+arborele raportului → disclosure/evidence → navigare și teste. Implementarea se
+poate simplifica intern, dar artifactul observabil rămâne neschimbat.
+
 ## Contract înghețat, implementare refactorizabilă
 
 Adaptorul poate fi refactorizat intern, dar nu are mandat să redeseneze raportul.

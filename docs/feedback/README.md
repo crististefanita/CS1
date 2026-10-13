@@ -6,6 +6,20 @@ Nu este jurnal de execuție, registru de scoruri sau sursa contractelor stabile;
 informația normativă aparține README-urilor proiectelor și documentelor
 permanente din `docs/`.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Code[Cod live] --> Contract[Contract de modul/raport]
+    Contract --> Test[Test unitar/componentă]
+    Test --> Artifact[Artifact HTML]
+    Artifact --> Finding[Finding activ, doar dacă există regresie]
+```
+
+Citește acest folder în ordinea: index și scope → procedură → finding activ.
+Regulile stabile, diagramele normative și explicațiile de design aparțin
+README-urilor proiectului, nu backlogului de feedback.
+
 ## Domeniu
 
 Feedback-ul de aici acoperă:

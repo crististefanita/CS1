@@ -13,6 +13,22 @@ intenția scenariilor nu trebuie să ajungă niciodată în Core. Core descrie
 semantica execuției și evidence-ului, iar adaptorul Extent deține prezentarea lor
 HTML.
 
+## Orientare rapidă
+
+```mermaid
+flowchart LR
+    Settings[Configurație validată] --> Executor[ApiExecutor]
+    Executor --> Transport[Transport + auth]
+    Executor --> Resilience[Retry + timeout + polling]
+    Executor --> Evidence[Evidence renderer-neutral]
+    Evidence --> Port[IAtfReporter]
+    Port --> Adapter[Atf.Reporting.Extent]
+```
+
+Citește acest README în ordinea: boundary → contracte publice → execuție HTTP →
+reziliență/configurație → porturi de raportare → teste. Core este fundația
+tehnică; nu conține scenarii, rute de produs sau HTML.
+
 ## Boundary-ul responsabilității
 
 ```mermaid
