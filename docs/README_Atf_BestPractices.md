@@ -11,17 +11,17 @@ OOP, mai ușor de extins și mai ușor de verificat fără rulări live inutile.
 
 Refactorizarea ATF nu schimbă formatul raportului. Layout-ul, culorile,
 fonturile, textele, ierarhia și interacțiunile existente sunt contracte de
-compatibilitate. Analiza de format din
-`docs/feedback/ATF_LIFECYCLE_COMBINATION_ANALYSIS_2026-10-13.md` este în afara
+compatibilitate. Contractul de format din `docs/ATF_Reporting_Contract.md` este
+normativ; analiza din folderul `docs/feedback/` este în afara
 acestui document și nu se modifică în refactorizarea internă. Un PR care schimbă
 doar ownership-ul intern trebuie să producă același artifact observabil.
 
 ```mermaid
 flowchart LR
-    Existing[Existing report contract] --> Refactor[Internal OOP refactor]
-    Refactor --> Unit[Unit policy tests]
-    Refactor --> Component[Component seam tests]
-    Unit --> Same[Same observable report]
+    Existing[Contract existent al raportului] --> Refactor[Refactorizare OOP internă]
+    Refactor --> Unit[Teste unitare de politici]
+    Refactor --> Component[Teste de componentă ale seam-urilor]
+    Unit --> Same[Același raport observabil]
     Component --> Same
 ```
 
@@ -47,7 +47,7 @@ flowchart LR
 Regula de citire este:
 
 ```text
-test intent -> domain action -> one HTTP exchange -> one response contract -> one table
+intenția testului -> acțiune de domeniu -> un schimb HTTP -> un contract response -> un tabel
 ```
 
 Un test care descrie direct `HttpClient`, string-uri de endpoint, markup Extent
@@ -79,11 +79,25 @@ clasă, responsabilitățile sunt amestecate.
 Semnal de refactorizare: o metodă cu `await`, `Assert`, `HttpClient` și
 `Extent` în aceeași zonă este aproape întotdeauna prea încărcată.
 
-### 2.2 Maximum 8 clase top-level într-un pachet
+### 2.2 Maximum 8 tipuri top-level directe într-un namespace
 
-Un namespace/pachet nu trebuie să aibă mai mult de opt tipuri top-level directe.
-Limita controlează responsabilitatea și navigarea; nu este un motiv pentru a
-fragmenta artificial fiecare clasă în propriul proiect.
+Aceasta este o regulă arhitecturală obligatorie pentru codul de producție:
+un namespace/pachet coerent are cel mult opt tipuri top-level directe. „Tip”
+înseamnă clasă, record, struct, enum sau interfață; tipurile nested/private
+nu intră în calculul boundary-ului. Măsurarea se face pe assembly și namespace
+exact, nu prin numărarea fișierelor sau printr-o impresie vizuală.
+
+Regula are două niveluri de aplicare:
+
+1. namespace-urile noi trebuie să fie imediat `<= 8`;
+2. namespace-urile existente peste 8 sunt datorie explicită, cu baseline
+   măsurat, și sunt protejate de un ratchet test: count-ul poate scădea, dar
+   nu poate crește și nu poate primi o excepție nouă fără motiv arhitectural
+   documentat.
+
+Prin urmare, un build verde nu înseamnă că toate depășirile istorice au fost
+închise; înseamnă că refactorizarea nu a agravat baseline-ul. Ținta finală
+rămâne `<= 8` pentru fiecare namespace.
 
 ```mermaid
 flowchart TD
@@ -113,6 +127,11 @@ Atf.Core.Reporting
 
 Tipurile private/nested folosite doar ca test doubles nu se numără ca membri
 publici ai pachetului; ele rămân detalii ale testului care le folosește.
+
+Inventarul namespace-urilor trebuie calculat din codul live, nu copiat în README.
+Limita de maximum 8 tipuri top-level directe rămâne o regulă de ratchet:
+count-ul poate scădea, nu poate crește. Un split este justificat numai de o
+responsabilitate reală și trebuie protejat de un test de arhitectură.
 
 Într-un boundary cu mai multe axe de schimbare se preferă un coordonator mic și
 reguli cu responsabilitate unică. De exemplu, `AtfConfigurationValidator` nu
@@ -339,11 +358,11 @@ sequenceDiagram
     participant D as Teardown
 
     T->>S: acquire/seed resource
-    S->>V: validate setup response
+    S->>V: validează response-ul setup
     S->>K: register ownership
     T->>B: execute business action
-    B->>V: validate response contract
-    T->>D: run even after body failure
+    B->>V: validează contractul response-ului
+    T->>D: rulează chiar după failure în body
     D->>K: cleanup in reverse order
     D-->>T: diagnostic/read-back, best effort
 ```
@@ -370,7 +389,7 @@ Pentru a evita reguli contradictorii, documentația are următoarele roluri:
 | root `README.md` | onboarding, navigare și contracte principale |
 | `docs/ATF_Architecture.md` | modelul de obiecte și dependențe |
 | `docs/README_Atf_BestPractices.md` | reguli normative de design, testare și review |
-| `docs/ATF_Quality_Assessment.md` | riscuri și backlog; nu redefinește ierarhia |
+| `docs/feedback/Atf_Refactoring_Feedback.md` | TODO-uri active de refactorizare și porțile de calitate |
 | module/test README-uri | ghiduri locale, fără reguli care contrazic documentul normativ |
 
 Ierarhia curentă care trebuie folosită în toate README-urile este:
@@ -429,10 +448,9 @@ prezentată fără avertisment; trebuie corectată sau marcată explicit ca isto
 
 ## 5. Reguli de testare a framework-ului
 
-### Aliniere de audit — 2026-10-13
+### Reguli de refactorizare
 
-Feedback-ul live se recalculează la fiecare audit. Nu este suficient să mutăm
-clase sau să adăugăm interfețe. Fiecare refactor trebuie să
+Nu este suficient să mutăm clase sau să adăugăm interfețe. Fiecare refactor trebuie să
 reducă un motiv de schimbare și să aibă un seam testabil.
 
 Prioritățile sunt:
@@ -445,7 +463,7 @@ Prioritățile sunt:
    evaluare și diagnostic;
 5. Extent trebuie împărțit gradual pe session, tree, evidence și artifact
    publisher, fără clase decorative;
-6. inspectorul static trebuie separat explicit de contractul DOM/browser;
+6. inspectorul static trebuie separat explicit de contractul DOM interactiv;
 7. forwarding-only `Steps` nu se introduc; serviciile sunt publicate direct din
    `ApiModule` până când apare semantică reală;
 8. redaction, retry attempts, timeout și cancellation trebuie să aibă contracte
@@ -453,7 +471,7 @@ Prioritățile sunt:
 9. test projects sunt deja grupate în `Atf.Tests` și folosesc aceeași generație
    xUnit; orice abatere trebuie protejată printr-un boundary test și justificată.
 
-`Warning/Other` este o stare semantică mitigată, nu o dovadă completă de browser.
+`Warning/Other` este o stare semantică mitigată, nu o dovadă completă de randare DOM.
 `ReportArtifactInspector` verifică artifactul static; computed styles, click,
 collapse și scroll cer test DOM separat.
 
@@ -463,13 +481,13 @@ collapse și scroll cer test DOM separat.
 | component | executor + fake transport/reporter, module composition, cleanup | disponibilitatea API-ului real |
 | artifact | HTML real, collapsed state, tabel, JSON scroll, theme, overflow | business behavior al serviciului |
 | live API | endpoint, auth, schema și business contract real | toate ramurile interne ale framework-ului |
-| browser/manual | click path, ordine vizuală, lizibilitate | dovada repetabilă a logicii interne |
+| DOM manual / tab MCP | click path, ordine vizuală, lizibilitate | dovada repetabilă a logicii interne |
 
 Orice bug de raportare trebuie să primească:
 
 1. test unit pentru regula locală;
 2. test component pentru arborele Extent;
-3. test artifact/browser pentru HTML-ul pe care îl deschide utilizatorul.
+3. test artifact + verificare DOM în tab-ul MCP pentru HTML-ul pe care îl deschide utilizatorul.
 
 Un test live care trece nu compensează lipsa acestor dovezi offline.
 
@@ -517,53 +535,21 @@ teste mai mici și mai explicative; numărul de clase nu este un obiectiv.
 | secretele sunt protejate? | redaction central, testată | token în trace/JSON/exception |
 | README-ul explică fluxul? | diagramă + contract + failure path | descriere de fișiere fără model |
 
-## 7. Definition of Done pentru o schimbare ATF
+## 7. Criteriul de finalizare pentru o schimbare ATF
 
 ```text
 responsibility clarified
   -> package boundary checked (<= 8 top-level types)
-  -> meaningful annotations only
+  -> doar adnotări cu efect observabil
   -> response validations aggregated
   -> test body se încheie cu validare
-  -> teardown owns cleanup only
-  -> unit/component tests added
+  -> teardown-ul deține doar cleanup-ul
+  -> teste unitare/de componentă adăugate
   -> README + diagram updated
   -> generated Extent HTML inspected
-  -> parcurgerea prin click în browser confirmă ierarhia colapsată și ownership-ul evidence-ului
+  -> parcurgerea prin click în tab-ul MCP confirmă ierarhia colapsată și ownership-ul evidence-ului
 ```
 
 O feature nu este „gata” când build-ul trece. Este gata când codul, contractul,
 testele și raportul spun aceeași poveste.
-
-## 8. Direcții de îmbunătățire prioritare
-
-### Găuri cunoscute care trebuie urmărite de agentul care modifică codul
-
-Acest README descrie regula dorită; testele de arhitectură trebuie să o aplice
-efectiv. În special:
-
-- pragul de package boundary trebuie să fie același peste tot: maximum 8 tipuri
-  top-level directe;
-- testele trebuie să verifice și `Atf.Api`, nu numai Core și Common;
-- redaction-ul trebuie acoperit pentru JSON, query, headers și exceptions;
-- un test API fără validare în `TEST BODY` trebuie respins structural;
-- numărul de teste și verdicturile trebuie citite din artifactul generat, nu
-  copiate manual în README.
-
-1. **P0 — redaction centralizat:** headers, URLs, JSON și exceptions trebuie să
-   treacă prin aceeași politică testabilă.
-2. **P0 — outcome explicit:** transport success, contract success, skip,
-   cancellation și failure trebuie modelate separat.
-3. **P1 — analyzer pentru structură:** detectează adnotări fără efect,
-   request-uri fără validator și duplicate endpoint strings.
-4. **P1 — contract matrix:** fiecare route să aibă operație, auth, response
-   schema, negative case și validator agregat.
-5. **P1 — DOM artifact tests:** verifică semantic titlurile, collapsed state,
-   tabela unică, înălțimea JSON și overflow-ul la viewport-uri relevante.
-6. **P2 — declarative operation registry:** numai după stabilizarea executorului,
-   outcome-ului și evidence security.
-
-Aceste direcții păstrează funcționalitatea, dar reduc ambiguitatea: fiecare
-responsabilitate are un owner, fiecare regulă are o dovadă, iar raportul reflectă
-exact ceea ce a fost testat.
 

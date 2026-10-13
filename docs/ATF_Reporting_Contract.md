@@ -1,4 +1,4 @@
-# ATF reporting contract — sursă unică de adevăr
+# ATF — contractul de raportare și sursa unică de adevăr
 
 Acest document este contractul executabil pentru raportarea API. Dacă un
 document istoric descrie altă ierarhie sau alte etichete, acest contract și
@@ -27,7 +27,7 @@ Regulile sunt:
 - valorile complete rămân în modelul de aserțiuni; trunchierea se face numai la
   randare.
 
-## Layer ownership
+## Ownership pe straturi
 
     Atf.Core -> Atf.Api/Module -> Atf.Api
          ^           ^          ^
@@ -40,16 +40,6 @@ renderer-neutral. Codul Extent este testat numai în
 Atf.Tests/Atf.Reporting.Extent.Tests.
 
 ## Lifecycle
-
-## Metric semantics
-
-`ATF tests in this run` is calculated from the direct scenario cards emitted by the current execution
-(`Fact` = one case; `Theory` = one case per `InlineData` row). It is not inferred
-from Extent class roots, feature groups or visible scenario containers. The
-secondary metadata also exposes `API test classes (Extent)` and the native
-`Total tests passed`, `Total tests failed` and `Total tests skipped` values.
-The native Extent cards, statuses and timeline remain the execution verdict;
-the ATF metadata is explanatory navigation context.
 
 ReportStepScope garantează închiderea idempotentă a unui pas. Cleanup-ul este
 deținut de CleanupRegistry: se execută în ordine inversă, best-effort, cu
@@ -65,7 +55,19 @@ Retry-ul păstrează tentativa, headerul, delay-ul și motivul. CancellationToke
 este transmis transportului și delay-ului; snapshot-ul de configurație este
 capturat la construirea executorului.
 
-## Security
+## Semantica metricilor
+
+`ATF tests in this run` se calculează din cardurile directe de scenariu emise de
+execuția curentă (`Fact` = un caz; `Theory` = un caz pentru fiecare rând
+`InlineData`). Nu se deduce din rădăcini de clase Extent, feature groups sau
+containere vizibile de scenarii. Metadata secundară poate expune separat
+`API test classes (Extent)` și valorile native `Total tests passed`, `Total tests
+failed`, `Total tests skipped`.
+
+Cardurile native Extent, statusurile și timeline-ul rămân autoritatea execuției;
+metadata ATF este context de navigare și nu introduce un al doilea verdict.
+
+## Securitate
 
 Politica este explicită:
 
@@ -80,7 +82,7 @@ Politica este explicită:
 Redactorul este aplicat la limita de raportare; requestul real primește
 valorile originale.
 
-## Extent artifact
+## Artifactul Extent
 
 Artifactul livrat este un singur HTML autonom. Folderul extent nu este livrat.
 Toate suprafețele folosesc tema dark și tokenurile centralizate din
@@ -110,12 +112,35 @@ Metadata secundară afișează `ATF tests in this run`, `API test classes (Exten
 Numărul de teste este obținut din cardurile directe de scenariu Extent; class
 roots și feature groups sunt context de navigație, nu cazuri suplimentare.
 
+Ordinea semantică a tab-urilor este:
+
+    Tests -> Category -> Fails -> Overview
+
+`Overview` este ultima filă și se deschide implicit la bootstrap și refresh.
+`Fails` apare numai când există failure-uri și conține un singur header cu o
+listă plată a tuturor failure-urilor. Fiecare intrare păstrează deep-link-ul
+către nodul sursă din `Tests`; gruparea pe clasă nu înlocuiește lista completă.
+
+Un failure deținut de tabelul de validation nu se repetă ca mesaj generic în
+`TEST BODY`. Request-ul păstrează evidence-ul HTTP, validation-ul păstrează
+cauza contractuală, iar `Fails` doar proiectează recordul de triage.
+
 JSON-ul este un code block monospace cu scroll vertical intern și wrap; nu
 produce scroll orizontal al paginii. Pașii, phase shells, requestul, validarea
-și evidence-ul sunt collapsed implicit. Tag-urile apar o singură dată în
-headerul testului și în auditul secundar.
+și evidence-ul sunt collapsed implicit.
 
-## Definition of done
+Tag-urile au o taxonomie explicită: `TagOrder` doar ordonează, `SelectionTagNames`
+alimentează selectorul și adnotările din zona de detalii/scenarii, iar
+diagnosticele/necunoscutele rămân metadata vizibilă, dar non-selectabilă.
+`AtfTagTaxonomy` este renderer-neutral; class root nu primește categorii.
+Lista `Tests` din stânga este navigare pe clase și afișează numai numele clasei,
+statusul și durata: nu conține tag-uri, pills, strip-uri sau atribut `tag`
+populat. Tag-urile pot fi afișate în header-ele/cardurile scenariilor din dreapta
+și în Overview, o singură dată, după deduplicare și ordine, fără să schimbe
+Overview/Tags totals. HTML-ul static și DOM-ul hidratat folosesc aceeași politică;
+hidratarea clientului nu are voie să reintroducă tag-uri în navigarea stângă.
+
+## Criterii de finalizare
 
 - unit tests pentru Core, Common, adapter și orchestration;
 - test de artifact verifică HTML-ul final, nu doar string-uri din builder;

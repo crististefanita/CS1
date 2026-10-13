@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Tokens;
 
 /// <summary>
 /// Single source of truth for report typography. Values are CSS fragments

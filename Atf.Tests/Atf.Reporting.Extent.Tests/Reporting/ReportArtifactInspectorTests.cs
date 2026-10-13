@@ -25,6 +25,9 @@ public sealed class ReportArtifactInspectorTests
             Assert.True(inspection.Satisfies("accessible-evidence-titles"));
             Assert.True(inspection.Satisfies("semantic-execution-roles"));
             Assert.True(inspection.Satisfies("secondary-overview-collapsed"));
+            Assert.True(inspection.Satisfies("typed-failure-projection"));
+            Assert.True(inspection.Satisfies("failure-id-idempotency"));
+            Assert.True(inspection.Satisfies("dom-contract-harness"));
         }
         finally { root.Delete(recursive: true); }
     }
@@ -140,6 +143,12 @@ public sealed class ReportArtifactInspectorTests
       <body>
         <script id="atf-custom-behaviour">
           function configureExecutionHierarchy() {}
+          class FailureRecord {}
+          class FailureIndex {}
+          function collectFailureCandidates() {}
+          function projectFailureRecords(candidates) { const records = []; return new FailureIndex(records); }
+          if (!failureIds.includes(failureId)) failureIds.push(failureId);
+          window.__atfDomContract = Object.freeze({ version: 1, inspect: function () { return { statusBesideIdentity: true, openEvidenceCount: 0, overflowY: 'auto' }; } });
            phaseCard.setAttribute('data-atf-node-role', 'phase');
            stepCard.setAttribute('data-atf-node-role', 'request');
            stepCard.setAttribute('data-atf-parent-node', 'phase');

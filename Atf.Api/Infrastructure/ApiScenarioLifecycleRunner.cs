@@ -1,6 +1,8 @@
 using Atf.Core.Reporting;
+using Atf.Api.Infrastructure;
+using Atf.Api.Infrastructure.Outcome;
 
-namespace Atf.Api.Infrastructure;
+namespace Atf.Api.Infrastructure.Lifecycle;
 
 /// <summary>
 /// Coordinates the scenario lifecycle. Phase execution, teardown safety and
@@ -47,8 +49,15 @@ public sealed class ApiScenarioLifecycleRunner
             if (teardown is not null || context.Cleanup.HasPending)
             {
                 var teardownResult = await ApiScenarioTeardownRunner.RunAsync(scope, context, teardown);
-                skip ??= failure is null ? teardownResult.Skip : null;
-                teardownFailure = teardownResult.Failure;
+                if (failure is null && teardownResult.Outcome is ApiScenarioTeardownOutcome.Skipped skipped)
+                {
+                    skip ??= skipped.Exception;
+                }
+
+                if (teardownResult.Outcome is ApiScenarioTeardownOutcome.Failed failed)
+                {
+                    teardownFailure = failed.Exception;
+                }
 
                 if (teardownFailure is not null)
                 {
@@ -57,7 +66,7 @@ public sealed class ApiScenarioLifecycleRunner
             }
         }
 
-        return new(ApiScenarioOutcomeResolver.Resolve(failure, skip, teardownFailure));
+        return new(ApiScenarioOutcomeResolver.Resolve(failure, skip, teardownFailure, scope.HasWarnings));
     }
 
     private static void NotifyTeardownInfrastructureFailure(

@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Css;
 
 internal static class AtfReportThemeOverviewFragments
 {

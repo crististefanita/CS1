@@ -13,18 +13,18 @@ artifactului Extent aparține aici, nu în `Atf.Core` sau `Atf.Api`.
 
 Adaptorul poate fi refactorizat intern, dar nu are mandat să redeseneze raportul.
 Formatul observabil — markup semantic, ierarhie, texte, statusuri, culori,
-fonturi, collapse și evidence — rămâne neschimbat și este definit în analiza
-de format exclusă din această rundă. Orice extragere de clasă trebuie să păstreze
+fonturi, collapse și evidence — este definit în contractul de format. Orice
+extragere de clasă trebuie să păstreze
 aceeași proiecție și aceleași contracte ale artifactului.
 
-## Status documentație
+## Contracte normative
 
-| Element | Stare |
+| Element | Contract |
 |---|---|
-| Extent adapter și HTML standalone | activ, responsabilitatea acestui proiect |
-| semantic evidence model | trebuie păstrat în `Atf.Core` fără markup |
-| static artifact inspection | activ, dar nu înlocuiește browser DOM validation |
-| lifecycle/composer | funcțional, încă necesită split-uri OOP pe seam-uri testabile |
+| Extent adapter și HTML standalone | responsabilitatea acestui proiect |
+| semantic evidence model | rămâne în `Atf.Core` fără markup |
+| static artifact inspection | verifică structura și nu înlocuiește validarea DOM |
+| lifecycle/composer | se separă pe seam-uri OOP testabile, fără clase decorative |
 
 ## Poziția în arhitectură
 
@@ -45,8 +45,8 @@ flowchart LR
 Fluxul textual echivalent este:
 
 ```text
-Core port -> Extent scope -> Extent tree + evidence HTML -> theme/composition
-           -> embedded assets -> one .html file -> artifact checks
+Port Core -> scope Extent -> arbore Extent + HTML evidence -> temă/compoziție
+           -> asset-uri inline -> un fișier .html -> verificări artifact
 ```
 
 ## Ownership clar
@@ -68,25 +68,25 @@ Core port -> Extent scope -> Extent tree + evidence HTML -> theme/composition
 | `AtfReportThemeFragments` | execution hierarchy CSS | nu schimbă Overview-ul |
 | `ExtentReportClientBehaviour` | fațadă de compoziție pentru client behaviour | nu deține toate controller-ele JS |
 | `ExtentReportClientOverviewFragments` | counters, charts și tag audit | nu navighează în Tests/Exceptions |
-| `ExtentReportClientFailureEvidenceFragments` | extrage phase/request/validation/assertion evidence | nu creează view-ul Fails și nu face routing |
-| `ExtentReportClientFailureProjectionFragments` | creează `FailureRecord`-uri stabile și proiectează lista failure-urilor | nu construiește DOM-ul view-ului și nu mută carduri din Tests |
+| `ExtentReportClientTagPolicyController` | filtrează selectorul nativ și proiectează adnotările vizibile în detaliile scenariilor | nu schimbă ierarhia, verdictul, totalurile sau lista claselor din stânga |
+| `Theme.Client.Failure.ExtentReportClientFailureEvidenceFragments` | extrage phase/request/validation/assertion evidence | nu creează view-ul Fails și nu face routing |
+| `Theme.Client.Failure.ExtentReportClientFailureProjectionFragments` | creează `FailureRecord` immutable și `FailureIndex` cu ordine/cardinalitate stabile | nu construiește DOM-ul view-ului, nu mută carduri din Tests și nu recalculează verdictul |
 | `ExtentReportClientFailureFragments` | construiește view-ul Fails, enrichment-ul și `Open in Tests` | nu redescoperă evidence-ul și nu recalculează Overview counters |
-| `ReportArtifactInspector` | verifică artifactul Extent pe care îl deschide utilizatorul | nu înlocuiește verificarea browserului |
+| `ReportArtifactInspector` | verifică artifactul Extent pe care îl deschide utilizatorul | nu înlocuiește verificarea DOM în tab-ul MCP |
 
-## Auditul responsabilităților — separarea adaptorului
+## Responsabilități și separarea adaptorului
 
-Direcția dependenței și boundary-ul vendorului sunt bune, iar scope-ul a fost
-subțiat. Renderer-ul rămâne însă zona
+Direcția dependenței și boundary-ul vendorului trebuie păstrate. Renderer-ul rămâne zona
 cu cel mai mare cost de schimbare din cauza session/composer și a lipsei unui
-browser contract automat.
+  contract DOM automat.
 
 | Hotspot | De ce este riscant | Refactor OOP recomandat |
 |---|---|---|
-| `ExtentTestScope.StepFrame` | vendor-ul este deja ascuns în `IExtentNodeAdapter`, dar frame-ul rămâne nested și este consumat de tree validator/stack | extrage un `ScenarioStepFrame` intern neutru dacă apar noi consumatori |
+| `ScenarioStepFrame` | starea unui pas activ este model intern, separat de fațada `ExtentTestScope` | deține doar titlul, evidence-ul pending și portul `IExtentNodeAdapter`; nu expune `ExtentTest` |
 | `ExtentTestScope` | sincronizare, stack, tree policy și delegare rămân în aceeași fațadă | status precedence este extrasă în `ExtentScopeStatusPolicy`; următorul seam este tranziția tree/stack |
-| `ExtentReportLifecycle` | session state, path allocation și Extent bootstrap trebuie separate de publicarea finală | `ExtentArtifactPublisher` deține tranziția native → HTML publicat și cleanup-ul staging |
-| Theme/client behaviour | fragmentele reduc monolitul, dar contractele sunt încă verificate parțial prin string-uri | testează token ownership, semantic selectors și browser behavior separat |
-| `ReportArtifactInspector` | verifică HTML static, nu layout-ul calculat de browser | păstrează inspectorul pentru artifact contract și adaugă smoke DOM separat; nu-l considera browser test |
+| `ExtentReportLifecycle` | session state, path allocation și Extent bootstrap trebuie separate de publicarea finală | `ExtentArtifactPublisher` deține tranziția native → HTML publicat și cleanup-ul directorului temporar |
+| Theme/client behaviour | fragmentele reduc monolitul, iar contractele sunt protejate static și interactiv | păstrează testele de token ownership, semantic selectors și DOM behavior separat |
+| `ReportArtifactInspector` | verifică HTML static, nu layout-ul calculat de DOM | păstrează inspectorul pentru artifact contract și adaugă smoke DOM separat; nu-l considera test interactiv |
 
 Nu mai adăuga metode în `ExtentTestScope` pentru defecte noi de CSS/JavaScript.
 Un defect de prezentare aparține fragmentului/contractului de prezentare; un
@@ -103,62 +103,72 @@ Atf.Core -> Atf.Reporting.Extent -> ExtentReports
 renderer viitor trebuie să consume aceleași porturi, nu să copieze logica
 executorului sau a validatorilor.
 
-## Actualizare de audit — 2026-10-13
+## Direcții de refactorizare
 
-Cele mai importante riscuri rămase nu sunt în paleta vizuală, ci în tranziția
+Cele mai importante seam-uri verificate nu sunt în paleta vizuală, ci în tranziția
 arborelui și în ownership-ul resurselor:
 
-- `ExtentTestScope` are aproximativ 295 de linii și a delegat deja stack-ul,
-  evidence-ul, status policy și adapterul vendor; seam-ul rămas este
-  coordonarea lock + phase/request/validation transition;
+- `ExtentTestScope` coordonează stack-ul, evidence-ul, status policy și adapterul
+  vendor; coordonarea lock + phase/request/validation transition este protejată
+  de testele de port și de concurență;
 - `ExtentReportLifecycle`, `ExtentReportPathAllocator`,
   `ExtentArtifactPublisher` și `ReportAssetCleanupCoordinator` au ownership
-  distinct, dar au nevoie de teste repetabile pentru rulări paralele;
-- `ExtentReportDocumentComposer` este o fațadă de compoziție de aproximativ
-  30 de linii; sanitizarea, overview pruning, asset inlining și cleanup sunt
-  deja colaboratori separați. Nu se mai recomandă un split arbitrar;
-- `AtfReportTheme` este o fațadă de aproximativ 30 de linii peste fragmente și
-  tokeni. Fragmentele mari se pot împărți numai când apare un contract semantic
-  distinct, nu pentru a reduce mecanic numărul de linii;
+  distinct, iar testele de sesiuni suprapuse verifică path-urile, artifactele și
+  cleanup-ul concurent;
+- `ExtentReportDocumentComposer` este o fațadă de compoziție; sanitizarea,
+  overview pruning, asset inlining și cleanup rămân colaboratori separați. Nu se
+  recomandă un split arbitrar;
+- `AtfReportTheme` este o fațadă peste fragmente și tokeni. Fragmentele se împart
+  numai când apare un contract semantic distinct, nu pentru a reduce mecanic
+  numărul de linii;
 - `ReportArtifactInspector` verifică sursa HTML și rămâne contractul de
   artifact. El nu trebuie confundat cu o dovadă de DOM hidratat sau cu o
   rescriere a formatului raportului.
+  Inspectorul verifică și boundary-ul `FailureRecord`/`FailureIndex` plus
+  idempotency-ul `failureId`; verificarea DOM interactivă rămâne responsabilă
+  pentru TAB MCP sau pentru un harness DOM dedicat.
 
-Acestea sunt priorități P1/P2 de refactorizare, nu motive pentru a modifica
+Acestea sunt contracte de mentenanță P1/P2, nu motive pentru a modifica
 comportamentul raportului fără contracte noi. Orice extragere trebuie să păstreze
 request → validation sibling, collapse-by-default, tabelele agregate și aceeași
-paletă centralizată.
+ paletă centralizată. Boundary-urile RF-02–RF-05 sunt închise în registrul de
+ feedback și trebuie menținute prin aceleași dovezi.
 
-### Criterii de închidere pentru adaptor
+### Criterii de acceptare pentru adaptor
 
-| Contract | Dovada minimă înainte de `closed` |
+| Contract | Dovada minimă |
 |---|---|
 | tree | test in-memory pentru phase → request + validation sibling |
 | artifact | HTML real inspectat static, fără asset folder extern |
-| browser | DOM hidratat: click, collapse, scroll, overflow și computed styles |
+| DOM / tab MCP | DOM hidratat: click, collapse, scroll, overflow și computed styles |
 | status | combinații Pass/Fail/Skip/Warning verificate în Overview, card, chart și tags |
+| isolation | două sesiuni paralele nu amestecă noduri, statusuri sau path-uri |
+| publisher failure | eroarea reporterului nu înlocuiește verdictul funcțional |
 
-### Actualizare de implementare — 2026-10-13
+### Contracte de implementare
 
 - `ValidationTableRunner` publică best-effort: erorile `StartStep`, tabel,
   verdict și `CompleteStep` nu pot înlocui excepția funcțională.
 - `ExtentArtifactPublisher` separă finalizarea filesystem de session state și
-  garantează cleanup-ul staging chiar când compunerea eșuează.
-- `AtfReportThemeTokens` separă paleta semantică de fațada CSS; testele verifică
+  garantează cleanup-ul directorului temporar chiar când compunerea eșuează.
+- `IThemeTokenProvider` separă paleta semantică de fațada CSS; testele verifică
   faptul că tokenii se rezolvă complet și că nu rămân placeholder-e.
+- `IPhaseTreeWriter`, `IReportEvidencePublisher` și `IReportStatusPolicy` sunt
+  porturile scenariului: tree, evidence și verdict precedence pot evolua
+  independent, iar `ExtentTestScope` rămâne doar orchestration.
+- `IClientProjectionComposer` separă compoziția JavaScript de fațada
+  `ExtentReportClientBehaviour`; controller-ele de navigare/disclosure/failure
+  rămân fragmente independente și produc același HTML self-contained.
 - `UsersSteps` și `PostsSteps` nu mai există ca forwarding wrappers; `ApiModule`
   expune direct serviciile typed.
-| isolation | două sesiuni paralele nu amestecă noduri, statusuri sau path-uri |
-| publisher failure | eroarea reporterului nu înlocuiește verdictul funcțional |
 
-`ReportArtifactInspector` poate închide doar coloana `artifact`; nu poate închide
-singur coloana `browser`. Un selector sau un fragment JavaScript găsit în HTML
-nu este dovadă că DOM-ul final se comportă corect.
+`ReportArtifactInspector` verifică doar coloana `artifact`; un selector sau un
+fragment JavaScript găsit în HTML nu este dovadă că DOM-ul final se comportă
+corect. Pentru aceasta este necesar un contract DOM separat.
 
-## Audit OOP curent — unde este presiunea reală
+## Presiunea OOP și seam-urile testabile
 
-`ExtentTestScope` este acum o fațadă de aproximativ 295 de linii, cu API-ul
-`IAtfScenarioScope` păstrat. Stack-ul async este deținut de
+`ExtentTestScope` păstrează API-ul `IAtfScenarioScope`. Stack-ul async este deținut de
 `ExtentScopeFrameStack`, iar evidence, redaction și assertion HTML de
 `ExtentScopeEvidenceWriter`; scope-ul păstrează doar sincronizarea, tranzițiile
 și compatibilitatea cu Extent:
@@ -192,7 +202,7 @@ card, chart, `Tags.WARNING` și metadata secundară. `other` este doar bucket-ul
 intern Extent pentru compatibilitatea chart-urilor. Orice reporter failure este
 infrastructură diagnostică și nu are voie să schimbe această semnificație;
 contractul este protejat de teste componente, iar verificarea computed DOM
-rămâne deschisă.
+este un contract separat.
 
 Statusul este evaluat pe fiecare fază, nu copiat global peste arbore: o fază cu
 warning devine `Warning`, o fază cu failure rămâne `Fail`, iar o fază ulterioară
@@ -200,7 +210,7 @@ reușită rămâne `Pass`. Verdictul scenariului folosește precedence
 `Fail > Skip > Warning > Pass`; astfel combinația `SETUP Warning → TEST BODY
 Fail → TEARDOWN Pass` rămâne lizibilă și se încheie corect cu `Fail`.
 
-Refactorul curent a mutat ownership-ul semantic în fragmente testabile:
+Refactorizarea mută ownership-ul semantic în fragmente testabile:
 `AtfReportTheme` este o fațadă peste fragmentele de overview, evidence și
 execution hierarchy, iar `ExtentReportClientBehaviour` este o fațadă peste
 controllerele de navigation, disclosure/collapse, failure triage, overview și
@@ -215,6 +225,23 @@ layout: C# produce structura semantică, theme-ul produce CSS, iar client
 behaviour doar reconciliază DOM-ul Extent deja randat.
 
 ## Contractul arborelui API
+
+Forma observabilă canonică este:
+
+```text
+TestCase
+├── SETUP
+│   └── Request(s)
+├── TEST BODY
+│   ├── Request
+│   │   ├── Technical trace
+│   │   ├── Response details
+│   │   └── Response JSON
+│   └── Validation(s) — direct sibling of its owning request
+│       └── aggregate assertion table
+└── TEARDOWN
+    └── Request(s)
+```
 
 ```mermaid
 flowchart TD
@@ -274,7 +301,7 @@ ultimul request.
 Cleanup-ul asset-urilor are aceeași separare: `ReportAssetCleaner` păstrează
 fațada compatibilă, iar `ReportAssetCleanupCoordinator` serializază ștergerea
 pe director normalizat, aplică retry policy injectabilă și nu confundă o
-staging folder lipsă cu o eroare de raport. Astfel rulările paralele nu se
+director temporar lipsă cu o eroare de raport. Astfel sesiunile paralele nu se
 șterg una pe alta. Implementarea folosește încă `Thread.Sleep` în filesystem
 adapter-ul sincron; un viitor hardening poate introduce retry async și lock
 lifecycle controlat.
@@ -283,14 +310,14 @@ Fațada `ExtentTestScope` nu trebuie să devină un nou god-object. Orice regul�
 nouă de structură se extrage într-o politică internă pură/testabilă, iar scope-ul
 rămâne responsabil de sincronizare, delegare și ownership-ul `AsyncLocal`.
 
-Boundary-ul vendorului este explicit: `ExtentTestScope.StepFrame` conține doar
+Boundary-ul vendorului este explicit: `ScenarioStepFrame` conține doar
 starea semantică a pasului și un `IExtentNodeAdapter`; nu expune `ExtentTest`.
 `ExtentNodeAdapter` este singurul loc care translatează operațiile de node către
 Extent, iar validatorul de arbore consumă doar view-uri read-only ale copiilor și
 logurilor. Astfel, regulile phase → request → validation pot fi testate fără ca
 modelul intern de lifecycle să devină dependent de API-ul vendorului.
 
-Rezultatul lifecycle-ului este un model închis:
+Rezultatul lifecycle-ului este un model explicit:
 
 ```text
 ApiScenarioOutcome
@@ -305,9 +332,9 @@ failure dacă este singura eroare tehnică, iar skip-ul nu poate ascunde un
 failure. Proprietățile nullable de compatibilitate sunt doar proiecții pentru
 clienții existenți, nu sursa regulii.
 
-## Contractul artifactului
+## Contractul ieșirii HTML
 
-Artifactul final este un singur HTML timestamped sub `artifacts/reports/`.
+Ieșirea finală este un singur fișier HTML autonom sub directorul de rapoarte.
 Assets Extent sunt inline, iar folderul sibling `extent` nu este livrat.
 
 ```text
@@ -331,6 +358,55 @@ annotations / tags` folosesc același frame vizual ca `Tags` și
 `System/Environment`: header deasupra, aceeași culoare și aceeași suprafață.
 Fiecare are un singur tabel de date, fără rând total sintetic și fără tabel
 înglobat într-un alt tabel.
+
+### Taxonomia tag-urilor
+
+`ReportingSettings.TagOrder` este numai o regulă de ordonare. Eligibilitatea
+este declarată separat în `ReportingSettings.TagTaxonomy`:
+
+```text
+SelectionTagNames  -> #tag-toggle + adnotări în detaliile/cardurile scenariilor
+DiagnosticTagNames -> metadata operațională / triage, nu selector
+unknown            -> diagnostic, până la declararea explicită ca selection
+```
+
+`AtfTagTaxonomy` rămâne în Core și nu cunoaște Extent. Adaptorul Extent aplică
+aceeași politică în două puncte: `ExtentNativeTagSelectorSanitizer` curăță
+HTML-ul static, iar `ExtentReportClientTagPolicyController` hidratează selectorul
+și strip-urile `.atf-scenario-annotations` numai în detaliile scenariilor.
+Lista `Tests` din stânga rămâne tag-free: item-ul clasei conține doar numele,
+statusul și durata, are `tag` gol, iar orice strip `.atf-test-annotations`
+moștenit este eliminat defensiv la configurarea clientului.
+Categoriile rămân atașate scenariului copil; class root nu primește tag-uri și nu
+poate contamina totalurile.
+
+## Contractul navigării și al triage-ului
+
+Ordinea semantică a tab-urilor este:
+
+```text
+Tests → Category → Fails → Overview
+```
+
+`Tests` este sursa primară a execuției, `Category` este indexul de clasificare,
+`Fails` este triage-ul plat al tuturor failure-urilor, iar `Overview` este
+suprafața de sinteză și ultima filă. La bootstrap și la refresh, `Overview` se
+deschide implicit, fără să schimbe ordinea de mai sus.
+
+Contractul pentru `Fails` este strict:
+
+- un singur header semantic `Fails`;
+- toate failure-urile sunt listate într-o singură colecție plată, în ordinea
+  execuției, fără grupare pe clasă;
+- fiecare rând păstrează faza, testul, requestul/validation-ul, assertion-ul,
+  expected/actual și cauza redacted;
+- `Open in Tests` ajunge la nodul sursă exact, nu la un test aproximativ;
+- dacă aceeași cauză este deja deținută de validation, `TEST BODY` nu o repetă
+  ca mesaj generic `Failure`.
+
+Acest contract trebuie protejat simultan prin teste de projection, artifact
+inspection și smoke DOM. Un HTML care conține textul `Fails` nu este suficient
+dacă navigarea, deep-link-ul sau refresh-ul nu funcționează.
 
 ## Cum se schimbă raportarea în siguranță
 
@@ -364,7 +440,13 @@ Testele adaptorului protejează în special:
 | JSON are scroll vertical și zero overflow orizontal | `ReportingComponentTests` |
 | collapse/default overview este stabil | `ReportingComponentTests` |
 
-Un test verde verifică structura, nu randarea completă a browserului. Pentru o
-schimbare vizuală, artifactul HTML generat trebuie deschis și parcurs ca
+Un test verde verifică structura, nu randarea completă a DOM-ului. Pentru o
+schimbare vizuală, artifactul HTML generat trebuie deschis în tab-ul MCP și parcurs ca
 utilizatorul: click pe scenario, phase, request, validation și fiecare bloc
 de evidence.
+
+Artifactul final include `window.__atfDomContract.inspect()`, un harness
+diagnostic read-only pentru verificarea repetabilă a rândurilor `Tests`/`Fails`,
+stării collapsed, tabelelor de assertions, JSON overflow și computed styles.
+Harness-ul observă DOM-ul hidratat și nu modifică verdicturi, navigare sau
+conținut; validarea vizuală rămâne obligatoriu făcută în TAB MCP.

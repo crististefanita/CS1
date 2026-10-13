@@ -9,7 +9,7 @@ Este un proiect de test/suport, nu un modul de runtime. Este deja grupat sub
 păstrate neschimbate. Aceste demonstrații nu trebuie folosite niciodată ca
 dovadă că suita normală de acceptanță este sănătoasă.
 
-## Contract de audit
+## Contract de observabilitate
 
 Demonstrațiile de failure verifică observabilitatea, nu corectitudinea de business.
 Fiecare demo trebuie să păstreze schematic în raport:

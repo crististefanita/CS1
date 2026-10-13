@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Css;
 
 /// <summary>Secondary metadata, tags and audit table rules.</summary>
 internal static class AtfReportThemeOverviewAuditFragments
@@ -24,7 +24,7 @@ internal static class AtfReportThemeOverviewAuditFragments
          typography and accent colour identical to native Tags/System-Environment
          headings; only the table body remains secondary/compact. */
       .atf-tag-card .card-header { min-height: 0 !important; padding: 14px 24px 16px !important; border: 1px solid var(--atf-border) !important; border-bottom: 0 !important; border-radius: 8px 8px 0 0 !important; background: var(--atf-secondary-heading-bg) !important; color: var(--atf-secondary-heading-text) !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-font-base-size) !important; line-height: 1.35 !important; }
-      .dashboard-view .atf-tag-card > .card-header p { margin: 0 !important; color: var(--atf-secondary-heading-text) !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-font-base-size) !important; font-weight: 550 !important; line-height: 1.35 !important; }
+      .dashboard-view .atf-tag-card > .card-header p { margin: 0 !important; color: var(--atf-secondary-heading-text) !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-font-base-size) !important; font-weight: 400 !important; line-height: 1.35 !important; }
       .atf-tag-card .card-body { padding: 0 !important; background: transparent !important; }
       .atf-tag-scroll { height: var(--atf-audit-scroll-height) !important; max-height: var(--atf-audit-scroll-height) !important; overflow-x: hidden !important; overflow-y: auto !important; border: 1px solid var(--atf-border) !important; border-top: 0 !important; border-radius: 0 0 8px 8px !important; background: var(--atf-bg) !important; }
       .atf-tag-table { width: 100% !important; margin: 0 !important; table-layout: fixed !important; border: 0 !important; border-collapse: collapse !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-overview-font-size) !important; line-height: 1.32 !important; }

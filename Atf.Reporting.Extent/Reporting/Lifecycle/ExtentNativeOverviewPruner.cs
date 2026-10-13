@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Lifecycle;
+namespace Atf.Reporting.Extent.Lifecycle.Sanitization;
 
 /// <summary>
 /// Removes native overview surfaces that conflict with ATF's semantic overview

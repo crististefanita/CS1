@@ -1,18 +1,23 @@
 using System.Text.Json;
+using Atf.Reporting.Extent.Theme.Client.Ports;
 
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Client.Composition;
 
 /// <summary>
-/// Facade that composes independent browser controllers and report-specific
-/// behaviours into the self-contained Extent document.
+/// Composes independent browser controllers and report-specific behaviours into
+/// the self-contained Extent document. The public compatibility facade lives in
+/// <see cref="ExtentReportClientBehaviour"/>; this object owns only composition.
 /// </summary>
-internal static class ExtentReportClientBehaviour
+internal sealed class ExtentReportClientProjectionComposer : IClientProjectionComposer
 {
-    public static string Build(ReportingSettings? settings = null)
+    public string Compose(ReportingSettings? settings = null)
     {
         var classOrder = JsonSerializer.Serialize(settings?.TestClassOrder ?? []);
         var scenarioOrder = JsonSerializer.Serialize(settings?.TestScenarioOrder ?? []);
         var tagOrder = JsonSerializer.Serialize(settings?.TagOrder ?? []);
+        var tagTaxonomy = settings?.TagTaxonomy.CreatePolicy() ?? new TagTaxonomySettings().CreatePolicy();
+        var selectionTags = JsonSerializer.Serialize(tagTaxonomy.SelectionTagNames.OrderBy(static tag => tag, StringComparer.OrdinalIgnoreCase));
+        var diagnosticTags = JsonSerializer.Serialize(tagTaxonomy.DiagnosticTagNames.OrderBy(static tag => tag, StringComparer.OrdinalIgnoreCase));
         var chartPalette = JsonSerializer.Serialize(new
         {
             pass = AtfReportColors.OverviewPass,
@@ -31,6 +36,7 @@ internal static class ExtentReportClientBehaviour
             __ATF_NAVIGATION_CONTROLLER__
             __ATF_DISCLOSURE_CONTROLLER__
             __ATF_FAILURE_BEHAVIOUR__
+            __ATF_TAG_POLICY_CONTROLLER__
             __ATF_CONFIGURE_EXECUTION_HIERARCHY__
 
             function removeCompositeScenarioSummary() {
@@ -63,6 +69,7 @@ internal static class ExtentReportClientBehaviour
               installFailureNavigation();
               configureFailureView();
               configureCategoryLinks();
+              configureTagPolicy();
               removeCompositeScenarioSummary();
               updateNativeOverview();
               document.querySelectorAll('.test-view .accordion > .card').forEach(function (card) {
@@ -108,7 +115,7 @@ internal static class ExtentReportClientBehaviour
         </script>
         """;
 
-        return script
+        var composed = script
             .Replace(
                 "__ATF_NAVIGATION_CONTROLLER__",
                 ExtentReportClientNavigationController.Build()
@@ -129,9 +136,22 @@ internal static class ExtentReportClientBehaviour
                 ExtentReportClientFailureFragments.Build(),
                 StringComparison.Ordinal)
             .Replace(
+                "__ATF_TAG_POLICY_CONTROLLER__",
+                ExtentReportClientTagPolicyController.Build()
+                    .Replace("__ATF_SELECTION_TAGS__", selectionTags, StringComparison.Ordinal)
+                    .Replace("__ATF_DIAGNOSTIC_TAGS__", diagnosticTags, StringComparison.Ordinal)
+                    .Replace("__ATF_TAG_ORDER__", tagOrder, StringComparison.Ordinal),
+                StringComparison.Ordinal)
+            .Replace(
                 "__ATF_CONFIGURE_EXECUTION_HIERARCHY__",
                 ExtentReportClientFragments.BuildExecutionHierarchyFunction(),
                 StringComparison.Ordinal)
             .Replace("__ATF_CHART_PALETTE__", chartPalette, StringComparison.Ordinal);
+
+        return composed
+            + Environment.NewLine
+            + "<script id=\"atf-dom-contract\">"
+            + ExtentReportClientDomContractController.Build()
+            + "</script>";
     }
 }

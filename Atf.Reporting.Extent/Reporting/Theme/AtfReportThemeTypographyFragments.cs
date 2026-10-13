@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Css;
 
 /// <summary>Typography, evidence sizing, compact nodes and responsive rules.</summary>
 internal static class AtfReportThemeTypographyFragments

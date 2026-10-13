@@ -17,64 +17,68 @@ resource -> registru cleanup -> teardown în ordine inversă
 ATF nu este UI automation, nu este un client de business și nu trebuie să
 conțină logică specifică unui produs în kernelul reutilizabil.
 
-## Starea actuală
+## Principii de verificare
 
-Starea codului se verifică live, nu se îngheață într-o evaluare statică în README.
-Numărul testelor, verdicturile și layout-ul final trebuie confirmate prin build, teste și
-artefactul HTML generat. Direcția curentă este urmărită prin findings active,
-ownership, dovezi și criterii de acceptare.
+Contractele se confirmă din cod, teste și comportamentul observabil. README-ul
+nu păstrează totaluri, căi tehnice temporare, nume de rapoarte, capturi sau rezultate
+intermediare; acestea se calculează la verificarea live. Documentația păstrează
+doar reguli, ownership, dovezi cerute și criterii de acceptare.
 
 ## Gard de siguranță pentru refactorizare
 
-În această etapă formatul raportului este tratat ca un contract existent. Nu
+Formatul raportului este tratat ca un contract existent. Nu
 redesenăm layout-ul, nu schimbăm paleta, fonturile, textele, ordinea nodurilor
-sau interacțiunile raportului. Documentul
-`docs/feedback/ATF_LIFECYCLE_COMBINATION_ANALYSIS_2026-10-13.md` rămâne
-referința externă pentru acel format și este exclus din refactorizarea curentă.
+sau interacțiunile raportului. Documentația normativă din
+`docs/ATF_Reporting_Contract.md` definește formatul; documentele din
+`docs/feedback/` păstrează feedback-ul urmărit, procedura și dovada contractelor
+închise; RF-02–RF-05 sunt închise, iar registrul lifecycle este separat.
 
 ```mermaid
 flowchart LR
     Contract[Contract raport neschimbat] --> Ports[Porturi și politici interne]
-    Ports --> Cohesion[Smaller cohesive classes]
+    Ports --> Cohesion[Clase mai mici și coezive]
     Cohesion --> Tests[Teste unitare și de componentă]
-    Tests --> Proof[Același artifact observabil]
+    Tests --> Proof[Același rezultat observabil]
 ```
 
-Orice schimbare care modifică artifactul observabil este regresie, nu refactorizare.
+Orice schimbare care modifică rezultatul observabil este regresie, nu refactorizare.
 Schimbările acceptate sunt limitate la ownership intern, dependențe, lifecycle,
 concurență, testabilitate și documentația acestor seam-uri.
 
-### Probleme deschise prioritare
+### Cum se citește feedback-ul live
 
-1. `ExtentTestScope` păstrează sincronizare, tree transitions, status policy și evidence delegation; următorul split trebuie făcut doar prin seam-uri testabile.
-2. `ExtentReportLifecycle` și theme/composer leagă încă session state, filesystem și template composition.
-3. `ReportArtifactInspector` verifică în principal sursa statică, nu DOM-ul hidratat.
-4. Testele de reporting verifică în principal HTML/CSS/JS static; lipsesc
-   verificări reale de browser pentru click, collapse, scroll și computed styles.
-5. Clasele de test foarte mari trebuie împărțite după contract, nu după numărul de metode;
-   `ReportingComponentTests` are peste 800 de linii și trebuie redus ca suprafață de review.
-6. Suitele de teste folosesc încă două generații xUnit: v3 în proiectele API și
-   v2 în proiectele interne. Migrarea trebuie făcută controlat înainte de
-   consolidarea în `Atf.Tests`.
+README-ul descrie contractele stabile; nu duplică aici backlog-ul. TODO-urile
+active se recitesc direct din cod și teste în:
 
-### Interpretarea statusurilor
+- [combinațiile de lifecycle și raportare](docs/feedback/Atf_Lifecycle_Combination.md);
+- [refactorizarea și responsabilitățile](docs/feedback/Atf_Refactoring_Feedback.md);
+- [ghidul obligatoriu de execuție](docs/feedback/Atf_Feedback_Execution_Guide.md);
+- [indexul și regulile feedback-ului](docs/feedback/README.md).
 
-Feedback-ul folosește două niveluri care nu trebuie confundate:
+Un item este eliminat numai după ce criteriul său este demonstrat prin testul
+indicat și prin artifactul relevant. Registrul lifecycle rămâne excepția
+dedicată formatului raportului; celelalte registre acoperă refactorizarea și
+porțile de calitate.
 
-| Nivel | Ce este deja protejat | Ce rămâne deschis |
+### Contracte de verificare
+
+Feedback-ul se organizează după nivelul de dovadă, nu după o stare istorică:
+
+| Nivel | Contract verificat | Dovadă necesară |
 |---|---|---|
-| semantic | verdictul funcțional, precedence-ul Fail/Skip, tabelul agregat și izolarea reporterului | outcome model mai strict și eliminarea API-urilor de validare compatibile în paralel |
-| artifact | HTML autonom, roluri semantice și markup-ul expected | DOM hidratat, computed styles, click, scroll și overflow real |
-| soft assertion | rândul `Fail` rămâne vizibil, xUnit nu eșuează, iar scenariul devine `Warning` | reconcilierea DOM/computed-style în toate suprafețele Overview/Tags/metadata |
-| security | redactor central și strategii separate | matrice de redaction executată pentru fiecare suprafață de evidence |
+| semantic | verdict, precedență, tabel agregat și izolare | teste unitare și de componentă pentru fiecare politică |
+| HTML | document autonom, roluri semantice și markup stabil | inspecție statică plus DOM pentru comportamentul interactiv |
+| soft assertion | rândurile eșuate rămân vizibile fără a pierde contextul | verificare în Overview, Tests, Fails și metadata |
+| security | date sensibile sunt mascate înainte de publicare | matrice de redaction pe toate suprafețele de evidence |
 
-Prin urmare, `Warning/Other` este **mitigat semantic**, nu închis end-to-end,
-iar `ReportArtifactInspector` dovedește contractul static, nu comportamentul
-browserului. Acest vocabular este obligatoriu în README-urile modulelor.
+`Warning/Other` este o stare semantică distinctă de verdictul funcțional, iar
+`ReportArtifactInspector` verifică structura statică; comportamentul DOM necesită
+o dovadă interactivă separată în tab-ul MCP. Acest vocabular este obligatoriu în
+README-urile modulelor.
 
-Detaliile findings-urilor active, backlog-ul și metodologia auditului live sunt în
-[feedback-ul live compilat](docs/feedback/ATF_LIVE_CODE_FEEDBACK_2026-10-13.md)
-și în [evaluarea de refactorizare](docs/ATF_Refactoring_Assessment.md).
+Direcțiile de refactorizare, backlog-ul și metodologia verificării live sunt în
+[registrul de feedback](docs/feedback/README.md) și în
+[TODO-urile de refactorizare](docs/feedback/Atf_Refactoring_Feedback.md).
 
 ## Arhitectura reală a proiectului
 
@@ -112,7 +116,7 @@ este ales renderer-ul curent.
 
 ### Ținta de simplificare a soluției
 
-Structura minimă este acum aplicată: modulul API și conținutul fostului
+Structura minimă este: modulul API și conținutul fostului
 `Atf.Common` sunt în `Atf.Api/Module`, iar testele API și failure demos sunt
 sub `Atf.Tests`. Păstrăm separat `Atf.Core`, `Atf.Api.TestHost` și
 `Atf.Reporting.Extent`, deoarece acestea protejează kernelul, composition
@@ -142,7 +146,7 @@ Nu introducem `Atf.Shared`, `Atf.Contracts`, `Atf.Framework` sau directoare
 `Common`/`Utils` fără un boundary consumat de cel puțin două module reale.
 Reducem numărul de directoare, nu responsabilitățile și nu testele.
 
-## Runtime pipeline
+## Pipeline runtime
 
 ```mermaid
 sequenceDiagram
@@ -186,23 +190,26 @@ trebuie să păstreze ambele adevăruri.
 Arborele canonic este:
 
 ```text
-test class
-└── scenario
+TestCase
     ├── SETUP
-    │   └── request
-    │       └── validation sibling
+    │   └── Request(s)
     ├── TEST BODY
-    │   ├── request
-    │   │   └── technical trace + request/response JSON
-    │   └── validation sibling
+    │   ├── Request
+    │   │   ├── Technical trace
+    │   │   ├── Response details
+    │   │   └── Response JSON
+    │   └── Validation(s) — direct sibling of its owning request
+    │       └── aggregate assertion table
     └── TEARDOWN
-        └── cleanup / verification
+        └── Request(s)
 ```
 
 Reguli obligatorii:
 
 - setup, test body și teardown sunt faze sub același scenario;
-- un request și validarea lui sunt noduri frați sub aceeași fază;
+- un request și validarea lui sunt noduri frați direcți sub aceeași fază;
+- trace-ul tehnic, response details și response JSON aparțin request-ului;
+- validarea nu este copilul request-ului și nu este atașată altui request;
 - un response produce o singură validare agregată;
 - assertions pentru același response apar într-un singur tabel;
 - validation nu devine copilul request-ului și nici copilul validatorului anterior;
@@ -212,7 +219,7 @@ Reguli obligatorii:
 - verdictul funcțional este Pass/Fail/Skip, iar Info este doar evidence;
 - folderul Extent extern nu este livrat împreună cu HTML-ul final.
 
-### Validation model
+### Modelul de validare
 
 ```mermaid
 flowchart LR
@@ -255,14 +262,13 @@ Contractul dorit este:
 primary failure > teardown failure > skip > pass
 ```
 
-**P0 închis:** custom teardown-ul și `Cleanup.RunAsync()` sunt protejate printr-un
-`finally` interior, iar testele confirmă cleanup după failure de teardown,
-`StartStep` și callback de diagnostic. Reporter failure nu mai trebuie să oprească
-resource cleanup; această regulă este acum contract protejat prin teste.
+Contractul de cleanup este: custom teardown-ul și `Cleanup.RunAsync()` rulează
+într-un `finally` interior, fără ca diagnosticul secundar să poată opri eliberarea
+resurselor. Regula este protejată prin teste.
 
 ## Configurație
 
-Configurația este module-owned:
+Configurația este deținută de modul:
 
 ```text
 Modules
@@ -293,7 +299,7 @@ Exemple de override:
 ATF_ENV=local
 ATF_Modules__Api__Config__Api__BaseUrl=https://api.example.test
 ATF_Modules__Api__Config__Api__TimeoutSeconds=30
-ATF_Modules__Api__Config__Reporting__ReportPath=artifacts/reports/api.html
+ATF_Modules__Api__Config__Reporting__ReportPath=<director-rapoarte>/api.html
 ATF_Modules__Api__Config__Reporting__AssertionMaxDisplayCharacters=240
 ATF_API_TOKEN=<secret injectat la runtime>
 ```
@@ -333,7 +339,7 @@ teste de componentă
 teste de contract ale artifactului
     HTML autonom, CSS tokens, collapsed nodes, JSON blocks, assertion table
         |
-browser smoke
+ DOM smoke în tab-ul MCP
     DOM, click, collapse, scroll, computed styles, overflow
         |
 teste API live
@@ -359,8 +365,8 @@ dotnet test .\Atf.Api\Atf.Api.csproj --no-restore
 ```
 
 O schimbare de reporting trebuie protejată printr-un test structural și un test
-pe artifactul HTML final. Un test string-based nu înlocuiește un browser smoke
-test.
+pe artifactul HTML final. Un test bazat doar pe string-uri nu înlocuiește
+verificarea interactivă în tab-ul MCP.
 
 ## Porți de calitate
 
@@ -373,53 +379,43 @@ O schimbare este completă numai când:
 - un response păstrează o singură validation table agregată;
 - request și validation rămân frați în raport;
 - raportul este un singur HTML autonom;
-- folderul `artifacts/reports/extent` nu este livrat;
+- folderul extern `extent` nu este livrat împreună cu HTML-ul;
 - JSON-ul este collapsed, code-formatted și scrollable;
-- raportul generat este deschis și parcurs în browser;
-- verificarea browserului confirmă layout-ul, click-urile și stilurile reale.
+- raportul generat este deschis și parcurs în tab-ul MCP;
+- verificarea DOM confirmă layout-ul, click-urile și stilurile reale.
 
-## Refactoring roadmap
+## Garduri de refactorizare aplicate
 
-### P0 închis
+Direcțiile de mai jos sunt reguli de design deja reflectate în cod și teste, nu
+un backlog copiat în README:
 
-- cleanup garantat după custom teardown failure;
-- teste pentru failure/skip/teardown/cleanup precedence;
-- păstrarea cauzei primare când diagnosticul secundar eșuează.
+- `AtfConfigurationValidator` compune validatori independenți pentru secțiuni;
+- `ValidationTable`, evaluatorul și publisher-ul best-effort au responsabilități
+  distincte;
+- lifecycle-ul API separă phase, teardown și outcome;
+- Core rămâne renderer-neutral, iar Extent deține theme, client behaviour și
+  artifact publishing;
+- `ReportArtifactInspector` dovedește artifactul static; comportamentul DOM este
+  o dovadă separată;
+- namespace-urile noi respectă limita de maximum 8 tipuri top-level directe,
+  iar depășirile istorice au ratchet și owner.
 
-### P1
-
-- cleanup independent de reporter failure;
-- Core renderer-neutral fără markup HTML Extent;
-- `ValidationTableRunner` cu rezultat funcțional autoritar și publisher best-effort;
-- un singur protocol public pentru validarea unui response;
-- politici separate pentru `ExtentTestScope`;
-- separarea phase/teardown/outcome din `ApiScenarioLifecycleRunner` prin seam-uri testabile;
-- duplicate-key policy pentru technical trace;
-- browser smoke tests pe artifactul final;
-- alinierea versiunilor xUnit și a politicilor de parallelization între proiectele de test;
-- boundary tests pentru `Atf.Api.TestHost` și renderer;
-- eliminarea afirmațiilor istorice din evaluările active.
-
-### P2
-
-- cleanup coordinator async cu ownership controlat al lock-urilor;
-- înlocuirea `Thread.Sleep` din retry-ul de cleanup cu o politică injectabilă și anulabilă;
-- wrapper-ele `Steps` forwarding-only au fost eliminate; reintroducerea cere semantică reală;
-- matrice completă de redaction și audit pentru exception text/snapshot;
-- `ApiAttemptRunner` numai dacă testele justifică seam-ul;
-- declarative operation registry după stabilizarea contractelor;
-- al doilea renderer doar prin aceleași reporting ports.
+Orice abatere nouă se adaugă numai în documentul de feedback potrivit, cu owner,
+seam, test și criteriu de acceptare. Astfel README-ul rămâne explicație de
+arhitectură, nu jurnal de lucru.
 
 ## Documentație și surse normative
 
 README-urile descriu ownership-ul local și trebuie să rămână sincronizate cu
-codul și artifactul generat.
+codul și contractele de verificare.
 
 - [Architecture și reporting guide](docs/ATF_Architecture.md)
 - [Indexul documentației](docs/README.md)
 - [Reporting contract](docs/ATF_Reporting_Contract.md)
-- [Refactoring assessment](docs/ATF_Refactoring_Assessment.md)
-- [Feedback live compilat](docs/feedback/ATF_LIVE_CODE_FEEDBACK_2026-10-13.md)
+- [Ghid pentru adăugarea unui test API](docs/ATF_API_TEST_GUIDE.md)
+- [Lifecycle și combinații de raportare](docs/feedback/Atf_Lifecycle_Combination.md)
+- [Refactorizare și responsabilități](docs/feedback/Atf_Refactoring_Feedback.md)
+- [Registrul de feedback](docs/feedback/README.md)
 - [Best practices](docs/README_Atf_BestPractices.md)
 - [Atf.Core README](Atf.Core/README.md)
 - [Atf.Api module README](Atf.Api/Module/README.md)
@@ -428,21 +424,21 @@ codul și artifactul generat.
 - [Atf.Reporting.Extent README](Atf.Reporting.Extent/README.md)
 - [Atf.Tests README](Atf.Tests/README.md)
 
-Regula „maximum opt clase într-un pachet” este un semnal de review, nu o lege.
-Criteriul principal rămâne un singur motiv dominant de schimbare, dependențe
-clare și teste care protejează contractul.
+Regula „maximum opt tipuri top-level directe într-un namespace” este o limită
+arhitecturală pentru codul de producție, nu un simplu semnal de review. Un
+namespace nou nu poate depăși 8 tipuri. Depășirile sunt datorie
+de refactorizare urmărită prin ratchet tests: count-ul poate scădea, dar nu
+poate crește. Split-ul este permis numai pe o responsabilitate reală, nu prin
+clase goale sau mutări artificiale. Criteriile de split sunt în
+[`README_Atf_BestPractices.md`](docs/README_Atf_BestPractices.md).
 
 ## Adăugarea unei operații API noi
 
-1. Definește metadata rutei în `Atf.Api/Module`.
-2. Adaugă un model tipizat numai când payload-ul are nevoie de el.
-3. Adaugă o metodă de service pentru serializare și alegerea rutei.
-4. Adaugă un step semantic numai dacă îmbunătățește limbajul scenariului; nu adăuga un wrapper forwarding-only.
-5. Adaugă validatori care agregă verificările pentru un singur response.
-6. Înregistrează imediat resursele create în `CleanupRegistry`.
-7. Adaugă teste offline de componentă înaintea unui scenariu live.
-8. Adaugă scenariul live numai când contribuie la acoperirea de business.
-9. Generează HTML-ul final și inspectează-l în browser.
+Pentru traseul complet, inclusiv exemple, diagrame, ownership, teste offline și
+validarea interactivă a raportului Extent, urmează
+[ghidul specializat pentru adăugarea unui test API](docs/ATF_API_TEST_GUIDE.md).
 
-Cea mai sigură extensie este cea care adaugă vocabular de domeniu fără să mute
-politica de transport, lifecycle sau renderer în scenariu.
+Secvența scurtă este: definește contractul, adaugă ruta și modelele tipizate,
+implementează service-ul semantic, agregă assertions pentru response,
+înregistrează cleanup-ul, protejează schimbarea prin teste offline, adaugă
+scenariul live și verifică raportul în tab-ul MCP.

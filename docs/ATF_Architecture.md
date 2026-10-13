@@ -3,7 +3,7 @@
 This document is the executable design guide for the repository. `Atf.Api` is the
 primary ATF module; `Atf.Core` is its renderer-neutral technical foundation. It records the
 contracts discovered while comparing the generated ATF report with the legacy
-Extent report and then validating the current HTML in a browser. It is written
+Extent report and then validating the current HTML interactively in the MCP tab. It is written
 for engineers who need to add another API module without copying framework code.
 
 ## 1. What belongs where
@@ -171,13 +171,14 @@ Secrets are injected at runtime. The report may expose `auth.profile`,
 
 ## 4. Scenario and report tree
 
-The left navigation groups scenarios under the xUnit test class. The scenario
-header carries the verdict, duration and tags. Composite lifecycle scenarios use
+The left navigation groups scenarios under the xUnit test class. The class item
+contains only class identity, status and duration; it has no tag pills. The scenario
+header carries the verdict, duration and its tags. Composite lifecycle scenarios use
 the following visual hierarchy:
 
 ```mermaid
 flowchart TD
-    Class[Test class in left navigation] --> Scenario[Scenario header\nverdict + duration + tags]
+    Class[Test class in left navigation\nidentity + status + duration only] --> Scenario[Scenario header\nverdict + duration + tags]
     Scenario --> Setup[SETUP\ncollapsed phase shell]
     Scenario --> Body[TEST BODY\ncollapsed phase shell]
     Scenario --> Teardown[TEARDOWN\ncollapsed phase shell]
@@ -204,7 +205,7 @@ The visual rules are intentional:
 5. Empty phases are not manufactured.
 6. The phase order is canonical: setup, body, teardown.
 
-The browser behaviour is implemented by
+The client/DOM behaviour is implemented by
 `Atf.Reporting.Extent/Reporting/Theme/ExtentReportClientBehaviour.cs`; the structure is
 created by the Extent adapter's `ExtentTestScope` and Core's `ApiScenarioPhaseLayout`.
 
@@ -305,8 +306,8 @@ The artifact acceptance contract is:
 flowchart TD
     Unit[unit tests\nvalue objects, policies, formatters] --> Component[component tests\nexecutor, reporter, lifecycle tree]
     Component --> Artifact[artifact contract\nHTML/CSS/JS inspection]
-    Artifact --> Browser[TAB MCP\nrendered report verification]
-    Browser --> Live[live API scenarios\nproduct coverage]
+    Artifact --> Mcp[TAB MCP\nrendered report verification]
+    Mcp --> Live[live API scenarios\nproduct coverage]
 ```
 
 Use the cheapest proof that can detect the defect:
@@ -316,7 +317,7 @@ Use the cheapest proof that can detect the defect:
 | phase vocabulary/order | `Atf.Tests/Atf.Api.Tests/ApiScenarioPhaseLayoutTests.cs` | canonical labels and phase/request/validation ownership tree |
 | automatic phase closure | same test class | starting a new phase closes the prior frame |
 | HTTP/validation ownership semantics | API/Core reporting structure tests | validation is the request's next direct phase sibling; phase closes after aggregate evidence |
-| collapse and summary behaviour | `ReportingComponentTests` | generated client contract contains the browser rules |
+| collapse and summary behaviour | `ReportingComponentTests` | generated client contract contains the DOM rules |
 | final artifact | `ReportArtifactInspectorTests` | embedded theme, no asset folder, phase contract |
 | JSON and evidence safety | reporting/evidence tests | escaping, wrapping, one assertion table |
 | configuration/resilience | Core configuration tests | fail-fast values, retry and polling policies |
@@ -348,7 +349,7 @@ surfaces, assertion table and absence of `artifacts/reports/extent`.
 6. Register created resources with `CleanupRegistry`.
 7. Add unit/component tests before the live scenario.
 8. Add the live scenario under the real test class and stable categories.
-9. Generate the HTML report and inspect it in a browser.
+9. Generate the HTML report and inspect it interactively in the MCP tab.
 
 The module contributes domain language. Core remains unchanged unless the new
 behavior is genuinely product-neutral.

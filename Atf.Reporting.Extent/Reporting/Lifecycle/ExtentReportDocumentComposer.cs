@@ -1,5 +1,7 @@
 namespace Atf.Reporting.Extent.Lifecycle;
 
+using Atf.Reporting.Extent.Lifecycle.Sanitization;
+
 /// <summary>
 /// Composes the final single-file report after Extent has flushed its native
 /// document. Sanitization, overview pruning, and ATF resource injection are
@@ -18,6 +20,7 @@ internal sealed class ExtentReportDocumentComposer
         html = ExtentAssetInliner.Inline(html);
         html = ExtentNativeOverviewPruner.RemoveNativeEventsChart(html);
         html = ExtentNativeHtmlSanitizer.EnsureDarkExtentTheme(html);
+        html = ExtentNativeTagSelectorSanitizer.KeepSelectionTags(html, settings.TagTaxonomy.CreatePolicy());
 
         html = html.Replace(
             "</head>",

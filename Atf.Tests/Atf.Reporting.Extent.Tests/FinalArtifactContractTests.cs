@@ -162,6 +162,62 @@ public sealed class FinalArtifactContractTests
         }
     }
 
+    [Fact(DisplayName = "Final Extent artifact preserves multiple failed assertions under one validation")]
+    public void FinalHtmlPreservesMultipleFailedAssertionsForOneRequest()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-multi-assertion-artifact-");
+        try
+        {
+            var reportPath = Path.Combine(root.FullName, "api-report.html");
+            var lifecycle = new ExtentReportLifecycle();
+            lifecycle.Initialize(new ReportingSettings
+            {
+                Engine = "extent",
+                ReportPath = reportPath,
+                TimestampEnabled = false,
+                DocumentTitle = "ATF multi-assertion contract",
+                ReportName = "ATF multi-assertion contract"
+            });
+
+            using (var scenario = lifecycle.StartTest(
+                       "FailureCorrelationTests",
+                       "two failed assertions in one exchange",
+                       "offline multi-assertion contract",
+                       ["failure", "contract"]))
+            {
+                scenario.StartStep("TEST BODY");
+                scenario.StartStep("GET /public/v2/users");
+                scenario.Detail("method", "GET");
+                scenario.Detail("response.status", "200");
+                scenario.StartStep("Validate: users contract");
+                scenario.AssertionTable(
+                [
+                    new AtfAssertion("HTTP status", "201 Created", "200 OK", false),
+                    new AtfAssertion("JSONPath id", "exists", "missing", false)
+                ]);
+                scenario.Fail("Two contract assertions failed", new InvalidOperationException("synthetic assertion pair"));
+                scenario.CompleteStep(AtfReportStatus.Fail);
+                scenario.CompletePhase("TEST BODY", AtfReportStatus.Fail);
+                scenario.CompleteScenario(AtfReportStatus.Fail);
+            }
+
+            lifecycle.FinalizeReport();
+
+            var html = File.ReadAllText(reportPath);
+            Assert.Equal(1, CountOccurrences(html, "GET /public/v2/users"));
+            Assert.Equal(1, CountOccurrences(html, "Validate: users contract"));
+            Assert.True(
+                CountOccurrences(html, "data-atf-assertion-status='fail'") >= 2,
+                "Both failed assertion rows must remain in the same aggregate validation table.");
+            Assert.Contains("function failureEvidenceRecords(card)", html, StringComparison.Ordinal);
+            Assert.Contains("row.dataset.atfAssertionStatus === 'fail'", html, StringComparison.Ordinal);
+        }
+        finally
+        {
+            TestDirectoryCleanup.DeleteEventually(root);
+        }
+    }
+
     private static void PublishScenario(
         ExtentReportLifecycle lifecycle,
         string testClassName,

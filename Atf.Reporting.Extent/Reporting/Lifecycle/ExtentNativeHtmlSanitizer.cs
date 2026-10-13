@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Lifecycle;
+namespace Atf.Reporting.Extent.Lifecycle.Sanitization;
 
 /// <summary>
 /// Removes ATF-owned fragments from a native Extent document and normalizes the

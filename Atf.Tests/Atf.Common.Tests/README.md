@@ -18,13 +18,13 @@ semantica rutelor, serializarea serviciilor, acțiunile semantice justificate,
 agregarea validărilor, fixture-urile/datele și cleanup-ul fără să contacteze un
 API live.
 
-## Aliniere de audit — 2026-10-13
+## Contracte protejate
 
-Acoperirea modulului este bună. Riscul structural rămas este densitatea
-compoziției și compatibilitatea unor API-uri
-de validare; publicarea raportului este acum izolată prin publisher-ul
-best-effort, iar pașii forwarding-only nu mai sunt păstrați. Testele de aici trebuie să țină
-modulul renderer-neutral și să păstreze autoritatea rezultatului funcțional.
+Testele protejează compoziția modulului, validarea și cleanup-ul fără să mute
+responsabilitatea în renderer. Publicarea raportului este best-effort, iar pașii
+forwarding-only nu sunt responsabilitatea acestui proiect. Un test nou trebuie să
+păstreze autoritatea rezultatului funcțional și să folosească `IApiExecutor` ca
+seam, nu o implementare concretă de transport.
 
 ## Fluxul componentelor
 
@@ -104,8 +104,8 @@ flowchart TD
 
 Reporterul de înregistrare verifică evenimentele de lifecycle, nu un detaliu de implementare:
 `start:Validate:*` trebuie asociat cu `complete:Pass` sau `complete:Fail`. Acest
-Acest lucru protejează aceeași ierarhie randată ulterior de Extent fără să
-necesite browser sau serviciu live.
+lucru protejează aceeași ierarhie randată ulterior de Extent fără să
+necesite randare DOM sau serviciu live.
 
 ## Rulare
 

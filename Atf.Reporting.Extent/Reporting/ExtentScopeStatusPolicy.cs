@@ -1,11 +1,11 @@
-namespace Atf.Reporting.Extent;
+namespace Atf.Reporting.Extent.Scope;
 
 /// <summary>
 /// Keeps the semantic status rules for one scenario separate from Extent tree
 /// navigation. A warning is diagnostic evidence: it must not be promoted to a
 /// failure, but a nominally passing scenario/phase must not hide it either.
 /// </summary>
-internal sealed class ExtentScopeStatusPolicy
+internal sealed class ExtentScopeStatusPolicy : IReportStatusPolicy
 {
     private readonly HashSet<string> _warningPhases = new(StringComparer.Ordinal);
 

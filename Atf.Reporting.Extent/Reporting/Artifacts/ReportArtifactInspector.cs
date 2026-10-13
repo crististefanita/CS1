@@ -39,7 +39,10 @@ public sealed class ReportArtifactInspector
             ["phase-shells-collapsed"] = html.Contains("body.classList.remove('show')", StringComparison.Ordinal) && html.Contains("header.setAttribute('aria-expanded', 'false')", StringComparison.Ordinal),
             ["timestamp-column-hidden"] = html.Contains("timestamp-col", StringComparison.Ordinal) && html.Contains("display: none !important", StringComparison.Ordinal),
             ["inner-phase-rail-removed"] = html.Contains("border-left: 0 !important", StringComparison.Ordinal),
-            ["response-owned-execution-hierarchy"] = html.Contains("configureExecutionHierarchy", StringComparison.Ordinal) && HasSemanticExecutionRoles(html)
+            ["response-owned-execution-hierarchy"] = html.Contains("configureExecutionHierarchy", StringComparison.Ordinal) && HasSemanticExecutionRoles(html),
+            ["typed-failure-projection"] = HasTypedFailureProjection(html),
+            ["failure-id-idempotency"] = html.Contains("if (!failureIds.includes(failureId)) failureIds.push(failureId);", StringComparison.Ordinal),
+            ["dom-contract-harness"] = HasDomContractHarness(html)
         };
 
         return new ReportArtifactInspection(fullPath, checks);
@@ -91,6 +94,21 @@ public sealed class ReportArtifactInspector
         var client = html.Contains("className = 'atf-secondary-overview'", StringComparison.Ordinal) && html.Contains("header.setAttribute('aria-expanded', 'false')", StringComparison.Ordinal);
         return materialized || client;
     }
+
+    private static bool HasTypedFailureProjection(string html) =>
+        html.Contains("class FailureRecord", StringComparison.Ordinal)
+        && html.Contains("class FailureIndex", StringComparison.Ordinal)
+        && html.Contains("function collectFailureCandidates()", StringComparison.Ordinal)
+        && html.Contains("function projectFailureRecords(candidates)", StringComparison.Ordinal)
+        && html.Contains("return new FailureIndex(records)", StringComparison.Ordinal);
+
+    private static bool HasDomContractHarness(string html) =>
+        html.Contains("window.__atfDomContract", StringComparison.Ordinal)
+        && html.Contains("version: 1", StringComparison.Ordinal)
+        && html.Contains("inspect: function ()", StringComparison.Ordinal)
+        && html.Contains("statusBesideIdentity", StringComparison.Ordinal)
+        && html.Contains("openEvidenceCount", StringComparison.Ordinal)
+        && html.Contains("overflowY", StringComparison.Ordinal);
 
     private static bool HasClass(string attributes, string className) => Regex.IsMatch(attributes, $"\\bclass\\s*=\\s*(['\"]).*?\\b{Regex.Escape(className)}\\b.*?\\1", RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant);
     private static string NormalizeCellText(string html) => Regex.Replace(WebUtility.HtmlDecode(Regex.Replace(html, "<.*?>", string.Empty)), "\\s+", " ").Trim().ToUpperInvariant();

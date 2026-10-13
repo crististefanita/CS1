@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Client;
 
 /// <summary>
 /// Browser controller for independent card disclosure and collapsed defaults.
@@ -41,15 +41,15 @@ internal static class ExtentReportClientDisclosureController
               window.addEventListener('click', function (event) {
                 const target = event.target instanceof Element ? event.target : null;
                 const targetHeader = target?.closest('.test-view .card-header[role="button"]');
-                const handler = targetHeader?.__atfToggleHandler;
-                if (typeof handler === 'function') handler(event);
+                if (!targetHeader || target.closest('.card-toolbar')) return;
+                toggleCard(targetHeader.parentElement, targetHeader, event);
               }, true);
               window.addEventListener('keydown', function (event) {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
                 const target = event.target instanceof Element ? event.target : null;
                 const targetHeader = target?.closest('.test-view .card-header[role="button"]');
-                const handler = targetHeader?.__atfToggleHandler;
-                if (typeof handler === 'function') handler(event);
+                if (!targetHeader || target.closest('.card-toolbar')) return;
+                toggleCard(targetHeader.parentElement, targetHeader, event);
               }, true);
             }
 

@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent;
+namespace Atf.Reporting.Extent.Scope;
 
 /// <summary>
 /// Centralizes the small amount of semantic classification needed by the

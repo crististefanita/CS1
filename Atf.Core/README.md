@@ -17,7 +17,7 @@ HTML.
 
 ```mermaid
 flowchart LR
-    Config[Configuration loader] --> Settings[Validated module settings]
+    Config[Loader configurație] --> Settings[Setări validate ale modulului]
     Settings --> Executor[ApiExecutor]
     Executor --> URL[IApiUrlBuilder]
     Executor --> Auth[IApiAuthenticator]
@@ -36,9 +36,9 @@ aplicarea sigură a URL-urilor și autentificării, retry-ul și măsurarea unui
 și porturile de raportare rămân în Core ca și contracte neutre față de renderer;
 formatatoarele HTML Extent și `ReportArtifactInspector` se află în
 `Atf.Reporting.Extent`. Core nu trebuie să reintroducă `helm-*`, tag-uri HTML,
-token-uri de temă sau selectori de browser.
+token-uri de temă sau selectori DOM/Extent.
 
-## Auditul responsabilităților — perspectivă OOP strictă
+## Responsabilități — perspectivă OOP strictă
 
 `Atf.Core` este cel mai puternic boundary din soluție, dar nu este încă o
 colecție de clase perfect coezive. Punctele de presiune sunt elemente intenționate
@@ -79,7 +79,7 @@ este cel mai ușor loc în care pot fi observate.
 | `SensitiveDataRedactor` | politică de boundary | Igienizează evidence structurat și liber înainte de a ajunge la reporter |
 | `AtfAssertion` | model de evidence | Transportă numele assertion-ului, expected, actual și verdictul fără prezentare |
 
-## Exchange sequence
+## Secvența schimbului HTTP
 
 ```mermaid
 sequenceDiagram
@@ -107,10 +107,10 @@ sequenceDiagram
 
 `HTTP exchange completed` nu implică `functional contract passed`. Executorul
 publică evidence de transport cu status informativ; `Atf.Api/Module` deschide apoi
-exact o validare agregată de contract, ca următor sibling al request-ului sub aceeași
-fazele și decide dacă response-ul respectă contractul cerut. Validarea se închide
-imediat după publicarea tabelului. Ierarhia randată
-ierarhia este `phase → request + contract validation sibling → one table`.
+exact o validare agregată de contract, ca următor sibling al request-ului sub
+aceeași fază, și decide dacă response-ul respectă contractul cerut. Validarea se
+închide imediat după publicarea tabelului. Ierarhia randată este
+`phase → request + contract validation sibling → un tabel`.
 
 `ApiExecutionReporter` este adaptorul de pe partea de execuție. Mapează faptele
 request/response în proprietăți stabile ale raportului, JSON request, JSON
@@ -121,11 +121,11 @@ markup-ul Extent rămâne în boundary-ul de raportare.
 
 Rezultatul este împărțit intenționat în fapte de transport și verdict funcțional:
 
-| State/fact | Owner | Meaning |
+| Stare/fapt | Owner | Semnificație |
 |---|---|---|
 | `ApiResponse` | transport | status, headere, body brut, URL și durata observată |
 | `Attempts` / `RetryEvents` | executor + politica de retry | cum a ajuns schimbul la response-ul final |
-| `ValidationTable` | API module validators | all expected-vs-actual contract checks |
+| `ValidationTable` | validatori ai modulului API | toate verificările de contract expected-vs-actual |
 | Extent `Info` | reporter | doar evidence tehnic; niciodată Pass de business |
 | Extent `Pass`/`Fail` | lifecycle validation/scenariu | contract funcțional și rezultat al scenariului |
 
@@ -160,7 +160,7 @@ Redaction-ul se aplică doar copiei trimise la raportare. Cheile secrete și
 credențialele de transport sunt mascate implicit; mascarea PII este explicită prin
 `PiiEnabled`, astfel încât echipele să poată decide dacă identificatorii business
 rămân disponibili pentru diagnostic.
- Căile locale Windows din evidence-ul excepției sunt mascate implicit ca
+Căile locale Windows din evidence-ul excepției sunt mascate implicit ca
 `[LOCAL_PATH]`, păstrând sufixul liniei sursă. `RedactLocalPaths=false` se
 folosește numai într-o rulare locală de diagnostic, asumată explicit.
 `Redaction.Enabled=false` nu este ocolire pentru secrete: authorization, token,
@@ -168,12 +168,12 @@ cookie, API-key și câmpurile sensibile configurate rămân mascate. Flag-ul op
 doar transformările opționale de path/PII într-o rulare locală explicită.
 
 Compoziția runtime folosește `ApiSettingsSnapshot`: executorul copiază profund
-`RateLimit`, `Polling`, `AuthProfiles`, `Redaction` and `Routes` at
-construction time. Mutating an array, header dictionary or profile in the
+`RateLimit`, `Polling`, `AuthProfiles`, `Redaction` și `Routes` la construcție.
+Modificarea unui array, a unui dicționar de headere sau a unui profil din
 configurația host-ului după începerea execuției nu poate schimba un request activ;
 regula este protejată de `ApiSettingsSnapshotTests`.
 
-Configuration contract:
+Contractul configurației:
 
 ```mermaid
 flowchart LR
@@ -185,7 +185,7 @@ flowchart LR
     Validate --> RedactionRule[RedactionConfigurationValidator]
     Validate --> RouteRule[RouteConfigurationValidator]
     Validate --> AuthRule[AuthProfileConfigurationValidator]
-    Validate --> Settings[Module-owned Api + Reporting settings]
+    Validate --> Settings[Setări Api + Reporting deținute de modul]
     Settings --> Runtime[Executor / Extent lifecycle]
 ```
 
@@ -209,11 +209,10 @@ suportate. `ApiRouteAuthentication` adaugă o declarație tipizată a rutei
 să distingă intenția rutei de profilul runtime efectiv. Raportul nu conține
 niciodată token-ul.
 
-## Findings curente de refactorizare (2026-10-13)
+## Direcții de refactorizare
 
-Core este într-o poziție bună, dar findings-urile active nu înseamnă că toate
-politicile sunt complet închise. Kernelul trebuie să rămână renderer-neutral și
-determinist; orice logică Extent, HTML, CSS, JavaScript sau xUnit aparține
+Kernelul trebuie să rămână renderer-neutral și determinist; orice logică Extent,
+HTML, CSS, JavaScript sau xUnit aparține
 adaptorului ori host-ului.
 
 Punctele care cer refactorizare, nu funcționalitate nouă, sunt:
@@ -243,7 +242,7 @@ contractul pe care trebuie să-l protejeze testele Core.
 
 Acest kernel nu este locul pentru o rescriere largă. `ApiExecutor` este deja un
 orchestrator mic, cu seam-uri separate pentru URL, auth, transport și evidence.
-Îmbunătățirile cu valoare mare sunt mai înguste:
+Politicile de design cu valoare mare sunt mai înguste:
 
 1. înlocuiește setările mutabile și dicționarele copiate cu un snapshot runtime
    immutable și validat;
@@ -259,10 +258,11 @@ Separarea redaction-ului este implementată: `SensitiveDataRedactor` compune
 `LocalPathRedactor` și `PiiRedactor`. Fațada publică deține doar ordinea și
 contractul boundary-ului de raportare; fiecare strategie deține o singură
 transformare. `ApiScenarioOutcome` este implementat și în host-ul API ca rezultat
-explicit și închis de lifecycle. Ținta rămasă este configurația runtime immutable
+explicit și finalizat de lifecycle. Ținta este configurația runtime immutable
 și vocabularul auth tipizat, nu un al doilea model nullable de rezultat.
-Vezi [evaluarea de refactorizare](../docs/ATF_Refactoring_Assessment.md) pentru
-rațiunea extragerilor și seam-urile deschise.
+Vezi [registrul de refactorizare](../docs/feedback/Atf_Refactoring_Feedback.md) pentru
+contractele RF-02–RF-05 închise, rațiunea extragerilor și seam-urile care trebuie
+menținute.
 
 Ordinea redaction-ului este deterministă:
 
@@ -272,7 +272,7 @@ field -> sensitive-field replacement
       -> secret-pattern masking
       -> optional local-path masking
       -> optional PII masking
-JSON  -> recursive field-aware traversal -> same text pipeline for strings
+JSON  -> parcurgere recursivă conștientă de câmp -> aceeași pipeline de text pentru string-uri
 ```
 
 Setarea `Enabled` nu dezactivează mascarea secretelor. Controlează doar
@@ -341,9 +341,11 @@ ConfigurationAndResilienceTests  loader, validare, retry, polling, JSON
 CoreArchitectureTests          politici URL/auth/transport/path/asset
 HttpExecutorComponentTests     rezultat retry, metadata rută și evidence
 ApiExecutorCompositionTests    porturi injectate și păstrarea excepțiilor
-ReportingComponentTests         agregarea statusului și clasificarea evidence-ului
-ReportingStructureTests         ownership phase/request + validation și evidence al step-ului activ
-ReportingLifecycleComponentTests compoziția fixture-ului și finalizarea
+ReportStepScopeTests            lifecycle renderer-neutral al unui pas
+ReportAssetCleanupCoordinatorTests cleanup și izolare filesystem
+SensitiveDataRedactorTests      redaction pentru toate suprafețele de evidence
+TestCaseInventoryTests           inventarul testelor fără renderer
+TagTaxonomyTests / AnnotationPolicyTests taxonomie și adnotări utile
 ```
 
 Rulare:
@@ -356,7 +358,7 @@ O politică nouă în Core este acceptabilă numai dacă este neutră față de 
 expusă printr-un boundary înlocuibil când este cazul și acoperită de un test
 determinist.
 
-## Core contract checklist
+## Checklist-ul contractului Core
 
 | Zonă | Invariantă obligatorie | Protecție curentă |
 |---|---|---|
@@ -364,42 +366,29 @@ determinist.
 | URL/auth | path-ul și query-ul sunt codificate; secretele sunt descrise doar prin stare | `CoreArchitectureTests`, `HttpExecutorComponentTests` |
 | execuție | transportul este înlocuibil; rezultatul retry este explicit; reporterul nu poate înlocui excepția originală | `ApiExecutorCompositionTests`, `HttpExecutorComponentTests` |
 | reziliență | statusul retry, sursa delay-ului, plafonul și bugetul sunt deterministe | `ConfigurationAndResilienceTests`, `CoreArchitectureTests` |
-| raportare | agregarea statusului respectă failure-first; un response produce un singur tabel agregat pe sibling-ul următor, sub aceeași fază | `ReportingComponentTests`, `ReportingStructureTests`, `ApiExecutorReportingTests` |
-| model evidence | rândurile assertion rămân neutre față de renderer și păstrează valorile actuale | `ReportingComponentTests`, `ApiExecutorReportingTests` |
+| raportare | porturile și lifecycle-ul rămân renderer-neutral; un response poate publica evidence fără ca reporterul să schimbe outcome-ul | `ReportStepScopeTests`, `ApiExecutorCompositionTests` |
+| model evidence | rândurile assertion și valorile redacted rămân independente de HTML | `SensitiveDataRedactorTests`, `ReportStepScopeTests` |
 
-## Teste recomandate suplimentar pentru Core
+## Boundary-uri care nu aparțin Core
 
-```mermaid
-flowchart TD
-    P0[P0: securitate și outcome] --> R[redactor + cancellation + epuizare retry]
-    R --> S[parallel scoped reporting]
-    S --> A[semantic artifact/DOM checks]
-    A --> P1[P1: politici auth și transport noi]
-```
+Artifactul Extent, CSS/JS, ierarhia request → validation, Overview, tag policy,
+view-ul `Fails` și computed styles aparțin `Atf.Reporting.Extent` și
+`Atf.Tests/Atf.Reporting.Extent.Tests`. Scenariile live și contractele serviciului
+aparțin `Atf.Api`. Core nu trebuie să primească teste de DOM, selectorii Extent
+sau logică de produs doar pentru că un caz este ușor de observat din raport.
 
-Adăugirile cu cea mai mare valoare sunt deterministe și nu necesită endpoint live:
+### Contracte de extensie pentru Core
 
-| Test propus | Seam componentă | De ce contează |
-|---|---|---|
-| `SecretsAreRedactedBeforeEvidence` | fake recorder pentru `IAtfReporter` | împiedică scurgerea credențialelor prin headere, JSON sau excepții |
-| `CancellationPreservesOriginalException` | fake pentru `IApiTransport` | diferențiază cancellation de un failure HTTP obișnuit |
-| `RetryExhaustionReturnsDiagnosticNotPass` | transport scriptat + reporter | protejează împotriva unui rezultat fals verde după ultimul `429` |
-| `ParallelRunsKeepIndependentScopes` | două scope-uri async | protejează izolarea `AsyncLocal` și a ierarhiei raportului |
-| `ReportArtifactHasNoHorizontalOverflow` | HTML generat + motor DOM | protejează raportul vizibil utilizatorului, nu doar sursa CSS |
-| `ConfigurationRejectsUnknownOrConflictingKeys` | loader/provider de schemă | face configurația declarativă sigură la evoluție |
-
-### Remaining safe increments
-
-Înaintea oricărei extinderi de API, adăugați teste pentru:
+Înaintea oricărei extinderi de API, testul trebuie adăugat lângă seam-ul real:
 
 | Seam | Test obligatoriu | Criteriu |
 |---|---|---|
-| transport | timeout și cancellation | cauza originală și starea anulării rămân distincte |
-| retry | exhaustion și `Retry-After` | nu se emite verdict funcțional Pass dintr-un exchange nereușit |
-| concurrency | două execuții paralele | evidence și scope-urile nu se amestecă |
-| redaction | matrice de secrete | niciun secret nu ajunge în reporter, exception sau snapshot |
-| configuration | chei necunoscute/conflictuale | fail fast cu path complet și mesaj determinist |
-| reporting port | reporter care aruncă | rezultatul funcțional rămâne autoritar |
+| transport | timeout și cancellation | cauza originală și starea anulării rămân distincte; dovada este în `HttpExecutorComponentTests` |
+| retry | exhaustion și `Retry-After` | nu se emite verdict funcțional Pass dintr-un exchange nereușit; `HttpExecutorComponentTests` |
+| concurrency | execuții paralele și cleanup | evidence și asset-urile nu se amestecă; `ReportAssetCleanupCoordinatorTests` |
+| redaction | matrice de secrete | niciun secret nu ajunge în reporter, exception sau snapshot; `SensitiveDataRedactorTests` |
+| configuration | chei necunoscute/conflictuale | fail fast cu path complet și mesaj determinist; `ConfigurationRuleTests` |
+| reporting port | reporter care aruncă | rezultatul funcțional rămâne autoritar; `ApiExecutorCompositionTests` |
 
 Acestea sunt teste de contract; nu introduceți un nou strat `Shared` sau
 `Utils` pentru a le găzdui.

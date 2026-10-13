@@ -1,7 +1,7 @@
 using Atf.Core.Security;
 using System.Net;
 
-namespace Atf.Reporting.Extent;
+namespace Atf.Reporting.Extent.Scope;
 
 /// <summary>
 /// Owns the evidence boundary for one Extent scenario. It is deliberately
@@ -9,15 +9,15 @@ namespace Atf.Reporting.Extent;
 /// and assertion aggregation can be tested without exercising lifecycle rules.
 /// The caller serializes access through the scenario scope gate.
 /// </summary>
-internal sealed class ExtentScopeEvidenceWriter
+internal sealed class ExtentScopeEvidenceWriter : IReportEvidencePublisher
 {
     private readonly IExtentNodeAdapter _root;
-    private readonly Func<ExtentTestScope.StepFrame?> _current;
+    private readonly Func<ScenarioStepFrame?> _current;
     private readonly SensitiveDataRedactor _redactor;
 
     public ExtentScopeEvidenceWriter(
         IExtentNodeAdapter root,
-        Func<ExtentTestScope.StepFrame?> current,
+        Func<ScenarioStepFrame?> current,
         int assertionMaxDisplayCharacters,
         SensitiveDataRedactor redactor)
     {

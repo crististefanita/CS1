@@ -1,7 +1,9 @@
 using Atf.Core.Reporting;
+using Atf.Api.Infrastructure;
+using Atf.Api.Infrastructure.Outcome;
 using System.Runtime.ExceptionServices;
 
-namespace Atf.Api.Infrastructure;
+namespace Atf.Api.Infrastructure.Lifecycle;
 
 internal static class ApiScenarioPhaseRunner
 {

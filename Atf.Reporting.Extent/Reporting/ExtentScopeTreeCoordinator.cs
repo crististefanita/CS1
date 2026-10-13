@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace Atf.Reporting.Extent;
+namespace Atf.Reporting.Extent.Scope;
 
 /// <summary>
 /// Coordinates the renderer tree for one scenario. Evidence publication stays
@@ -8,18 +8,18 @@ namespace Atf.Reporting.Extent;
 /// <see cref="ExtentScopeStatusPolicy"/>; this type only owns phase/request/
 /// validation nesting and safe frame closure.
 /// </summary>
-internal sealed class ExtentScopeTreeCoordinator
+internal sealed class ExtentScopeTreeCoordinator : IPhaseTreeWriter
 {
     private readonly IExtentNodeAdapter _root;
     private readonly ExtentScopeFrameStack _frames;
-    private readonly ExtentScopeStatusPolicy _statusPolicy;
+    private readonly IReportStatusPolicy _statusPolicy;
     private readonly Action flushPendingDetails;
     private readonly Action popStep;
 
     public ExtentScopeTreeCoordinator(
         IExtentNodeAdapter root,
         ExtentScopeFrameStack frames,
-        ExtentScopeStatusPolicy statusPolicy,
+        IReportStatusPolicy statusPolicy,
         Action flushPendingDetails,
         Action popStep)
     {
@@ -30,7 +30,7 @@ internal sealed class ExtentScopeTreeCoordinator
         this.popStep = popStep ?? throw new ArgumentNullException(nameof(popStep));
     }
 
-    public ExtentTestScope.StepFrame? Current => _frames.Current;
+    public ScenarioStepFrame? Current => _frames.Current;
 
     public void StartStep(string title)
     {
@@ -59,7 +59,7 @@ internal sealed class ExtentScopeTreeCoordinator
         }
 
         var node = CurrentOrTest().CreateNode(WebUtility.HtmlEncode(title), string.Empty);
-        _frames.Push(new ExtentTestScope.StepFrame(node, title));
+        _frames.Push(new ScenarioStepFrame(node, title));
     }
 
     public void CompletePhase(string phase, AtfReportStatus requestedStatus)
@@ -141,7 +141,7 @@ internal sealed class ExtentScopeTreeCoordinator
         }
     }
 
-    private bool TryGetCurrentPhase(out ExtentTestScope.StepFrame phase)
+    private bool TryGetCurrentPhase(out ScenarioStepFrame phase)
     {
         var currentPhase = _frames.Find(frame => ExtentStepClassifier.IsPhase(frame.Title));
         if (currentPhase is not null)

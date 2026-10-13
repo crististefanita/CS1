@@ -1,8 +1,10 @@
-# ATF feedback — registru fără zgomot
+# ATF — registru de feedback, procedură și dovadă
 
-Acest folder păstrează numai constatările active despre codul ATF, separarea
-responsabilităților, teste și mentenanță. Nu este jurnal de implementare și nu
-repetă probleme deja închise.
+Acest folder păstrează feedback-ul urmărit, starea contractelor și procedura de
+închidere pentru codul ATF, separarea responsabilităților, teste și mentenanță.
+Nu este jurnal de execuție, registru de scoruri sau sursa contractelor stabile;
+informația normativă aparține README-urilor proiectelor și documentelor
+permanente din `docs/`.
 
 ## Domeniu
 
@@ -12,65 +14,58 @@ Feedback-ul de aici acoperă:
 - direcția dependențelor și structura minimă de module;
 - lifecycle, cleanup și concurență;
 - contracte unit/component și matrice de regresie;
-- datorii de toolchain și documentație.
+- datorii de toolchain și documentație;
+- calitatea raportării, navigarea și contractele DOM;
+- proiecția adnotărilor și politica tag-urilor de selecție;
+- matrice de lifecycle și combinații de statusuri.
 
-Formatul raportului este în afara scope-ului. Documentul
-`ATF_LIFECYCLE_COMBINATION_ANALYSIS_2026-10-13.md` rămâne referința separată
-pentru format și nu este modificat de acest registru.
+Contractul raportului este definit permanent în `docs/ATF_Reporting_Contract.md`
+și rezumat în `Atf.Reporting.Extent/README.md`. Registrul de refactorizare este
+închis pentru RF-02–RF-05; documentul de lifecycle este păstrat separat și nu a
+fost reevaluat în această rundă.
 
 ```mermaid
 flowchart LR
-    Code[Live code] --> Finding[Active finding]
-    Finding --> Rule[OOP/module rule]
+    Code[Cod live] --> Finding[Finding activ]
+    Finding --> Rule[Regulă OOP/modul]
     Rule --> Test[Test unitar sau de componentă]
-    Test --> Status[closed / mitigated / open]
-    Format[Existing report format] -. external contract .-> Test
+    Test --> Contract[Contract verificabil]
+    Format[Format existent al raportului] -. contract extern .-> Test
 ```
 
-## Documente active
+## Documente și roluri
 
 | Document | Rol |
 |---|---|
-| `ATF_LIVE_CODE_FEEDBACK_2026-10-13.md` | audit live, findings active și backlog |
-| `CONSTRUCTIVE_EVALUATION_RESOLUTION.md` | contracte de acceptare pentru următoarele schimbări |
+| `Atf_Lifecycle_Combination.md` | lifecycle, statusuri, assertions, Fails și proiecția raportului |
+| `Atf_Refactoring_Feedback.md` | contractele închise pentru OOP, boundary-uri, ownership de stare și metadata de navigare |
+| `Atf_Feedback_Execution_Guide.md` | procedura obligatorie, punctele de verificare și matricea TODO → teste → dovadă |
 | `README.md` | index, scope și regulile acestui registru |
 
 Documentele generale rămân în `docs/`:
 
 - [`ATF_Architecture.md`](../ATF_Architecture.md) — ownership și dependențe;
-- [`ATF_Refactoring_Assessment.md`](../ATF_Refactoring_Assessment.md) — roadmap OOP;
 - [`ATF_Reporting_Contract.md`](../ATF_Reporting_Contract.md) — invariants de artifact;
 - [`README_Atf_BestPractices.md`](../README_Atf_BestPractices.md) — reguli normative.
 
-## Dovadă de regresie verificată
+## Regula dovezii
 
-Ultima rulare offline verificată cu binarele curente a fost:
+Dovezile se verifică la fiecare analiză live, din codul și testele disponibile
+atunci. README-urile nu păstrează totaluri, căi tehnice temporare, nume de rapoarte,
+capturi, scoruri sau rezultate intermediare. Un contract este considerat
+protejat numai când owner-ul, testul și criteriul sunt identificabile.
 
-```text
-Atf.Core.Tests:             91/91
-Atf.Tests/Atf.Common.Tests: 67/67
-Atf.Reporting.Extent.Tests: 119/119
-Atf.Tests/Atf.Api.Tests:    52/52
-Total:                      329/329
-```
+Documentele de feedback descriu starea finding-urilor, acțiunile, testele și
+criteriile de acceptare. Contractele stabile și diagramele normative apar în README-urile
+proiectului și în documentele permanente din `docs/`; feedback-ul poate trimite
+către ele, dar nu le înlocuiește.
 
-Aceste totaluri sunt dovadă pentru suitele offline. Staging-ul verificat este
-`C:\work\ex\.net\.tmp\Atf-feedback-20261013-r14`; build-ul a trecut cu 0
-warning și 0 error, API-ul cu 19 pass și 8 skip, iar failure-demo cu 4 fail
-intenționate. Raportul a fost verificat în TAB MCP pe Overview, Tests, Fails,
-Categories, expand/collapse, response details și Open in Tests. Notele nu se
-păstrează în feedback; ele se recalculează live la fiecare audit.
+## Procedura obligatorie
 
-## Taxonomia statusului
-
-| Status | Înseamnă |
-|---|---|
-| `closed` | codul și testul protejează contractul; nu mai este backlog |
-| `mitigated` | seam-ul este protejat, dar lipsește o dovadă sau o consolidare |
-| `open` | există un risc activ și un test/owner trebuie adăugat |
-
-O problemă închisă poate apărea o singură dată ca invariant de regresie; nu se
-repetă în fiecare document cu explicații istorice.
+Orice TODO activ sau regresie nouă se rezolvă numai urmând [`Atf_Feedback_Execution_Guide.md`](Atf_Feedback_Execution_Guide.md).
+Ghidul impune sincronizarea cu codul live, build/test în staging izolat, puncte de
+verificare unit/componentă/artifact/DOM/paralel și Definition of Done. Pentru validarea
+interactivă se folosește TAB MCP; browserul Windows nu face parte din procedură.
 
 ## Structura minimă aplicată
 
@@ -83,11 +78,29 @@ Atf.Core + Atf.Api + Atf.Api.TestHost + Atf.Reporting.Extent + Atf.Tests
 `Atf.Core.Tests` și `Atf.Reporting.Extent.Tests` sunt grupate sub
 `Atf.Tests`. `Atf.Api.TestHost` rămâne separat ca composition root Extent.
 
+## Regula pentru adnotări și selectorul de tag-uri
+
+`TagOrder` este numai o regulă de ordonare; nu este allowlist și nu trebuie
+folosit ca substitut pentru politica de vizibilitate. Feedback-ul de
+refactorizare separă explicit tag-urile de domeniu, markerii de lifecycle și
+markerii de diagnostic/status. Selectorul principal trebuie să fie concis și
+orientat pe navigare, în timp ce markerii tehnici rămân disponibili în evidence.
+
+Adnotările afișate în detaliile unui test trebuie derivate din metadata scenariului,
+nu prin reatașarea categoriilor la rădăcina clasei. Rădăcina clasei este container
+de navigare: lista `Tests` din stânga arată doar clasa, statusul și durata și nu
+afișează tag-uri, pills, strip-uri sau un atribut `tag` populat. Scenariul este
+owner-ul semantic al tag-urilor și al statusului; tag-urile pot apărea în zona de
+detalii din dreapta și în Overview, o singură dată și conform taxonomiei.
+Detaliile și criteriile verificabile ale politicii sunt în README-urile de reporting
+și în testele aferente. Documentul de lifecycle rămâne owner pentru
+phase/status/assertion, nu pentru politica de adnotări.
+
 ## Regula pentru feedback nou
 
 Fiecare intrare nouă trebuie să conțină:
 
-1. `Status`: `open`, `mitigated` sau `closed`;
+1. contractul sau riscul descris clar;
 2. `Priority`: `P1` sau `P2`;
 3. owner și fișierul responsabil;
 4. testul care dovedește problema sau remedierea;
@@ -95,4 +108,5 @@ Fiecare intrare nouă trebuie să conțină:
 6. impactul asupra formatului existent — de regulă „fără schimbare”.
 
 Nu se adaugă un finding dacă nu schimbă o decizie, un test sau o responsabilitate.
-Notele nu se persistă în aceste documente și se calculează numai în auditul live.
+Prioritatea `P1/P2` ordonează munca; nu este scor și nu înlocuiește validarea
+live.

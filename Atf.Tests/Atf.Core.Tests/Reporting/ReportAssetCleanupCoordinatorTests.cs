@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 
 namespace Atf.Core.Tests.Reporting;
 
+[Collection(nameof(ReportAssetCleanupTestGroup))]
 public sealed class ReportAssetCleanupCoordinatorTests
 {
     [Fact(DisplayName = "Asset cleanup retries transient renderer locks without sleeping in the test")]
@@ -13,7 +14,7 @@ public sealed class ReportAssetCleanupCoordinatorTests
             fileSystem,
             [TimeSpan.Zero, TimeSpan.FromMilliseconds(1), TimeSpan.FromMilliseconds(2)]);
 
-        coordinator.CleanDirectory("renderer-assets");
+        coordinator.CleanDirectory(TestDirectoryPath());
 
         Assert.Equal(3, fileSystem.DeleteAttempts);
         Assert.Equal(2, fileSystem.Delays.Count);
@@ -26,11 +27,12 @@ public sealed class ReportAssetCleanupCoordinatorTests
     {
         var fileSystem = new FakeFileSystem();
         var coordinator = new ReportAssetCleanupCoordinator(fileSystem, [TimeSpan.Zero]);
+        var directoryPath = TestDirectoryPath();
 
         await Task.WhenAll(
-            Task.Run(() => coordinator.CleanDirectory("renderer-assets"), TestContext.Current.CancellationToken),
-            Task.Run(() => coordinator.CleanDirectory("renderer-assets"), TestContext.Current.CancellationToken),
-            Task.Run(() => coordinator.CleanDirectory("renderer-assets"), TestContext.Current.CancellationToken));
+            Task.Run(() => coordinator.CleanDirectory(directoryPath), TestContext.Current.CancellationToken),
+            Task.Run(() => coordinator.CleanDirectory(directoryPath), TestContext.Current.CancellationToken),
+            Task.Run(() => coordinator.CleanDirectory(directoryPath), TestContext.Current.CancellationToken));
 
         Assert.Equal(1, fileSystem.DeleteAttempts);
         Assert.False(fileSystem.Exists);
@@ -44,16 +46,18 @@ public sealed class ReportAssetCleanupCoordinatorTests
         var secondFileSystem = new FakeFileSystem();
         var first = new ReportAssetCleanupCoordinator(firstFileSystem, [TimeSpan.Zero]);
         var second = new ReportAssetCleanupCoordinator(secondFileSystem, [TimeSpan.Zero]);
+        var firstPath = Path.Combine(TestDirectoryPath(), "session-a", "renderer-assets");
+        var secondPath = Path.Combine(TestDirectoryPath(), "session-b", "renderer-assets");
 
         await Task.WhenAll(
-            Task.Run(() => first.CleanDirectory("session-a/renderer-assets"), TestContext.Current.CancellationToken),
-            Task.Run(() => second.CleanDirectory("session-b/renderer-assets"), TestContext.Current.CancellationToken));
+            Task.Run(() => first.CleanDirectory(firstPath), TestContext.Current.CancellationToken),
+            Task.Run(() => second.CleanDirectory(secondPath), TestContext.Current.CancellationToken));
 
         Assert.Equal(
-            Path.GetFullPath("session-a/renderer-assets"),
+            Path.GetFullPath(firstPath),
             Assert.Single(firstFileSystem.DeletedPaths));
         Assert.Equal(
-            Path.GetFullPath("session-b/renderer-assets"),
+            Path.GetFullPath(secondPath),
             Assert.Single(secondFileSystem.DeletedPaths));
         Assert.Equal(0, ReportAssetCleanupCoordinator.ActiveDirectoryGateCount);
     }
@@ -63,9 +67,10 @@ public sealed class ReportAssetCleanupCoordinatorTests
     {
         var fileSystem = new FakeFileSystem();
         var coordinator = new ReportAssetCleanupCoordinator(fileSystem, [TimeSpan.Zero]);
+        var directoryPath = TestDirectoryPath();
 
-        coordinator.CleanDirectory("renderer-assets");
-        coordinator.CleanDirectory("renderer-assets");
+        coordinator.CleanDirectory(directoryPath);
+        coordinator.CleanDirectory(directoryPath);
 
         Assert.Equal(1, fileSystem.DeleteAttempts);
         Assert.Equal(0, ReportAssetCleanupCoordinator.ActiveDirectoryGateCount);
@@ -77,7 +82,7 @@ public sealed class ReportAssetCleanupCoordinatorTests
         var fileSystem = new FakeFileSystem { Exists = false };
         var coordinator = new ReportAssetCleanupCoordinator(fileSystem, [TimeSpan.Zero]);
 
-        coordinator.CleanDirectory("renderer-assets");
+        coordinator.CleanDirectory(TestDirectoryPath());
 
         Assert.Equal(0, fileSystem.DeleteAttempts);
         Assert.Equal(0, ReportAssetCleanupCoordinator.ActiveDirectoryGateCount);
@@ -91,7 +96,7 @@ public sealed class ReportAssetCleanupCoordinatorTests
             fileSystem,
             [TimeSpan.Zero, TimeSpan.FromMilliseconds(1)]);
 
-        coordinator.CleanDirectory("renderer-assets");
+        coordinator.CleanDirectory(TestDirectoryPath());
 
         Assert.Equal(2, fileSystem.DeleteAttempts);
         Assert.True(fileSystem.Exists);
@@ -109,13 +114,16 @@ public sealed class ReportAssetCleanupCoordinatorTests
             fileSystem,
             [TimeSpan.Zero, TimeSpan.FromMilliseconds(1)]);
 
-        var exception = Record.Exception(() => coordinator.CleanDirectory("renderer-assets"));
+        var exception = Record.Exception(() => coordinator.CleanDirectory(TestDirectoryPath()));
 
         Assert.Null(exception);
         Assert.Equal(2, fileSystem.DeleteAttempts);
         Assert.True(fileSystem.Exists);
         Assert.Equal(0, ReportAssetCleanupCoordinator.ActiveDirectoryGateCount);
     }
+
+    private static string TestDirectoryPath() =>
+        Path.Combine(Path.GetTempPath(), $"atf-cleanup-{Guid.NewGuid():N}", "renderer-assets");
 
     private sealed class FakeFileSystem(
         int failuresBeforeDelete = 0,
@@ -153,4 +161,9 @@ public sealed class ReportAssetCleanupCoordinatorTests
 
         public void Delay(TimeSpan delay) => Delays.Enqueue(delay);
     }
+}
+
+[CollectionDefinition(nameof(ReportAssetCleanupTestGroup), DisableParallelization = true)]
+public sealed class ReportAssetCleanupTestGroup
+{
 }

@@ -1,5 +1,7 @@
 namespace Atf.Core.Configuration.Models;
 
+using Atf.Core.Configuration.Tagging;
+
 public sealed class ReportingSettings
 {
     public string Engine { get; init; } = "extent";
@@ -13,6 +15,7 @@ public sealed class ReportingSettings
     public string[] TestClassOrder { get; init; } = [];
     public string[] TestScenarioOrder { get; init; } = [];
     public string[] TagOrder { get; init; } = [];
+    public TagTaxonomySettings TagTaxonomy { get; init; } = new();
 
     public ReportingSettings Snapshot() => new()
     {
@@ -26,6 +29,7 @@ public sealed class ReportingSettings
         AssertionMaxDisplayCharacters = AssertionMaxDisplayCharacters,
         TestClassOrder = TestClassOrder.ToArray(),
         TestScenarioOrder = TestScenarioOrder.ToArray(),
-        TagOrder = TagOrder.ToArray()
+        TagOrder = TagOrder.ToArray(),
+        TagTaxonomy = TagTaxonomy.Snapshot()
     };
 }

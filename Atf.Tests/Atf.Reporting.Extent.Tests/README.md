@@ -4,25 +4,25 @@ Acest proiect testează adaptorul Extent și artifactul HTML consumat de om.
 Nu testează transportul HTTP și nu este o suită live.
 
 Este proiectul pentru boundary-ul Extent, grupat fizic în
-`Atf.Tests/Atf.Reporting.Extent.Tests`; testele DOM/browser rămân distincte de
+`Atf.Tests/Atf.Reporting.Extent.Tests`; verificarea DOM în tab-ul MCP rămâne distinctă de
 inspecția statică a artifactului.
 
-## Aliniere de audit — 2026-10-13
+## Contracte protejate
 
-Testele de aici trebuie să protejeze tree, status, evidence și artifactul HTML,
+Testele de aici trebuie să protejeze arborele, statusul, evidence-ul și artifactul HTML,
 dar nu trebuie să pretindă că un regex asupra
-sursei HTML dovedește randarea în browser.
+sursei HTML dovedește randarea DOM.
 
 ```mermaid
 flowchart LR
-    Scope[ExtentTestScope] --> Tree[phase -> request + validation sibling tree]
+    Scope[ExtentTestScope] --> Tree[arbore fază -> request + validation sibling]
     Scope --> Status[ExtentScopeStatusPolicy]
-    Renderer[Evidence renderer] --> Envelope[collapsed HTML envelope]
-    Theme[Theme + client behaviour] --> Layout[CSS/JS contract]
-    Tree --> Artifact[final HTML artifact]
+    Renderer[renderer evidence] --> Envelope[anvelopă HTML colapsată]
+    Theme[temă + comportament client] --> Layout[contract CSS/JS]
+    Tree --> Artifact[artifact HTML final]
     Envelope --> Artifact
     Layout --> Artifact
-    Artifact --> Inspector[artifact inspector/browser review]
+    Artifact --> Inspector[inspector artifact / review în tab MCP]
 ```
 
 ## Contracte acoperite
@@ -40,13 +40,33 @@ flowchart LR
 | JSON | code block monospace, wrap, scroll vertical, fără overflow orizontal de pagină |
 | artifact | HTML autonom, fără folder sibling `extent` |
 
+## Organizarea testelor pe seam-uri
+
+Testele sunt grupate după contractul dominant, nu după ordinea în care au fost
+descoperite:
+
+```text
+ReportingStructureTests / ExtentScopeTreeCoordinatorTests   -> arbore și tranziții
+ReportingEvidenceAndTraceTests / ReportThemeContractTests   -> evidence, trace și temă
+ReportingClientNavigationTests / ReportingOverviewAuditTests -> client și overview
+ReportingStatusPolicyTests                                  -> verdict și precedence
+ReportingConcurrencyTests                                   -> izolarea sesiunilor
+ReportingArtifactContractTests                               -> artifact HTML observabil
+ReportingLifecycleComponentTests                             -> lifecycle și fixture seam
+```
+
+Un test nou se adaugă în clasa care deține seam-ul său. Nu se mărește
+`ReportingLifecycleComponentTests` cu verificări de status, concurență sau
+artifact doar pentru că folosește același adaptor; această regulă păstrează
+failure-ul localizabil și reduce coupling-ul dintre setup-uri.
+
 ## Regula de testare
 
 ```text
-in-memory Extent tree -> structural contract
-renderer output        -> escaped/collapsed envelope
-generated HTML         -> artifact contract
-browser click-through  -> final visual confidence
+arbore Extent în memorie -> contract structural
+output renderer          -> anvelopă escaped/collapsed
+HTML generat             -> contract artifact
+click-through în tab MCP -> încredere vizuală finală
 ```
 
 Testele nu trebuie să verifice detalii private ale helperelor. Ele verifică
@@ -61,11 +81,11 @@ semantice și starea collapsed la încărcarea paginii. Testăm ambele momente:
 
 ```mermaid
 flowchart LR
-    Data[response + validation data] --> Tree[Extent tree]
+    Data[date response + validare] --> Tree[arbore Extent]
     Tree --> Html[HTML autonom]
     Html --> Inspector[ReportArtifactInspector]
-    Html --> JS[client behaviour]
-    JS --> DOM[DOM final: overview + phase/request + validation]
+    Html --> JS[comportament client]
+    JS --> DOM[DOM final: Overview + fază/request + validare]
     Inspector --> Contract[artifact contract]
     DOM --> Contract
 ```
@@ -84,20 +104,27 @@ scrie un artifact temporar și să-l inspecteze cu `ReportArtifactInspector`.
 Testarea exclusivă a unui string din CSS nu este suficientă; trebuie verificată
 și tranziția `tree → HTML → DOM`.
 
-### Cazuri protejate și următoarea rundă
+### Contracte și extensii recomandate
 
 | Caz | Nivel | Acceptare |
 |---|---|---|
 | reporter failure nu schimbă verdictul | component — protejat | failure-ul funcțional rămâne autoritar |
-| Warning/Other reconciliation | artifact + browser | card, chart, tags și metadata au aceeași populație |
+| Warning/Other reconciliation | artifact + tab MCP | card, chart, tags și metadata au aceeași populație |
 | request/validation ownership | tree + DOM | validation este sibling direct și tabelul este unic |
 | collapsed state | DOM | phase, request, validation și evidence pornesc închise |
 | response JSON | DOM | code block scrollabil fără overflow de pagină |
 | overview typography/colors | DOM | titlurile, fonturile și tokenii calculați corespund contractului |
 | parallel sessions | component | artifactele și nodurile nu se amestecă |
 
-Reporter isolation este închis la nivel de componentă; următorul test cu valoare
-este DOM-ul final pentru reconcilierea Warning/Other, collapse și computed styles.
+Izolarea reporterului este protejată la nivel de componentă; verificarea
+complementară este DOM-ul final parcurs în tab-ul MCP pentru reconcilierea
+Warning/Other, collapse și computed styles.
+
+Pentru aceste verificări, artifactul expune `window.__atfDomContract.inspect()`.
+Controllerul este read-only și oferă o suprafață stabilă pentru cardinalitate,
+poziționarea statusurilor, disclosure state, assertion tables și overflow JSON;
+testele Extent verifică emiterea harness-ului, iar TAB MCP verifică valorile
+calculate pe artifactul real.
 
 ## Metadata de raportare
 
@@ -112,7 +139,7 @@ metadata suficientă pentru testele ATF.
 dotnet test .\Atf.Tests\Atf.Reporting.Extent.Tests\Atf.Reporting.Extent.Tests.csproj --no-restore
 ```
 
-După orice schimbare de layout, deschide artifactul generat și verifică în
+După orice schimbare de layout, deschide artifactul generat în tab-ul MCP și verifică în
 această ordine: overview, test class, scenario, phase, request, validation sibling,
 technical trace, JSON și assertion table. Un test structural nu înlocuiește
-verificarea randării reale.
+verificarea randării DOM reale.

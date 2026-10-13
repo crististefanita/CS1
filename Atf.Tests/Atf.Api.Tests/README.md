@@ -5,18 +5,22 @@ fără să pornească un serviciu, să deschidă socket-uri sau să genereze un 
 live. Este locul pentru teste de compoziție și layout care folosesc fakes; nu
 este locul pentru testele de business ale API-ului țintă.
 
+Fluxul de lucru pentru un test API nou este descris în [ghidul pentru adăugarea
+unui test API](../../docs/ATF_API_TEST_GUIDE.md); acest README rămâne contractul
+testelor offline ale boundary-ului API.
+
 ## Boundary-ul curent
 
-Acesta este proiectul API-facing, grupat fizic în `Atf.Tests/Atf.Api.Tests`.
+Acesta este proiectul orientat spre API, grupat fizic în `Atf.Tests/Atf.Api.Tests`.
 Fakes, assertions și contractele
 observabile trebuie să rămână identice.
 
-Nu muta aici teste live, teste de browser sau failure demos. Ele au boundary-uri
+Nu muta aici teste live, verificări DOM interactive sau failure demos. Ele au boundary-uri
 diferite și trebuie marcate explicit în `Atf.Tests`.
 
-## Aliniere de audit — 2026-10-13
+## Contracte protejate
 
-Acest boundary oferă acoperire API-facing. Testele verifică
+Acest boundary oferă acoperire orientată spre API. Testele verifică
 colaborarea dintre lifecycle, executor, validation și reporter fără să devină
 teste de implementare Extent.
 
@@ -40,8 +44,8 @@ flowchart LR
 | Proiect | Când îl folosim |
 |---|---|
 | `Atf.Core.Tests` | reguli renderer-neutral: config, transport, retry, redaction |
-| `Atf.Common.Tests` | rute, servicii, validatori, cleanup și module composition din `Atf.Api/Module` |
-| `Atf.Api.Tests` | contractul API-facing dintre executor, scenariu și adapter |
+| `Atf.Common.Tests` | rute, servicii, validatori, cleanup și compoziția modulului din `Atf.Api/Module` |
+| `Atf.Api.Tests` | contractul orientat spre API dintre executor, scenariu și adaptor |
 | `Atf.Tests/Atf.Reporting.Extent.Tests` | Extent tree, HTML envelope, CSS/JS și artifact |
 | `Atf.Api` | scenarii live care chiar testează API-ul țintă |
 
@@ -60,9 +64,9 @@ scenario
 └── SETUP / TEST BODY / TEARDOWN
     ├── HTTP request
     │   ├── technical trace + request/response JSON
-    │   └── evidence collapsed by default
+    │   └── evidence colapsat implicit
     └── Validate: contract
-        └── one aggregate ASSERTION / EXPECTED / ACTUAL / RESULT table
+        └── un tabel agregat ASSERTION / EXPECTED / ACTUAL / RESULT
 ```
 
 Requestul este copil direct al fazei, iar validarea este copil direct al requestului
@@ -74,20 +78,20 @@ Transportul și verdictul sunt separate:
 ```text
 HTTP exchange completed -> Info / diagnostic evidence
 ValidationTable          -> Pass sau Fail / verdict funcțional
-Scenario lifecycle       -> final scenario status
+Lifecycle scenariu       -> status final al scenariului
 ```
 
 ## Matricea de acoperire
 
 | Contract | Test seam | Criteriu |
 |---|---|---|
-| phase vocabulary | `ExtentTestScope` + in-memory Extent | fazele canonice sunt în ordine |
-| response ownership | recording scope | request și validation sunt frați direcți sub aceeași fază |
-| response isolation | două requests consecutive | fiecare response are propria validare |
+| vocabular fază | `ExtentTestScope` + Extent în memorie | fazele canonice sunt în ordine |
+| ownership response | scope de înregistrare | request și validation sunt frați direcți sub aceeași fază |
+| izolarea response-urilor | două request-uri consecutive | fiecare response are propria validare |
 | aggregate assertions | `ValidationTable` fake reporter | toate verificările apar într-un singur tabel |
 | evidence classification | `ApiExecutionReporter` | trace-ul este `TECHNICAL TRACE`, nu verdict |
-| collapsed UI contract | `AtfReportTheme` + client behavior | faze, pași și evidence pornesc închise |
-| safe presentation | generated evidence | HTML values sunt escaped, JSON-ul rămâne bounded |
+| contract UI colapsat | `AtfReportTheme` + comportament client | faze, pași și evidence pornesc închise |
+| prezentare sigură | evidence generat | valorile HTML sunt escaped, JSON-ul rămâne limitat |
 
 ## Ce nu se verifică aici
 
@@ -113,6 +117,15 @@ reproducere externă.
 7. Dacă defectul este de interacțiune, adaugă și contract DOM pentru click,
    collapse, scroll și computed styles; HTML static nu este suficient.
 
+### Boundary-ul rendererului
+
+`ReportingBoundaryTests` este un test de arhitectură al assembly-urilor, nu un
+test de business. El păstrează `Atf.Api` renderer-neutral: scenariile și
+`ApiTestBase` consumă `IAtfApiReportSession`, iar referința concretă la
+`Atf.Reporting.Extent` rămâne în `Atf.Api.TestHost`, composition root-ul live.
+Un schimbător de renderer trebuie să poată înlocui host-ul fără modificări în
+transport, pași sau validatori.
+
 ## Comandă
 
 ```powershell
@@ -131,19 +144,19 @@ execuția sau navigarea raportului. Exemplele valide sunt `contract`, `negative`
 `auth`, `lifecycle` și `smoke`, atunci când testul chiar poate fi selectat sau
 interpretat prin acea categorie.
 
-## Definition of done pentru un fix de raportare
+## Criteriul de finalizare pentru un fix de raportare
 
 ```mermaid
 flowchart TD
-    Change[schimbare] --> Unit[test deterministic]
-    Unit --> Tree[Extent tree contract]
-    Tree --> Html[real HTML artifact]
-    Html --> Browser[render + click-through check]
-    Browser --> Docs[README/contract synchronized]
+    Change[schimbare] --> Unit[test determinist]
+    Unit --> Tree[contract arbore Extent]
+    Tree --> Html[artifact HTML real]
+    Html --> Mcp[DOM + verificare click-through în tab MCP]
+    Mcp --> Docs[README/contract sincronizate]
 ```
 
 Fixul este complet numai când structura, artifactul consumat și documentația
-spun același lucru: `phase → request + validation sibling → one table`.
+spun același lucru: `phase → request + validation sibling → un tabel`.
 
 ## Extindere recomandată a suitei
 
@@ -153,11 +166,11 @@ Pentru orice caracteristică nouă a raportului se adaugă trei niveluri de test
 flowchart TD
     Model[model Extent în memorie] --> Structure[ownership + status]
     Structure --> Artifact[HTML generat]
-    Artifact --> Browser[DOM final și click-through]
+    Artifact --> Mcp[DOM final și click-through în tab MCP]
 ```
 
 Un test de model verifică ownership-ul, un test de artifact verifică markup-ul
-și asset-urile, iar verificarea browser confirmă comportamentul real după
+și asset-urile, iar verificarea interactivă în tab-ul MCP confirmă comportamentul real după
 încărcarea scriptului. Astfel nu confundăm faptul că un selector există în cod
 cu faptul că utilizatorul vede corect raportul.
 

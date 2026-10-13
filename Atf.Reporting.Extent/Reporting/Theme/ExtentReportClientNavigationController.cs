@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Client;
 
 /// <summary>
 /// Browser controller for view routing and deterministic navigation ordering.

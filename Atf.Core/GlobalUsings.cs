@@ -1,6 +1,7 @@
 global using Atf.Core.Http;
 global using Atf.Core.Configuration.Models;
 global using Atf.Core.Configuration.Security;
+global using Atf.Core.Configuration.Validation;
 global using Atf.Core.Http.Routing;
 global using Atf.Core.Http.Transport;
 global using Atf.Core.Http.Execution;

@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Client;
 
 /// <summary>
 /// Owns failure-index view projection and the deterministic navigation bridge

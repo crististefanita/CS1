@@ -1,5 +1,8 @@
 # Atf.Api — boundary-ul scenariilor live
 
+Pentru traseul complet de adăugare a unei operații și verificare a raportului,
+urmează [ghidul specializat pentru adăugarea unui test API](../docs/ATF_API_TEST_GUIDE.md).
+
 `Atf.Api` este boundary-ul de acceptanță live, nu kernelul reutilizabil al
 framework-ului. Este singurul proiect care trebuie să apeleze serviciul extern
 configurat. Deține integrarea xUnit, intenția scenariilor, acoperirea business și modulul API din
@@ -11,10 +14,10 @@ rapoarte și teste. Conceptual, conține atât modulul API, cât și scenariile 
 de acceptanță. O redenumire sau un merge de namespace trebuie tratate ca migrare
 mecanică, nu combinate cu un refactor de comportament.
 
-## Ownership curent și țintă
+## Ownership și țintă
 
 ```text
-CURRENT                         TARGET
+STRUCTURA                       ȚINTĂ
 Atf.Api/Module/Routing          Atf.Api/Module/Routing
 Atf.Api/Module/Services         Atf.Api/Module/Services
 Atf.Api/Module/Validation       Atf.Api/Module/Validation
@@ -25,7 +28,33 @@ Atf.Tests/Atf.Api.Tests         Atf.Tests/Atf.Api.Tests
 `Atf.Core` nu este absorbit niciodată în `Atf.Api`. Kernelul rămâne neutru față
 de produs; numai vocabularul modulului API se poate apropia de scenarii.
 
-## Scenario lifecycle
+## Boundary-uri de infrastructură
+
+`Atf.Api.Infrastructure` păstrează doar contextul scenariului, adaptorul xUnit
+și collection wiring-ul. Responsabilitățile care au reguli proprii sunt
+namespace-uri explicite:
+
+```text
+Atf.Api.Infrastructure
+├── ApiScenarioContext / ApiTestBase / ApiReportTestGroup
+├── Lifecycle
+│   ├── ApiScenarioLifecycleRunner
+│   ├── ApiScenarioPhaseRunner
+│   └── ApiScenarioTeardownRunner
+└── Outcome
+    ├── ApiScenarioOutcome
+    ├── ApiScenarioExecutionResult
+    ├── ApiScenarioOutcomeResolver
+    └── ApiScenarioSkipException
+```
+
+Acest split este un boundary de ownership, nu o mutare cosmetică: runner-ele
+cunosc doar compoziția fazelor, outcome-ul este modelul semantic
+`Passed | Warning | Failed | Skipped`, iar `ApiTestBase` este singurul adaptor care traduce
+rezultatul în xUnit și Extent. `InfrastructurePackageBoundaryTests` protejează
+limita de maximum opt tipuri top-level directe per namespace.
+
+## Lifecycle-ul scenariului
 
 ```mermaid
 flowchart TD
@@ -56,7 +85,15 @@ Atf.Reporting.Extent   adaptor HTML concret
 Atf.Tests              teste offline de contract pentru API, Core, modul și raportare
 ```
 
-## Auditul responsabilităților — boundary live
+**Boundary-ul efectiv al soluției:** `Atf.Api` are în prezent o referință de
+proiect către `Atf.Api.TestHost` pentru fixture-ul xUnit și collection wiring.
+Scenariile consumă contractul `IAtfApiReportSession`, dar assembly boundary-ul nu
+este încă complet renderer-neutral. Aceasta este o datorie de compoziție
+documentată, nu trebuie ascunsă prin formularea „Atf.Api nu depinde de host”.
+Orice separare viitoare trebuie să mute fixture wiring-ul într-un acceptance
+host fără să mute intenția scenariilor, serviciile sau validarea.
+
+## Responsabilități — boundary live
 
 `Atf.Api` este intenționat subțire, dar `ApiTestBase` rămâne boundary-ul cu cel
 mai mare risc din host. Traduce dependențele xUnit, consumă
@@ -64,28 +101,27 @@ mai mare risc din host. Traduce dependențele xUnit, consumă
 mapează rezultatul în scope-ul neutru al scenariului și retrimite excepția
 autoritară. Extent este selectat numai de `Atf.Api.TestHost`.
 
-| Responsabilitate | Owner curent | Owner țintă |
+| Responsabilitate | Owner | Owner țintă |
 |---|---|---|
-| xUnit constructor/output/skip translation | `ApiTestBase` | remains here; this is the host adapter |
-| module/context creation | `ApiModuleFactory.FromSettings` | explicit settings/ports factory |
+| traducerea constructorului/output/skip xUnit | `ApiTestBase` | rămâne aici; acesta este adaptorul host-ului |
+| creare modul/context | `ApiModuleFactory.FromSettings` | factory explicit pentru setări/porturi |
 | precedența setup/body/teardown | `ApiScenarioLifecycleRunner` | runner injectabil cu model explicit de outcome |
 | finalizarea Extent și maparea statusului | `ApiTestBase` | port de finalizare a scenariului furnizat de fixture |
 | intenția de business | clasele concrete de scenariu | rămâne în `Atf.Api`; nu o muta în runner |
 
 Regula chirurgicală este: nu muta decizii business în infrastructură și nu lăsa
-excepțiile xUnit să definească modelul reutilizabil de lifecycle. Următorul
-refactor trebuie să introducă un rezultat explicit `Passed | Failed | Skipped`
-și să păstreze `ApiTestBase` ca singur loc care traduce rezultatul în comportament
-xUnit.
+excepțiile xUnit să definească modelul reutilizabil de lifecycle. Rezultatul
+explicit `Passed | Warning | Failed | Skipped` este deja modelat în `Outcome`, iar
+`ApiTestBase` rămâne singurul loc care îl traduce în comportament xUnit.
 
-## Actualizarea auditului — 2026-10-13
+## Separarea responsabilităților
 
 `Atf.Api` trebuie să rămână subțire în raport cu framework-ul: exprimă intenția
 scenariului și business coverage, nu implementează transport, Extent sau politica
-generică de validare. Abaterile sunt findings live cu test și criteriu de
-acceptare, nu evaluări statice în documentație.
+generică de validare. Orice abatere trebuie formulată ca responsabilitate, test
+și criteriu de acceptare; README-ul nu păstrează rezultate intermediare.
 
-### Separarea responsabilităților
+### Harta responsabilităților
 
 ```text
 ApiTestBase
@@ -105,6 +141,14 @@ Atf.Reporting.Extent
 extrage un alt coordinator doar pentru a obține clase mai mici. Presiunea
 rămasă în `ApiTestBase` este responsabilitatea corectă a adapterului xUnit:
 compoziția contextului, traducerea outcome-ului neutru și finalizarea scope-ului.
+Teardown-ul folosește un rezultat discriminat `ApiScenarioTeardownOutcome`
+(`Passed`, `Skipped`, `Failed`), nu o pereche de excepții nullable interpretată
+de caller; acest boundary păstrează precedence-ul și cleanup-ul testabile fără
+a expune coordinatorul intern. Rezultatul public al lifecycle-ului adaugă
+`ApiScenarioOutcome.Warning`: warning-ul este semantic explicit, dar nu devine
+failure xUnit. Resolver-ul păstrează ordinea `Fail > Skip > Warning > Pass`, iar
+`IAtfScenarioScope.HasWarnings` este singurul semnal neutru folosit pentru
+alinierea dintre orchestrator și renderer.
 
 ### Reguli pentru scenarii
 
@@ -118,7 +162,7 @@ compoziția contextului, traducerea outcome-ului neutru și finalizarea scope-ul
 - contractele reutilizabile trebuie testate offline, iar `Atf.Api` trebuie să
   conțină numai dovadă live de business.
 
-`ApiScenarioLifecycleRunner` este acum un coordinator intenționat subțire.
+`ApiScenarioLifecycleRunner` este un coordinator intenționat subțire.
 Execuția fazelor, siguranța teardown-ului și rezolvarea rezultatului sunt seam-uri
 interne separate; coordinatorul le compune și păstrează contractul de precedență:
 
@@ -135,22 +179,13 @@ reduce zgomotul la call-site. Un finalizer nou de scenariu este justificat doar
 de un al doilea host sau de o regulă distinctă și testată; altfel este doar
 indirecție fără câștig de ownership.
 
-**P0 lifecycle închis pentru teardown custom:** runner-ul apelează acum teardown-ul
-custom și cleanup-ul printr-un `finally` interior, păstrând failure-ul primar din
-body/setup. `ApiScenarioLifecycleRunnerTests` conține cazul de regresie
-`teardown fails + cleanup still executes`.
+Contractul lifecycle-ului este protejat prin `finally` interior: teardown-ul
+custom și cleanup-ul păstrează failure-ul primar din body/setup, iar un failure
+al reporterului nu poate preveni acțiunea pe resource, următorul cleanup item sau
+deschiderea TEARDOWN. Testele acestui contract aparțin proiectelor de testare,
+nu scenariilor live.
 
-**P1 lifecycle semantic contract is protected:** `CleanupRegistry` reports
-best-effort before executing a resource action, iar un reporter failure nu mai
-poate preveni acțiunea, următorul cleanup item sau deschiderea TEARDOWN.
-Rămân deschise doar hardening-ul concurenței și dovada DOM.
-
-**Boundary-ul testelor este rezolvat:** `ApiScenarioLifecycleRunnerTests` se află
-acum în `Atf.Tests/Atf.Api.Tests`, iar `Atf.Api` conține numai scenarii live de
-acceptanță și fixture-ul de failure opt-in. Testele de lifecycle ale framework-ului
-rulează astfel offline și nu adaugă carduri sintetice în artifactul Extent live.
-
-### Audit OOP: `ApiTestBase` și scenariile de combinații
+### Separarea OOP: `ApiTestBase` și scenariile de combinații
 
 `ApiTestBase` este acum un adapter xUnit subțire: construiește contextul și
 delegă phase runner, skip parity, cleanup, exception precedence și finalizarea
@@ -159,8 +194,8 @@ păstrează aceeași regulă de ownership pentru SETUP / TEST BODY / TEARDOWN.
 
 `ApiLifecycleAndCombinationsTests` este util ca test de contract, dar ramifică
 în interior după `resource` și construiește contracte diferite în aceeași
-metodă. Asta face raportul dinamic, însă nu îl face ușor de citit. La o rundă
-ulterioară, după înghețarea testelor actuale, extrageți o politică tipizată de
+metodă. Asta face raportul dinamic, însă nu îl face ușor de citit. La o
+extensie viitoare, extrageți o politică tipizată de
 resursă sau separați scenariile users/posts; nu copiați ramificațiile în încă
 un test. Regula de siguranță este:
 
@@ -181,18 +216,18 @@ scenariu, nu să reimplementeze cleanup sau politica de failure.
 Ierarhia raportului este:
 
 ```text
-UsersApiTests
-  scenario
-    SETUP
-      API request
-        technical trace + JSON evidence
-        Validate: contract
-    TEST BODY
-      API request
-        technical trace + JSON evidence
-        Validate: contract
-    TEARDOWN
-      cleanup / verification
+TestCase
+├── SETUP
+│   └── Request(s)
+├── TEST BODY
+│   ├── Request
+│   │   ├── Technical trace
+│   │   ├── Response details
+│   │   └── Response JSON
+│   └── Validation(s) — direct sibling of its owning request
+│       └── aggregate assertion table
+└── TEARDOWN
+    └── Request(s)
 ```
 
 Fazele sunt frați direcți sub scenariu. Fazele goale nu sunt fabricate.
@@ -202,14 +237,15 @@ duplică verdictul. Deschiderea unui scenariu afișează shell-uri compacte pent
 faze; fiecare fază și pașii copil rămân colapsați până la deschidere. Executorul
 ține nodul HTTP deschis cât timp publică evidence-ul response-ului; validatorul
 agregat este randat apoi ca următorul sibling direct al request-ului, sub aceeași
-fază. Assertions multiple rămân astfel rânduri într-un singur tabel, iar un
+fază. Technical trace, response details și response JSON rămân sub request;
+validarea nu este copilul request-ului. Assertions multiple rămân astfel rânduri într-un singur tabel, iar un
 response HTTP ulterior primește propria pereche request/validation sibling.
 
-### Soft assertion contract
+### Contractul pentru assertion soft
 
-ApiAssertions.SoftContract is intentionally explicit and should be rare. It is
-for a known, non-blocking observation where the failed assertion must remain
-visible without making xUnit fail:
+`ApiAssertions.SoftContract` este intenționat explicit și trebuie să fie rar.
+Se folosește pentru o observație cunoscută, neblocantă, al cărei failure trebuie
+să rămână vizibil fără să eșueze xUnit:
 
     ApiAssertions.SoftContract(
         context.Reporter,
@@ -217,24 +253,24 @@ visible without making xUnit fail:
         "Validate: compatibility warning",
         contract => contract.Status(HttpStatusCode.Created));
 
-The report still contains the failed row in the aggregate assertion table. The
-validation node and scenario receive Warning; the Overview maps that scenario
-to Others, and the affected tag increments OTHERS. This is deliberately
-different from ApiAssertions.Contract, where a failed row is authoritative and
-throws ApiValidationException. Configuration/evaluator exceptions are never
-softened.
+Raportul conține în continuare rândul eșuat în tabelul agregat de assertions.
+Nodul de validare și scenariul primesc Warning; Overview mapează scenariul în
+Others, iar tag-ul afectat incrementează OTHERS. Acest comportament este diferit
+intenționat de `ApiAssertions.Contract`, unde un rând eșuat este autoritar și
+aruncă `ApiValidationException`. Excepțiile de configurație/evaluator nu sunt
+niciodată transformate în soft failure.
 
-The Overview contract is intentionally multi-surface: the direct scenario card,
-the native `Tests` counters/chart, the `Tags` OTHERS column and the secondary
-execution metadata must all derive the same `Warning` population. A soft
-assertion must never increment `Tests Failed`, and a reporter exception must not
-turn it into an xUnit failure. Component tests now protect mixed
-pass/warning/fail/skip propagation; rămâne deschis doar contractul DOM pentru
-reconcilierea computed styles și interacțiunea reală din browser.
+Contractul Overview este intenționat multi-suprafață: cardul direct al
+scenariului, contoarele/graficul nativ `Tests`, coloana OTHERS din `Tags` și
+metadata secundară de execuție trebuie să derive aceeași populație `Warning`.
+Un assertion soft nu trebuie să incrementeze niciodată `Tests Failed`, iar o
+excepție de reporter nu trebuie să-l transforme într-un failure xUnit. Testele de componentă protejează propagarea mixtă
+pass/warning/fail/skip; contractul DOM pentru
+reconcilierea computed styles și interacțiunea reală în DOM, prin tab-ul MCP.
 
-## Scenario rules
+## Reguli pentru scenarii
 
-A scenario should state intent:
+Un scenariu trebuie să exprime intenția:
 
 ```csharp
 await RunScenarioAsync(
@@ -256,28 +292,28 @@ Authorization sau să creeze un nod de raport.
 Testele de lifecycle folosesc:
 
 ```text
-setup    -> create prerequisite and register ownership
-test     -> exercise behavior under test
-teardown -> explicit verification + CleanupRegistry.RunAsync
+setup    -> creează precondiția și înregistrează ownership-ul
+test     -> execută comportamentul testat
+teardown -> verificare explicită + CleanupRegistry.RunAsync
 ```
 
 Suita de combinații lifecycle păstrează explicită matricea observabilă. Ea
 acoperă toate formele legale de faze și cazurile de precedență ușor de regresat
 în raport:
 
-| Case | Expected scenario verdict | Expected phase evidence |
+| Caz | Verdict așteptat al scenariului | Evidence așteptat pe fază |
 |---|---|---|
-| test only | Pass | `TEST BODY` only; no synthetic setup/teardown |
-| setup → test | Pass | setup and body are siblings |
-| test → teardown | Pass | body and teardown are siblings |
-| setup → test → teardown | Pass | all three phases are siblings |
-| warning → pass | Warning | warning remains visible; no failed test counter |
-| pass → warning | Warning | a later warning promotes the scenario |
-| warning → fail → pass | Fail | failure is authoritative; teardown still passes |
-| setup skip → teardown pass | Skip | setup is Skip; teardown is Pass |
-| body skip → teardown pass | Skip | body is Skip; teardown is Pass |
-| body pass → teardown warning | Warning | body is Pass; teardown is Warning |
-| body pass → teardown skip | Skip | body is Pass; teardown is Skip |
+| doar test | Pass | numai `TEST BODY`; fără setup/teardown sintetic |
+| setup → test | Pass | setup și body sunt frați |
+| test → teardown | Pass | body și teardown sunt frați |
+| setup → test → teardown | Pass | toate cele trei faze sunt frați |
+| warning → pass | Warning | warning-ul rămâne vizibil; fără contor de teste eșuate |
+| pass → warning | Warning | warning-ul ulterior promovează scenariul |
+| warning → fail → pass | Fail | failure-ul este autoritar; teardown rămâne Pass |
+| setup skip → teardown pass | Skip | setup este Skip; teardown este Pass |
+| body skip → teardown pass | Skip | body este Skip; teardown este Pass |
+| body pass → teardown warning | Warning | body este Pass; teardown este Warning |
+| body pass → teardown skip | Skip | body este Pass; teardown este Skip |
 
 Matricea este exprimată intenționat prin schimburi API reale pentru ramurile de
 reușită și teardown. Ramurile skip/failure folosesc semnale deterministe de
@@ -299,7 +335,7 @@ Scenariile de scriere sunt omise când scrierile sunt dezactivate sau variabila
 de token configurată lipsește. Raportul afișează motivul; skip nu este pass.
 
 Autentificarea rutei este declarată central de `ApiRoutes` prin
-`ApiRouteAuthentication`, not inferred from the HTTP verb or the profile name:
+`ApiRouteAuthentication`, nu este dedusă din verbul HTTP sau numele profilului:
 
 ```text
 ApiRoutes.UserCreate
@@ -385,13 +421,15 @@ gate-ului local obișnuit.
 
 1. rulează `Atf.Core.Tests`;
 2. rulează `Atf.Tests/Atf.Common.Tests`;
-3. rulează un scenariu live reprezentativ;
-4. inspectează HTML-ul generat.
+3. rulează `Atf.Tests/Atf.Api.Tests` și `Atf.Tests/Atf.Reporting.Extent.Tests`;
+4. rulează un scenariu live reprezentativ;
+5. inspectează HTML-ul generat în tab-ul MCP.
 
 Raportul trebuie să afișeze clasa xUnit în navigarea din stânga, scenariul sub ea,
+fără tag-uri în item-ul clasei, iar tag-urile doar în detaliile scenariului;
 verdictul scenariului în header, fazele lifecycle ca siblings, shell-uri compacte
-și colapsate pentru faze, validarea sibling a fazei și fără
-fără rânduri `Execution summary` pe containerele lifecycle sau pe ultimul request,
+și colapsate pentru faze, validarea sibling directă a requestului și fără
+rânduri `Execution summary` pe containerele lifecycle sau pe ultimul request,
 un singur technical trace pe schimb, JSON dark împachetat și scrollabil, un singur
 tabel de assertions, fără folder Extent extern și fără valoarea tokenului.
 
@@ -399,11 +437,12 @@ tabel de assertions, fără folder Extent extern și fără valoarea tokenului.
 
 ```mermaid
 flowchart TD
-    Test[header scenariu\nverdict + durată + tag-uri]
+    Class[lista Tests\nclasă + status + durată, fără tag-uri]
+    Class --> Test[detalii scenariu\nverdict + durată + tag-uri]
     Test --> Phase[SETUP / TEST BODY / TEARDOWN]
     Phase --> Exchange[HTTP step\nmethod + path + auth + duration]
     Exchange --> Details[detalii request/response colapsate]
-    Exchange --> Validation[phase-sibling validation]
+    Exchange --> Validation[validation sibling direct al requestului]
     Validation --> Table["ASSERTION / EXPECTED / ACTUAL / RESULT"]
 ```
 
@@ -414,30 +453,30 @@ funcțional. Nodurile sunt colapsate implicit pentru ca raportul să rămână s
 
 ## Matricea de acoperire live
 
-| Familie | Dovadă curentă | Următoarea dovadă |
+| Familie | Acoperire existentă | Extensie recomandată |
 |---|---|---|
 | users | item, collection, auth lipsă, lifecycle | persistența câmpului replace/patch, schema pentru eroare de input invalid |
 | posts | item, collection, item necunoscut, relație user | create/delete nested, colecție goală, parent-not-found |
 | lifecycle | setup/body/teardown și combinații | cleanup la cancellation/timeout și failure primar versus teardown |
 | reziliență | teste offline ale politicii retry | simulare sigură de `429` printr-un profil de transport fake |
-| raport | HTML Extent real generat după rulare live | assertions automate DOM pentru Overview/overflow |
+| raport | contract HTML Extent autonom | assertions automate DOM pentru Overview/overflow |
 
-Baseline-ul Extent curent trebuie citit din cardurile directe ale scenariilor din
-raportul generat, nu copiat în acest README. Assembly-ul xUnit conține și teste
-offline de contract API, de aceea totalul runner-ului este intenționat mai mare;
-aceste teste unitare nu sunt scenarii API suplimentare în arborele de navigare
-Extent. Overview-ul nativ este reconciliat din aceleași carduri directe, fără a
-număra containerele-rădă ale claselor.
+Overview-ul trebuie calculat din cardurile directe ale scenariilor, fără a copia
+totaluri în README și fără a număra containerele-rădă ale claselor. Testele
+offline de contract nu sunt scenarii API suplimentare în arborele de navigare.
 
-## Backlog live după audit
+## Matrice de extindere live
 
-Primul rând este păstrat ca dovadă de închidere a regresiei de reporter; nu mai
-este un test live lipsă. Rândurile `P0`/`P1`/`P2` sunt acoperirea business și
-resilience care încă merită adăugată în scenariile reale.
+Rândurile de mai jos sunt familii de scenarii recomandate când produsul cere
+acoperire nouă; nu reprezintă un status sau un raport istoric. TODO-urile active
+se păstrează exclusiv în `docs/feedback/`.
+
+Rândurile `P0`/`P1`/`P2` sunt acoperirea business și resilience care merită
+adăugată în scenariile reale. Protecția internă a framework-ului rămâne în
+proiectele de testare offline.
 
 | Prioritate | Scenariu | Motiv |
 |---|---|---|
-| closed | reporter failure în `StartStep`, tabel, verdict și `CompleteStep` | protejat offline prin `ValidationReportPublisher` și `CleanupRegistry`; păstrează regresia component |
 | P0 | invalid JSON / invalid error envelope | verifică dacă diagnosticul rămâne într-un tabel, fără excepții obscure |
 | P0 | timeout și cancellation cu cleanup | confirmă că resursele nu rămân după întrerupere |
 | P1 | post create/update/delete cu auth validă | completează lifecycle-ul real pentru al doilea resource |

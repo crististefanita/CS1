@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent;
+namespace Atf.Reporting.Extent.Scope;
 
 /// <summary>
 /// Enforces the functional reporting contract independently from step-stack
@@ -7,7 +7,7 @@ namespace Atf.Reporting.Extent;
 /// </summary>
 internal static class ExtentPhaseContractValidator
 {
-    public static void EnsureSuccessfulPhaseHasContractValidation(ExtentTestScope.StepFrame phase)
+    public static void EnsureSuccessfulPhaseHasContractValidation(ScenarioStepFrame phase)
     {
         ArgumentNullException.ThrowIfNull(phase);
 

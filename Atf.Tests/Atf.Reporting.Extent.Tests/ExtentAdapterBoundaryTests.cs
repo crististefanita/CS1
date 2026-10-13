@@ -40,7 +40,10 @@ public sealed class ExtentAdapterBoundaryTests
     public void StepFrameDoesNotExposeExtentTest()
     {
         var extentTestType = typeof(ExtentTest);
-        var frameProperties = typeof(ExtentTestScope.StepFrame).GetProperties(
+        var frameType = typeof(ScenarioStepFrame);
+        Assert.NotEqual(typeof(ExtentTestScope), frameType.DeclaringType);
+
+        var frameProperties = frameType.GetProperties(
             System.Reflection.BindingFlags.Instance |
             System.Reflection.BindingFlags.Public |
             System.Reflection.BindingFlags.NonPublic);
@@ -48,6 +51,21 @@ public sealed class ExtentAdapterBoundaryTests
         Assert.DoesNotContain(frameProperties, property =>
             extentTestType.IsAssignableFrom(property.PropertyType));
         Assert.Contains(frameProperties, property => property.Name == "Adapter");
+    }
+
+    [Fact(DisplayName = "Scenario step state is owned by the scope package, not the public facade")]
+    public void ScenarioStepFrameIsAnInternalScopeModel()
+    {
+        var frameType = typeof(ScenarioStepFrame);
+
+        Assert.Equal("Atf.Reporting.Extent.Scope", frameType.Namespace);
+        Assert.Null(frameType.DeclaringType);
+        Assert.False(frameType.IsPublic);
+        Assert.DoesNotContain(
+            frameType.GetProperties(System.Reflection.BindingFlags.Instance |
+                                     System.Reflection.BindingFlags.Public |
+                                     System.Reflection.BindingFlags.NonPublic),
+            property => property.PropertyType == typeof(ExtentTest));
     }
 
     [Fact(DisplayName = "Client facade composes independent navigation and disclosure controllers")]

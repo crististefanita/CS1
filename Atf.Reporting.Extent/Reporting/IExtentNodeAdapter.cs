@@ -1,6 +1,6 @@
 using AventStack.ExtentReports;
 
-namespace Atf.Reporting.Extent;
+namespace Atf.Reporting.Extent.Adapter;
 
 internal interface IExtentNodeView
 {

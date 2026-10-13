@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Css;
 
 /// <summary>
 /// CSS fragments with an independent semantic owner. The main theme remains

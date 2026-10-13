@@ -8,7 +8,12 @@ public static class AtfReportTheme
     /// concern each and remain independently reviewable.
     /// </summary>
     public static string BuildCss()
+        => BuildCss(new AtfReportThemeTokenProvider());
+
+    internal static string BuildCss(IThemeTokenProvider tokenProvider)
     {
+        ArgumentNullException.ThrowIfNull(tokenProvider);
+
         var css =
             "<style id=\"atf-custom-theme\">\n"
             + AtfReportThemeLayoutFragments.Build()
@@ -23,7 +28,7 @@ public static class AtfReportTheme
             AtfReportThemeFragments.BuildExecutionHierarchyCss(),
             StringComparison.Ordinal);
 
-        foreach (var token in AtfReportThemeTokens.All)
+        foreach (var token in tokenProvider.All)
         {
             css = css.Replace(token.Key, token.Value, StringComparison.Ordinal);
         }

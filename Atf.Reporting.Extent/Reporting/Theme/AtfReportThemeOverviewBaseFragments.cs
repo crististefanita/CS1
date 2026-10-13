@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Css;
 
 /// <summary>Overview surface, category and native summary card rules.</summary>
 internal static class AtfReportThemeOverviewBaseFragments

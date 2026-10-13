@@ -30,7 +30,7 @@ Acest proiect este singurul strat de compoziție al host-ului live care selectea
 Extent. Un renderer viitor poate înlocui `ApiTestFixture` fără să schimbe
 scenariile API, pașii, transportul sau validarea contractelor.
 
-## Boundary-ul de compoziție — 2026-10-13
+## Boundary-ul de compoziție
 
 Host-ul este bine poziționat, dar trebuie să rămână strict un composition root:
 
@@ -43,14 +43,17 @@ Host-ul este bine poziționat, dar trebuie să rămână strict un composition r
 Failure-ul unei operații de reporting este diagnostic secundar. Host-ul nu are voie
 să înlocuiască rezultatul funcțional al scenariului și nu trebuie să împiedice
 cleanup-ul. Orice schimbare aici trebuie verificată atât cu un fake renderer, cât
-și cu un artifact real.
+și cu reprezentarea HTML finală.
 
-### Teste de boundary necesare
+### Dovezi de boundary necesare
+
+Acestea sunt contracte verificate în proiectele de sub `Atf.Tests`, nu clase de
+test care trebuie adăugate în composition root:
 
 | Test | Criteriu |
 |---|---|
 | `HostDoesNotLeakExtentIntoApiScenario` | scenariul depinde numai de porturi Core |
-| `FinalizationIsIdempotent` | flush/finalize repetat produce un singur artifact valid |
+| `FinalizationIsIdempotent` | flush/finalize repetat produce o singură ieșire HTML validă |
 | `RendererFailureDoesNotReplaceScenarioOutcome` | cauza funcțională rămâne autoritară |
 | `ParallelFixturesUseIndependentSessions` | două rulări nu amestecă testele sau fișierele |
 | `FailureDemoIsOptIn` | suite-ul normal nu primește exit code intenționat de failure |

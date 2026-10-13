@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Client;
 
 /// <summary>
 /// Browser behaviour fragments grouped by semantic concern. The parent

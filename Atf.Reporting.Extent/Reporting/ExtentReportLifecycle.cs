@@ -22,6 +22,7 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
     private string? _reportPath;
     private string? _nativeReportPath;
     private string? _nativeReportDirectory;
+    private Lifecycle.ExtentReportPaths? _allocatedPaths;
     private Assembly? _testAssembly;
     private SensitiveDataRedactor _redactor = new();
     private bool _finalizing;
@@ -89,6 +90,7 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
             _reportPath = reportPaths.PublishedPath;
             _nativeReportPath = reportPaths.NativePath;
             _nativeReportDirectory = reportPaths.NativeDirectory;
+            _allocatedPaths = reportPaths;
             _finalized = false;
         }
     }
@@ -153,12 +155,9 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
                 // Extent's in-memory tree is protected by the lifecycle gate;
                 // the filesystem publication below is deliberately outside it.
                 _reports?.Flush();
-                if (_reportPath is not null && _nativeReportPath is not null && _settings is not null)
+                if (_allocatedPaths is not null && _settings is not null)
                 {
-                    paths = new Lifecycle.ExtentReportPaths(
-                        _reportPath,
-                        _nativeReportPath,
-                        _nativeReportDirectory ?? Path.GetDirectoryName(_nativeReportPath)!);
+                    paths = _allocatedPaths;
                     settings = _settings;
                 }
                 else
@@ -169,6 +168,11 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
             }
             catch
             {
+                if (_allocatedPaths is not null)
+                {
+                    _pathAllocator.Release(_allocatedPaths);
+                    _allocatedPaths = null;
+                }
                 _finalizing = false;
                 throw;
             }
@@ -188,6 +192,7 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
         finally
         {
             _pathAllocator.Release(paths);
+            _allocatedPaths = null;
             lock (_sync)
             {
                 _finalized = published;

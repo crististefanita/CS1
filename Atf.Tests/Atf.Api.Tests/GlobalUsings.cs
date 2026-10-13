@@ -14,3 +14,5 @@ global using Atf.Reporting.Extent;
 global using Atf.Reporting.Extent.Evidence;
 global using Atf.Reporting.Extent.Lifecycle;
 global using Atf.Reporting.Extent.Theme;
+global using Atf.Api.Infrastructure.Lifecycle;
+global using Atf.Api.Infrastructure.Outcome;

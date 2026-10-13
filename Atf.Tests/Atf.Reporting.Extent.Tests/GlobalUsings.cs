@@ -1,6 +1,7 @@
 global using Xunit;
 global using Atf.Core.Configuration;
 global using Atf.Core.Configuration.Models;
+global using Atf.Core.Configuration.Tagging;
 global using Atf.Core.Configuration.Security;
 global using Atf.Core.Http;
 global using Atf.Core.Http.Execution;
@@ -17,6 +18,14 @@ global using Atf.Reporting.Extent;
 global using Atf.Reporting.Extent.Artifacts;
 global using Atf.Reporting.Extent.Evidence;
 global using Atf.Reporting.Extent.Lifecycle;
+global using Atf.Reporting.Extent.Lifecycle.Sanitization;
 global using Atf.Reporting.Extent.Theme;
+global using Atf.Reporting.Extent.Theme.Client;
+global using Atf.Reporting.Extent.Theme.Client.Failure;
+global using Atf.Reporting.Extent.Theme.Client.Tags;
+global using Atf.Reporting.Extent.Theme.Css;
+global using Atf.Reporting.Extent.Theme.Tokens;
+global using Atf.Reporting.Extent.Scope;
+global using Atf.Reporting.Extent.Adapter;
 
 [assembly: CollectionBehavior(DisableTestParallelization = true)]

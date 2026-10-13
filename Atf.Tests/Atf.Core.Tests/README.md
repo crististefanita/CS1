@@ -1,17 +1,17 @@
-# Atf.Core.Tests — teste pentru kernel și contractul artifactului
+# Atf.Core.Tests — teste pentru kernelul ATF
 
 Acesta este proiectul de teste pentru `Atf.Core`, grupat fizic sub
 `Atf.Tests/Atf.Core.Tests`. Este neutru față de renderer și nu trebuie să importe
 detalii de implementare Extent.
 
-Strategia completă test–artifact este în
+Separarea dintre testele kernelului și contractul artifactului este documentată în
 [ghidul de arhitectură și raportare](../../docs/ATF_Architecture.md).
 
 Acesta este quality gate-ul rapid și offline pentru `Atf.Core`. Nu pornește un
 serviciu, nu deschide socket și nu necesită token. Boundary-urile de rețea și
 raportare sunt înlocuite cu fake-uri deterministe sau fișiere temporare.
 
-## Aliniere de audit — 2026-10-13
+## Scope și responsabilitate
 
 Testele trebuie să apere direcția de dependență și autoritatea rezultatului, nu
 să repete testele adaptorului Extent.
@@ -21,7 +21,7 @@ să schimbe `ApiExecutionResult`, cauza originală sau verdictul funcțional.
 Găzduiți aici doar politici renderer-neutral: timeout, cancellation, retry history,
 auth state, URL/query encoding, configuration snapshot, redaction și reporting
 ports. Testele pentru CSS, DOM, Extent selectors sau computed styles aparțin
-adaptorului și browser contractului.
+adaptorului și contractului DOM.
 
 ## Contracte protejate
 
@@ -37,13 +37,18 @@ flowchart LR
 
 | Grup de teste | Comportament protejat |
 |---|---|
-| `ConfigurationAndResilienceTests` | binding-ul modulului, validare, retry, polling și formatare JSON |
-| `CoreArchitectureTests` | codificarea URL/query, auth, transport, politici de cale și asset-uri |
-| `HttpExecutorComponentTests` | rezultatul retry-ului, metadata rutei, evidence JSON și starea auth |
+| `ConfigurationAndResilienceTests` | binding, validare, retry, polling și formatare JSON |
+| `ConfigurationRuleTests` | reguli de configurație și mesaje deterministe |
+| `ApiSettingsSnapshotTests` | snapshot immutable și separarea valorilor runtime |
+| `CoreArchitectureTests` | codificarea URL/query, auth, transport și direcția dependențelor |
+| `HttpExecutorComponentTests` | retry, cancellation, metadata de rută, evidence și auth |
 | `ApiExecutorCompositionTests` | porturi injectate și păstrarea excepțiilor |
-| `ReportingComponentTests` | precedența statusului clasei și clasificarea evidence-ului |
-| `ReportingStructureTests` | ierarhia request + validation sibling deținută de fază, validare agregată, evidence al step-ului activ și suprimarea rezumatelor generice de fază |
-| `ReportingLifecycleComponentTests` | compoziția fixture-ului, propagarea identității și finalizare idempotentă |
+| `SensitiveDataRedactorTests` | redaction pentru JSON, headere, path/query și date PII |
+| `ReportAssetCleanupCoordinatorTests` | cleanup izolat și concurent al asset-urilor |
+| `ReportStepScopeTests` | lifecycle renderer-neutral pentru pași și cleanup |
+| `TestCaseInventoryTests` | inventarul testelor fără dependență de renderer |
+| `TagTaxonomyTests` / `AnnotationPolicyTests` | taxonomia tag-urilor și interzicerea markerilor generici |
+| `PackageBoundaryTests` | limitele de namespace și direcția modulelor |
 
 ## Regula de testare
 
@@ -76,21 +81,18 @@ collapse și inspecția artifactului final sunt testate în
 
 ```mermaid
 flowchart LR
-    Model[In-memory Extent tree] --> Structure[phase/request/validation ownership]
-    Model[Assertion/evidence model] --> Port[reporting port]
-    Extent[Extent adapter] --> Html[Generated single HTML]
-    Html --> Artifact[embedded assets + dark CSS]
-    Browser[Browser MCP render] --> UX[collapsed state + zero horizontal overflow]
-    Structure --> Acceptance[reporting acceptance]
-    Artifact --> Acceptance
-    UX --> Acceptance
+    CoreModel[model Core + evidence semantic] --> Port[port de raportare]
+    Port --> ExtentTests[Atf.Reporting.Extent.Tests]
+    ExtentTests --> Artifact[HTML autonom generat]
+    Artifact --> Mcp[DOM în tab MCP]
+    Mcp --> Acceptance[acceptanță raportare]
 ```
 
-Un test unitar verde nu este suficient pentru contractul final de browser:
-artifactul HTML trebuie deschis și verificat după rularea API live.
+Un test unitar nu este suficient pentru contractul final DOM: ieșirea
+HTML trebuie verificată separat printr-un contract DOM.
 
 `ReportArtifactInspector` este dovadă pentru artifactul static; nu îl redenumiți
-și nu îl tratați ca test browser. Pentru click, disclosure, scroll și fonturi
+și nu îl tratați ca test interactiv. Pentru click, disclosure, scroll și fonturi
 calculate este necesar un seam DOM separat.
 
 Aceasta este o dovadă mai puternică decât testarea izolată a unui string CSS.

@@ -1,13 +1,24 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Tokens;
 
 /// <summary>
 /// Resolves semantic theme placeholders to the single ATF palette and
 /// typography sources. Keeping token ownership outside the CSS facade makes
 /// palette changes independent from layout fragment changes.
 /// </summary>
-internal static class AtfReportThemeTokens
+internal interface IThemeTokenProvider
 {
-    public static IReadOnlyDictionary<string, string> All { get; } =
+    IReadOnlyDictionary<string, string> All { get; }
+}
+
+/// <summary>
+/// Supplies the immutable ATF palette and typography substitutions consumed by
+/// the CSS composer. Theme orchestration depends on this port rather than on a
+/// static token registry, so token sources can be tested and replaced without
+/// changing layout fragments.
+/// </summary>
+internal sealed class AtfReportThemeTokenProvider : IThemeTokenProvider
+{
+    public IReadOnlyDictionary<string, string> All { get; } =
         new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["__ATF_JSONSURFACE__"] = AtfReportColors.JsonSurface,

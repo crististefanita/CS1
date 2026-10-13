@@ -4,17 +4,20 @@ Acest director este fostul `Atf.Common`, absorbit în modulul API pentru a
 elimina un proiect cu un singur consumator. Nu este un „Common” generic și nu
 conține Extent, xUnit lifecycle sau logică de produs.
 
+Pentru secvența completă de adăugare a unei operații API, de la rută până la
+validarea raportului, consultă [ghidul pentru adăugarea unui test API](../../docs/ATF_API_TEST_GUIDE.md).
+
 ## Ownership și responsabilități
 
 ```mermaid
 flowchart LR
-    Scenario[Atf.Api scenario] --> Module[Atf.Api/Module]
-    Module --> Routes[typed routes]
-    Module --> Services[typed services]
-    Module --> Validation[aggregate validation]
-    Module --> Cleanup[resource cleanup]
-    Module --> Core[Atf.Core ports]
-    Host[Atf.Api.TestHost] -. supplies scope .-> Scenario
+    Scenario[scenariu Atf.Api] --> Module[Atf.Api/Module]
+    Module --> Routes[rute tipizate]
+    Module --> Services[servicii tipizate]
+    Module --> Validation[validare agregată]
+    Module --> Cleanup[cleanup resurse]
+    Module --> Core[porturi Atf.Core]
+    Host[Atf.Api.TestHost] -. furnizează scope .-> Scenario
 ```
 
 | Zonă | Responsabilitate | Nu face |
@@ -33,7 +36,7 @@ flowchart LR
 ApiResponse
   -> ResponseContract
   -> ValidationEvaluator
-  -> one ValidationTable
+  -> un ValidationTable
   -> ValidationReportPublisher
 ```
 

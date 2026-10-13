@@ -1,5 +1,6 @@
 using AventStack.ExtentReports;
 using Atf.Core.Security;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Atf.Reporting.Extent;
 
@@ -9,15 +10,19 @@ namespace Atf.Reporting.Extent;
 /// </summary>
 public sealed class ExtentTestScope : IAtfScenarioScope
 {
+#pragma warning disable CA1859 // Port-typed fields are intentional seams for renderer composition.
     private readonly ExtentNodeAdapter _root;
     private readonly string _testClassName;
     private readonly Action<string, AtfReportStatus> _recordScenarioStatus;
     private readonly object _sync;
     private readonly ExtentScopeFrameStack _frames = new();
-    private readonly ExtentScopeEvidenceWriter _evidence;
-    private readonly ExtentScopeStatusPolicy _statusPolicy = new();
-    private readonly ExtentScopeTreeCoordinator _tree;
+    [SuppressMessage("Performance", "CA1859", Justification = "The interface is the renderer-independent evidence port.")]
+    private readonly IReportEvidencePublisher _evidence;
+    [SuppressMessage("Performance", "CA1859", Justification = "The interface is the renderer-independent status-policy port.")]
+    private readonly IReportStatusPolicy _statusPolicy;
+    private readonly IPhaseTreeWriter _tree;
     private int _disposed;
+#pragma warning restore CA1859
 
     public ExtentTestScope(
         ExtentTest test,
@@ -45,13 +50,25 @@ public sealed class ExtentTestScope : IAtfScenarioScope
         var safeRedactor = redactor ?? new SensitiveDataRedactor();
         _sync = synchronizationGate ?? new object();
         AssertionMaxDisplayCharacters = assertionMaxDisplayCharacters;
-        _evidence = new(_root, () => Current, AssertionMaxDisplayCharacters, safeRedactor);
-        _tree = new(_root, _frames, _statusPolicy, FlushPendingDetails, PopStep);
+        _statusPolicy = new ExtentScopeStatusPolicy();
+        _evidence = new ExtentScopeEvidenceWriter(_root, () => Current, AssertionMaxDisplayCharacters, safeRedactor);
+        _tree = new ExtentScopeTreeCoordinator(_root, _frames, _statusPolicy, FlushPendingDetails, PopStep);
     }
 
     public int AssertionMaxDisplayCharacters { get; }
 
-    internal StepFrame? Current
+    public bool HasWarnings
+    {
+        get
+        {
+            lock (_sync)
+            {
+                return _statusPolicy.HasWarnings;
+            }
+        }
+    }
+
+    internal ScenarioStepFrame? Current
     {
         get
         {
@@ -224,18 +241,4 @@ public sealed class ExtentTestScope : IAtfScenarioScope
         _frames.Pop();
     }
 
-    internal sealed class StepFrame
-    {
-        internal StepFrame(IExtentNodeAdapter adapter, string title)
-        {
-            Adapter = adapter ?? throw new ArgumentNullException(nameof(adapter));
-            Title = title;
-        }
-
-        internal IExtentNodeAdapter Adapter { get; }
-        internal string Title { get; }
-        public List<(string Key, string Value)> Details { get; } = [];
-
-        internal int AssertionTableCount { get; set; }
-    }
 }

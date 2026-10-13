@@ -11,3 +11,5 @@ global using Atf.Core.Reporting.Artifacts;
 global using Atf.Core.Reporting.Evidence;
 global using Atf.Core.Reporting.Inventory;
 global using Atf.Core.Reporting.Phases;
+global using Atf.Api.Infrastructure.Lifecycle;
+global using Atf.Api.Infrastructure.Outcome;

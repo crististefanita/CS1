@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Css;
 
 /// <summary>
 /// Owns request/response metadata, technical trace, assertion tables and JSON

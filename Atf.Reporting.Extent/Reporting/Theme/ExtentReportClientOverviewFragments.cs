@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Client;
 
 /// <summary>
 /// Owns client-side Overview projections: scenario aggregation, native chart

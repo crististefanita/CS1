@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Css;
 
 /// <summary>Execution hierarchy, lifecycle shells and native table foundations.</summary>
 internal static class AtfReportThemeExecutionFragments

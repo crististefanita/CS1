@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Client.Failure;
 
 /// <summary>
 /// Emits the renderer-side failure evidence projection. This fragment only
@@ -112,6 +112,9 @@ internal static class ExtentReportClientFailureEvidenceFragments
                 request: compactText(request?.textContent, 120) || 'No HTTP request recorded',
                 validation: compactText(validation?.textContent, 120) || 'No contract validation recorded',
                 assertion: cells.length >= 3 ? cells.slice(0, 3).join(' → ') : '',
+                expected: cells[1] || '',
+                actual: cells[2] || '',
+                result: cells[3] || '',
                 cause: failureCause(phase || card)
               };
             }

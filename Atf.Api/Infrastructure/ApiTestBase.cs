@@ -5,6 +5,8 @@ using Atf.Core.Reporting;
 using System.Runtime.ExceptionServices;
 using Xunit;
 using Xunit.Sdk;
+using Atf.Api.Infrastructure.Lifecycle;
+using Atf.Api.Infrastructure.Outcome;
 
 namespace Atf.Api.Infrastructure;
 
@@ -57,7 +59,7 @@ public abstract class ApiTestBase
             teardown,
             exception => _output.WriteLine($"Teardown infrastructure failure: {exception}"));
 
-        // The Extent test is the xUnit class. Each invocation is a scenario
+        // The report test is the xUnit class. Each invocation is a scenario
         // node under that class; SETUP / TEST BODY / TEARDOWN remain beneath
         // the scenario and are not promoted into the left-hand test list.
         switch (result.Outcome)
@@ -74,6 +76,11 @@ public abstract class ApiTestBase
                 scope.CompleteScenario(AtfReportStatus.Fail);
                 scope.FailTest(failed.Exception);
                 ExceptionDispatchInfo.Capture(failed.Exception).Throw();
+                break;
+
+            case ApiScenarioOutcome.Warning warning:
+                scope.CompleteScenario(AtfReportStatus.Warning);
+                scope.PassTest(warning.Reason);
                 break;
 
             default:

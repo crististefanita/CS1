@@ -305,17 +305,40 @@ public sealed class ApiScenarioLifecycleRunnerTests
         Assert.Null(result.Skip);
     }
 
+    [Fact(DisplayName = "Lifecycle runner exposes warning as a semantic outcome")]
+    public async Task WarningOutcomeIsExplicitAndCannotHideInPass()
+    {
+        var scope = new RecordingScenarioScope();
+
+        var result = await ApiScenarioLifecycleRunner.RunAsync(
+            scope,
+            Context(scope),
+            setup: null,
+            _ => Warn(scope, "body warning"),
+            teardown: null);
+
+        Assert.True(result.IsWarning);
+        Assert.Equal("Scenario completed with warnings.", result.WarningReason);
+        Assert.False(result.IsPassed);
+        Assert.Null(result.Failure);
+        Assert.Null(result.Skip);
+    }
+
     [Theory(DisplayName = "Lifecycle matrix preserves phase status and verdict precedence: {0}")]
     [InlineData("setup fail / teardown pass", "fail", "pass", "pass", 0, 0)]
     [InlineData("setup fail / teardown warning", "fail", "pass", "warning", 0, 0)]
     [InlineData("setup fail / teardown fail", "fail", "pass", "fail", 0, 1)]
     [InlineData("setup warning / body fail / teardown pass", "warning", "fail", "pass", 0, 0)]
+    [InlineData("setup warning / body fail / teardown warning", "warning", "fail", "warning", 0, 0)]
+    [InlineData("setup warning / body fail / teardown fail", "warning", "fail", "fail", 0, 1)]
     [InlineData("setup warning / body pass / teardown fail", "warning", "pass", "fail", 0, 1)]
+    [InlineData("setup pass / body warning / teardown fail", "pass", "warning", "fail", 0, 1)]
     [InlineData("body fail / teardown warning", "none", "fail", "warning", 0, 0)]
     [InlineData("body fail / teardown fail", "none", "fail", "fail", 0, 1)]
     [InlineData("body skip / teardown warning", "none", "skip", "warning", 1, 0)]
     [InlineData("body skip / teardown fail", "none", "skip", "fail", 1, 1)]
     [InlineData("setup skip / teardown skip", "skip", "pass", "skip", 2, 0)]
+    [InlineData("setup skip / teardown fail", "skip", "pass", "fail", 1, 1)]
     [InlineData("teardown-only fail", "none", "pass", "fail", 0, 1)]
     [InlineData("warnings across all executed phases", "warning", "warning", "warning", 0, 0)]
     public async Task LifecycleMatrixPreservesPhaseStatusAndVerdict(
@@ -346,13 +369,18 @@ public sealed class ApiScenarioLifecycleRunnerTests
                     || (setupShape is not ("fail" or "skip") && bodyShape is "skip")
                     || teardownShape is "skip"
                         ? "Skip"
-                        : "Pass";
+                        : setupShape is "warning"
+                            || (setupShape is not ("fail" or "skip") && bodyShape is "warning")
+                            || teardownShape is "warning"
+                                ? "Warning"
+                                : "Pass";
 
         var actualOutcome = result.Outcome switch
         {
             ApiScenarioOutcome.Passed => "Pass",
             ApiScenarioOutcome.Failed => "Fail",
             ApiScenarioOutcome.Skipped => "Skip",
+            ApiScenarioOutcome.Warning => "Warning",
             _ => throw new InvalidOperationException("Unknown lifecycle outcome.")
         };
 
@@ -389,6 +417,9 @@ public sealed class ApiScenarioLifecycleRunnerTests
         Assert.Equal(
             expectedOutcome is "Skip",
             result.IsSkipped);
+        Assert.Equal(
+            expectedOutcome is "Warning",
+            result.IsWarning);
     }
 
     private static ApiScenarioContext Context(RecordingScenarioScope scope) =>
@@ -435,6 +466,7 @@ public sealed class ApiScenarioLifecycleRunnerTests
     private sealed class RecordingScenarioScope : IAtfScenarioScope
     {
         public List<string> Events { get; } = [];
+        public bool HasWarnings { get; private set; }
         public bool ThrowOnTeardownStart { get; init; }
         public bool ThrowOnStart { get; init; }
         public bool ThrowOnCompletePhase { get; init; }
@@ -464,7 +496,11 @@ public sealed class ApiScenarioLifecycleRunnerTests
         public void Info(string message) => Events.Add($"info:{message}");
         public void Pass(string message) => Events.Add($"pass:{message}");
         public void Fail(string message, Exception? exception = null) => Events.Add($"fail:{message}");
-        public void Warning(string message) => Events.Add($"warning:{message}");
+        public void Warning(string message)
+        {
+            HasWarnings = true;
+            Events.Add($"warning:{message}");
+        }
         public void Skip(string reason) => Events.Add($"skip:{reason}");
         public void PassTest(string message) { }
         public void FailTest(Exception exception) { }

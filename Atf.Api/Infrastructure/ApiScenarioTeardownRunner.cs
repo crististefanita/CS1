@@ -1,10 +1,12 @@
 using Atf.Core.Reporting;
+using Atf.Api.Infrastructure;
+using Atf.Api.Infrastructure.Outcome;
 
-namespace Atf.Api.Infrastructure;
+namespace Atf.Api.Infrastructure.Lifecycle;
 
 internal static class ApiScenarioTeardownRunner
 {
-    public static async Task<TeardownExecutionResult> RunAsync(
+    public static async Task<ApiScenarioTeardownResult> RunAsync(
         IAtfScenarioScope scope,
         ApiScenarioContext context,
         Func<ApiScenarioContext, Task>? teardown)
@@ -69,7 +71,13 @@ internal static class ApiScenarioTeardownRunner
             }
         }
 
-        return new(failure, skip);
+        ApiScenarioTeardownOutcome outcome = failure is not null
+            ? new ApiScenarioTeardownOutcome.Failed(failure)
+            : skip is not null
+                ? new ApiScenarioTeardownOutcome.Skipped(skip)
+                : new ApiScenarioTeardownOutcome.Passed();
+
+        return new(outcome);
     }
 
     private static bool TryReport(Action publication)
@@ -97,5 +105,3 @@ internal static class ApiScenarioTeardownRunner
         }
     }
 }
-
-internal sealed record TeardownExecutionResult(Exception? Failure, Exception? Skip);

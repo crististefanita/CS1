@@ -27,9 +27,3 @@ public sealed class AtfConfigurationException : InvalidOperationException
 
     public string Detail { get; }
 }
-
-internal static class ConfigurationRuleViolation
-{
-    public static void Throw(string code, string path, string message) =>
-        throw new AtfConfigurationException(code, path, message);
-}

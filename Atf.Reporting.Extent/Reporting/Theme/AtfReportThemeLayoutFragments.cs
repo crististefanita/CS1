@@ -1,4 +1,4 @@
-namespace Atf.Reporting.Extent.Theme;
+namespace Atf.Reporting.Extent.Theme.Css;
 
 /// <summary>Shared surface, navigation and exception-view layout rules.</summary>
 internal static class AtfReportThemeLayoutFragments
@@ -88,6 +88,45 @@ internal static class AtfReportThemeLayoutFragments
         border-bottom: 1px solid var(--atf-border) !important;
         transition: background .15s ease, border-color .15s ease;
       }
+      /* Tests and Fails share one navigation-row contract: keep the class /
+         failure identity on the left and the verdict badge on the same row,
+         pinned to the right edge. The hidden source payload is not part of
+         this flex geometry. */
+      .test-view .test-list-wrapper > .test-list-item > .test-item,
+      .exception-view .test-list-wrapper > .test-list-item > .test-item {
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+      .test-view .test-list-wrapper > .test-list-item > .test-item > .test-detail,
+      .exception-view .test-list-wrapper > .test-list-item > .test-item > .test-detail {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+      }
+      /* Native Extent places the Tests badge inside the duration paragraph.
+         Lift it into the identity row without changing the native markup:
+         class name stays left, duration stays below, status stays right. */
+      .test-view .test-list-wrapper > .test-list-item > .test-item > .test-detail {
+        position: relative !important;
+        padding-right: 92px !important;
+      }
+      .test-view .test-list-wrapper > .test-list-item > .test-item > .test-detail > .text-sm > .badge {
+        position: absolute !important;
+        top: 0 !important;
+        right: 0 !important;
+        float: none !important;
+        margin: 0 !important;
+        white-space: nowrap !important;
+      }
+      .test-view .test-list-wrapper > .test-list-item > .test-item > .test-status,
+      .exception-view .test-list-wrapper > .test-list-item > .test-item > .test-status {
+        flex: 0 0 auto !important;
+        margin-left: auto !important;
+        align-self: center !important;
+        white-space: nowrap !important;
+      }
       .test-list-item .test-item:hover { background: __ATF_ACCENT08__ !important; }
       .test-list-item .test-item[status="pass"] { border-left: 3px solid var(--atf-good) !important; }
       .test-list-item .test-item[status="skip"] { border-left: 3px solid var(--atf-warn) !important; }
@@ -107,6 +146,38 @@ internal static class AtfReportThemeLayoutFragments
          propagates them to every node, so suppress all inherited copies
          inside the execution tree. */
       .test-view .node-attr { display: none !important; }
+      .atf-scenario-annotations {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 4px !important;
+        margin-top: 5px !important;
+      }
+      .atf-tag-annotation {
+        display: inline-flex !important;
+        align-items: center !important;
+        min-height: 18px !important;
+        padding: 2px 7px !important;
+        border: 1px solid var(--atf-border) !important;
+        border-radius: 999px !important;
+        color: var(--atf-muted) !important;
+        background: var(--atf-panel-2) !important;
+        font-size: .66rem !important;
+        font-weight: 550 !important;
+        line-height: 1.2 !important;
+        letter-spacing: .01em !important;
+      }
+      .atf-tag-annotation-selection {
+        color: var(--atf-accent) !important;
+        border-color: var(--atf-accent) !important;
+        background: __ATF_ACCENT08__ !important;
+      }
+      .atf-tag-annotation-diagnostic {
+        color: var(--atf-muted) !important;
+        border-color: var(--atf-border) !important;
+        background: __ATF_WHITE018__ !important;
+      }
+      .test-view .test-content-detail .card-title > .atf-scenario-annotations { padding-right: 6px !important; }
     
       .detail-head { background: transparent !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
       .test-content-detail {
