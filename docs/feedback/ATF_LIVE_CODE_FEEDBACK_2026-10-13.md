@@ -55,25 +55,19 @@ assertion, contract validation și teardown. Ambele HTML-uri au fost verificate
 static și în TAB MCP, inclusiv Overview, Tests, Fails, Categories, expand/collapse
 și Open in Tests.
 
-## 3. Ce este deja mitigat
+## 3. Guardrails protejate — nu sunt backlog
 
-| Zonă | Dovadă din codul live | Status |
-|---|---|---|
-| Porturi reporting | `IAtfLifecycleReporter`, `IAtfEvidenceReporter`, `IAtfValidationReporter`, `IAtfCleanupReporter` | mitigated |
-| Evaluare versus publicare | `ValidationEvaluator` produce `ValidationEvaluation`; `ValidationOutcomePolicy` decide neutru; publisher-ul aplică efectele | closed |
-| Lifecycle API | `ApiScenarioPhaseRunner`, `ApiScenarioTeardownRunner`, `ApiScenarioOutcomeResolver` există și sunt testate | mitigated |
-| Theme Extent | `AtfReportTheme` este fațadă peste fragmente și tokeni | mitigated |
-| Document composer | sanitizare, pruner, inliner și publisher sunt colaboratori separați | mitigated |
-| request → validation | classifier + phase contract validator + teste de structură protejează sibling invariant | mitigated |
-| tree lifecycle | `ExtentScopeTreeCoordinator` separă tranzițiile phase/request/validation de facade; teste dedicate pentru drain și tranziții invalide | closed |
-| reporting namespace boundary | porturile capability-specific sunt în `Atf.Core.Reporting.Ports`, lifecycle scope rămâne în root, iar package-boundary test este verde | mitigated |
-| cleanup best-effort | reporter failure nu oprește acțiunile de cleanup | closed |
-| path/asset concurrency | barrier test pentru 20 de rezervări, sesiuni paralele cu path-uri distincte și cleanup serializat | mitigated; filesystem fault matrix rămâne |
-| xUnit generation | toate proiectele de test folosesc xUnit v3; build-ul live sincronizat este 0 warning/0 error | closed |
+| Contract protejat | Dovadă live |
+|---|---|
+| Core nu cunoaște Extent/HTML/CSS; TestHost este composition root | package-boundary și architecture tests |
+| `phase → request → validation` păstrează validation ca sibling direct | `ReportingStructureTests`, `ExtentScopeTreeCoordinatorTests` |
+| evaluarea, politica și publisher-ul sunt separate | `ValidationEvaluatorTests`, `ValidationOutcomePolicyTests` |
+| warning-ul rămâne warning și cleanup-ul continuă după failure | lifecycle/status/cleanup component tests |
+| modulele principale sunt `Atf.Core`, `Atf.Api`, `Atf.Api.TestHost`, `Atf.Reporting.Extent`, `Atf.Tests` | soluția și build-ul izolat |
+| toate proiectele de test folosesc xUnit v3 | project files + build fără warning/error |
 
-Nu se vor crea încă un `PhaseExecutor`, încă un `OutcomeResolver`, încă un
-`ThemeBuilder` sau încă un `ValidationPublisher` doar pentru că apar în
-feedback-ul vechi.
+Aceste contracte nu se redeschid pentru a repeta istoricul. Se redeschid doar
+dacă apare o regresie verificabilă.
 
 ## 4. Backlog activ, ordonat după câștig
 
