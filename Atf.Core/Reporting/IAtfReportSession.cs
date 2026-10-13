@@ -24,4 +24,16 @@ public interface IAtfReportSession
 
     void Flush();
     void FinalizeReport();
+
+    /// <summary>
+    /// Finalizes the session without blocking the caller while renderer-owned
+    /// artifact cleanup is waiting for a transient filesystem lock.
+    /// Legacy implementations remain source-compatible through the default
+    /// synchronous bridge.
+    /// </summary>
+    ValueTask FinalizeReportAsync(CancellationToken cancellationToken = default)
+    {
+        FinalizeReport();
+        return ValueTask.CompletedTask;
+    }
 }

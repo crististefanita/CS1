@@ -20,10 +20,10 @@ Feedback-ul de aici acoperă:
 - matrice de lifecycle și combinații de statusuri.
 
 Contractul raportului este definit permanent în `docs/ATF_Reporting_Contract.md`
-și rezumat în `Atf.Reporting.Extent/README.md`. Registrul de refactorizare este
-închis pentru RF-02–RF-05, iar contractele lifecycle LC-01 și LC-06 sunt închise.
-Artifactele noi reconfirmă static aceste contracte; feedback-ul nu redeschide un
-item fără o regresie observabilă.
+și rezumat în `Atf.Reporting.Extent/README.md`. În acest moment nu există TODO
+activ în registrul de refactorizare; RF-02–RF-06 și contractele lifecycle LC-01
+și LC-06 sunt închise. Feedback-ul nu redeschide un item fără o regresie
+observabilă.
 
 ```mermaid
 flowchart LR
@@ -39,7 +39,7 @@ flowchart LR
 | Document | Rol |
 |---|---|
 | `Atf_Lifecycle_Combination.md` | lifecycle, statusuri, assertions, Fails și proiecția raportului |
-| `Atf_Refactoring_Feedback.md` | contractele închise pentru OOP, boundary-uri, ownership de stare și metadata de navigare |
+| `Atf_Refactoring_Feedback.md` | backlog-ul de TODO-uri noi pentru OOP, boundary-uri, ownership de stare și metadata de navigare |
 | `Atf_Feedback_Execution_Guide.md` | procedura obligatorie, punctele de verificare și matricea TODO → teste → dovadă |
 | `README.md` | index, scope și regulile acestui registru |
 
@@ -61,15 +61,13 @@ criteriile de acceptare. Contractele stabile și diagramele normative apar în R
 proiectului și în documentele permanente din `docs/`; feedback-ul poate trimite
 către ele, dar nu le înlocuiește.
 
-## Starea auditului live
+## Contracte urmărite
 
-La ultima verificare disponibilă, artifactul nou conține harness-ul DOM read-only,
-metadata-ul secondary collapsed, ierarhia `phase → request + validation`,
-evidence collapsed și selectorul de tag-uri limitat la tag-uri de selecție.
-Lista claselor rămâne fără pills/adnotări. Codul și testele protejează aceste
-contracte; nu există TODO activ de refactorizare sau lifecycle în acest registru.
-Verificarea statică și verificarea interactivă MCP sunt raportate separat atunci
-când politica tab-ului nu permite controlul unui artifact `file://`.
+Registrul urmărește permanent harness-ul DOM read-only, metadata secundară
+colapsată, ierarhia `phase → request + validation`, evidence colapsat, selectorul
+de tag-uri limitat la tag-uri de selecție și lista claselor fără pills sau
+adnotări. Dovada trebuie să vină din cod, teste, artifact și DOM; nu se copiază
+în acest index rezultate, căi de artifact sau stări intermediare.
 
 ## Procedura obligatorie
 

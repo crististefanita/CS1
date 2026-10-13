@@ -138,6 +138,10 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
     }
 
     public void FinalizeReport()
+        => FinalizeReportAsync().AsTask().GetAwaiter().GetResult();
+
+    public async ValueTask FinalizeReportAsync(
+        CancellationToken cancellationToken = default)
     {
         Lifecycle.ExtentReportPaths? paths = null;
         ReportingSettings? settings = null;
@@ -186,7 +190,10 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
         var published = false;
         try
         {
-            _artifactPublisher.Publish(paths, settings);
+            await _artifactPublisher.PublishAsync(
+                paths,
+                settings,
+                cancellationToken).ConfigureAwait(false);
             published = true;
         }
         finally

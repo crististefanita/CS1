@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace Atf.Reporting.Extent;
 
-public sealed class ExtentCollectionFixture : IAtfApiReportSession, IDisposable
+public sealed class ExtentCollectionFixture : IAtfApiReportSession, IDisposable, IAsyncDisposable
 {
     private readonly IAtfReportSession _reportSession;
     private int _disposed;
@@ -44,6 +44,9 @@ public sealed class ExtentCollectionFixture : IAtfApiReportSession, IDisposable
 
     public void FinalizeReport() => _reportSession.FinalizeReport();
 
+    public ValueTask FinalizeReportAsync(CancellationToken cancellationToken = default) =>
+        _reportSession.FinalizeReportAsync(cancellationToken);
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
@@ -52,6 +55,17 @@ public sealed class ExtentCollectionFixture : IAtfApiReportSession, IDisposable
         }
 
         _reportSession.FinalizeReport();
+        GC.SuppressFinalize(this);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        await _reportSession.FinalizeReportAsync().ConfigureAwait(false);
         GC.SuppressFinalize(this);
     }
 }

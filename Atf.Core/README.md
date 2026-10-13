@@ -40,9 +40,11 @@ token-uri de temă sau selectori DOM/Extent.
 
 ## Responsabilități — perspectivă OOP strictă
 
-`Atf.Core` este cel mai puternic boundary din soluție, dar nu este încă o
-colecție de clase perfect coezive. Punctele de presiune sunt elemente intenționate
-de backlog, nu motive pentru a sparge proiectul în mai multe pachete:
+`Atf.Core` este cel mai puternic boundary din soluție. Ținta de coeziune este
+documentată mai jos fără a introduce pachete noi; retry-ul cleanup-ului este
+injectabil, async pe calea de producție și protejat de teste deterministe și
+concurente. Restul rândurilor sunt reguli de evoluție și nu trebuie transformate
+în refactorizări speculative:
 
 | Tip/zonă | Responsabilitate curentă | Țintă de refactorizare |
 |---|---|---|
@@ -261,7 +263,7 @@ transformare. `ApiScenarioOutcome` este implementat și în host-ul API ca rezul
 explicit și finalizat de lifecycle. Ținta este configurația runtime immutable
 și vocabularul auth tipizat, nu un al doilea model nullable de rezultat.
 Vezi [registrul de refactorizare](../docs/feedback/Atf_Refactoring_Feedback.md) pentru
-contractele RF-02–RF-05 închise, rațiunea extragerilor și seam-urile care trebuie
+contractele RF-02–RF-06 închise, rațiunea extragerilor și seam-urile care trebuie
 menținute.
 
 Ordinea redaction-ului este deterministă:

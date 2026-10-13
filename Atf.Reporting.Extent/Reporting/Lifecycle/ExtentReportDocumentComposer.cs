@@ -10,6 +10,12 @@ using Atf.Reporting.Extent.Lifecycle.Sanitization;
 internal sealed class ExtentReportDocumentComposer
 {
     public static void Compose(string reportPath, ReportingSettings settings)
+        => ComposeAsync(reportPath, settings).AsTask().GetAwaiter().GetResult();
+
+    public static async ValueTask ComposeAsync(
+        string reportPath,
+        ReportingSettings settings,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
         ArgumentNullException.ThrowIfNull(settings);
@@ -32,6 +38,6 @@ internal sealed class ExtentReportDocumentComposer
             StringComparison.OrdinalIgnoreCase);
 
         File.WriteAllText(reportPath, html);
-        ReportAssetCleaner.Clean(reportPath);
+        await ReportAssetCleaner.CleanAsync(reportPath, cancellationToken).ConfigureAwait(false);
     }
 }

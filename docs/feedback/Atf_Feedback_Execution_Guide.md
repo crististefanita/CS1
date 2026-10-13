@@ -9,15 +9,15 @@ deschide README-ul owner-ului, aplică doar verificările relevante pentru TODO-
 tău și închide-l numai după ce criteriile observabile sunt îndeplinite. Nu este
 nevoie să completezi pași fără legătură cu schimbarea.
 
-Scope-ul acestei runde este explicit:
+În această rundă ghidul se aplică explicit următoarelor registre:
 
 - [`Atf_Refactoring_Feedback.md`](Atf_Refactoring_Feedback.md) — contractele
-  închise pentru OOP, module, ownership, tag-uri și concurență;
+  închise pentru OOP, module, ownership, tag-uri și cleanup;
 - feedback-ul nou observabil care afectează direct aceste contracte.
 
 `Atf_Lifecycle_Combination.md` este exclus explicit din această rundă: nu este
-citit, modificat sau folosit ca criteriu de închidere. Procedura de mai jos se
-aplică numai regresiilor noi sau feedback-ului nou din scope-ul de refactorizare.
+citit, modificat sau folosit ca criteriu de închidere. Procedura se aplică numai
+finding-urilor noi sau regresiilor noi din scope-ul de refactorizare.
 
 ## Principiul de lucru
 

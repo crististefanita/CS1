@@ -30,7 +30,7 @@ flowchart TD
 | [`README_Atf_BestPractices.md`](README_Atf_BestPractices.md) | reguli OOP, SRP, teste, lifecycle și adnotări |
 | [`ATF_API_TEST_GUIDE.md`](ATF_API_TEST_GUIDE.md) | pașii compleți pentru adăugarea, testarea și validarea unui test API |
 | [`Atf_Lifecycle_Combination.md`](feedback/Atf_Lifecycle_Combination.md) | registru separat pentru lifecycle, statusuri, assertions și raportare |
-| [`Atf_Refactoring_Feedback.md`](feedback/Atf_Refactoring_Feedback.md) | contracte RF-02–RF-05 închise: OOP, boundary-uri, ownership și navigare |
+| [`Atf_Refactoring_Feedback.md`](feedback/Atf_Refactoring_Feedback.md) | RF-02–RF-06 închise: OOP, boundary-uri, ownership, navigare și cleanup |
 | [`Atf_Feedback_Execution_Guide.md`](feedback/Atf_Feedback_Execution_Guide.md) | procedura obligatorie și gateway-urile de rezolvare |
 | [`feedback/README.md`](feedback/README.md) | backlog, contracte și dovezi de test |
 

@@ -131,7 +131,7 @@ arborelui și în ownership-ul resurselor:
 Acestea sunt contracte de mentenanță P1/P2, nu motive pentru a modifica
 comportamentul raportului fără contracte noi. Orice extragere trebuie să păstreze
 request → validation sibling, collapse-by-default, tabelele agregate și aceeași
- paletă centralizată. Boundary-urile RF-02–RF-05 sunt închise în registrul de
+ paletă centralizată. Boundary-urile RF-02–RF-06 sunt închise în registrul de
  feedback și trebuie menținute prin aceleași dovezi.
 
 ### Criterii de acceptare pentru adaptor
@@ -237,7 +237,7 @@ TestCase
 │   │   ├── Technical trace
 │   │   ├── Response details
 │   │   └── Response JSON
-│   └── Validation(s) — direct sibling of its owning request
+│   └── Validation(s) — următorul frate direct al requestului, sub aceeași fază
 │       └── aggregate assertion table
 └── TEARDOWN
     └── Request(s)
@@ -302,9 +302,10 @@ Cleanup-ul asset-urilor are aceeași separare: `ReportAssetCleaner` păstrează
 fațada compatibilă, iar `ReportAssetCleanupCoordinator` serializază ștergerea
 pe director normalizat, aplică retry policy injectabilă și nu confundă o
 director temporar lipsă cu o eroare de raport. Astfel sesiunile paralele nu se
-șterg una pe alta. Implementarea folosește încă `Thread.Sleep` în filesystem
-adapter-ul sincron; un viitor hardening poate introduce retry async și lock
-lifecycle controlat.
+șterg una pe alta. Retry-ul folosește `DelayAsync` injectabil prin boundary-ul
+filesystem, iar `ExtentArtifactPublisher` și composer-ul folosesc calea async;
+fațadele sincron rămân doar pentru compatibilitate. Contractul HTML al
+raportului nu se schimbă.
 
 Fațada `ExtentTestScope` nu trebuie să devină un nou god-object. Orice regulă
 nouă de structură se extrage într-o politică internă pură/testabilă, iar scope-ul

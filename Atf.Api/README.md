@@ -224,7 +224,7 @@ TestCase
 │   │   ├── Technical trace
 │   │   ├── Response details
 │   │   └── Response JSON
-│   └── Validation(s) — direct sibling of its owning request
+│   └── Validation(s) — următorul frate direct al requestului, sub aceeași fază
 │       └── aggregate assertion table
 └── TEARDOWN
     └── Request(s)
@@ -319,7 +319,9 @@ Matricea este exprimată intenționat prin schimburi API reale pentru ramurile d
 reușită și teardown. Ramurile skip/failure folosesc semnale deterministe de
 lifecycle, astfel încât contractul raportului să poată fi testat fără să depindă
 de un secret lipsă sau de o eroare remote. Fiecare schimb HTTP reușit se încheie
-în continuare cu un singur nod de validare agregat deținut de request.
+în continuare cu un singur nod de validare agregat, frate direct al requestului
+în aceeași fază. Requestul coordonează ordinea de închidere, dar nu conține
+nodul de validare în arborele randat.
 
 ## Autentificare și mediu
 

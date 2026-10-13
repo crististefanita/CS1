@@ -44,7 +44,7 @@ flowchart LR
 | `HttpExecutorComponentTests` | retry, cancellation, metadata de rută, evidence și auth |
 | `ApiExecutorCompositionTests` | porturi injectate și păstrarea excepțiilor |
 | `SensitiveDataRedactorTests` | redaction pentru JSON, headere, path/query și date PII |
-| `ReportAssetCleanupCoordinatorTests` | cleanup izolat și concurent al asset-urilor |
+| `ReportAssetCleanupCoordinatorTests` | cleanup izolat și concurent al asset-urilor, retry bounded și delay async injectabil |
 | `ReportStepScopeTests` | lifecycle renderer-neutral pentru pași și cleanup |
 | `TestCaseInventoryTests` | inventarul testelor fără dependență de renderer |
 | `TagTaxonomyTests` / `AnnotationPolicyTests` | taxonomia tag-urilor și interzicerea markerilor generici |

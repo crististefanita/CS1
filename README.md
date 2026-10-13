@@ -31,7 +31,7 @@ redesenăm layout-ul, nu schimbăm paleta, fonturile, textele, ordinea nodurilor
 sau interacțiunile raportului. Documentația normativă din
 `docs/ATF_Reporting_Contract.md` definește formatul; documentele din
 `docs/feedback/` păstrează feedback-ul urmărit, procedura și dovada contractelor
-închise; RF-02–RF-05 sunt închise, iar registrul lifecycle este separat.
+închise. RF-02–RF-06 sunt închise, iar registrul lifecycle este separat.
 
 ```mermaid
 flowchart LR
@@ -373,7 +373,7 @@ verificarea interactivă în tab-ul MCP.
 O schimbare este completă numai când:
 
 - build-ul nu introduce warnings noi;
-- Core, Common, Extent și API component tests trec;
+- Core, modulul API, Extent și API component tests trec;
 - live tests sunt verzi sau skipped cu motiv explicit;
 - nu apare niciun secret în source, logs sau HTML;
 - un response păstrează o singură validation table agregată;

@@ -11,28 +11,38 @@ public sealed class ReportAssetCleaner
         ReportAssetCleanupCoordinator.CreateDefault();
 
     public static void Clean(string reportPath)
+        => CleanAsync(reportPath).AsTask().GetAwaiter().GetResult();
+
+    public static ValueTask CleanAsync(
+        string reportPath,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reportPath);
 
         var reportDirectory = Path.GetDirectoryName(Path.GetFullPath(reportPath));
         if (string.IsNullOrWhiteSpace(reportDirectory))
         {
-            return;
+            return ValueTask.CompletedTask;
         }
 
         var assetDirectory = Path.Combine(reportDirectory, "extent");
-        DefaultCoordinator.CleanDirectory(assetDirectory);
+        return DefaultCoordinator.CleanDirectoryAsync(assetDirectory, cancellationToken);
     }
 
     /// <summary>
     /// Best-effort deletion for a private Extent staging directory. Extent can
     /// briefly retain a handle to a generated font while another report is
-    /// being flushed; cleanup must not turn an already-composed report into a
-    /// failed test run.
+    /// being flushed; the async path keeps that retry outside the reporter
+    /// thread while cleanup remains non-verdict-affecting.
     /// </summary>
     public static void CleanDirectory(string directoryPath)
+        => CleanDirectoryAsync(directoryPath).AsTask().GetAwaiter().GetResult();
+
+    public static ValueTask CleanDirectoryAsync(
+        string directoryPath,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
-        DefaultCoordinator.CleanDirectory(Path.GetFullPath(directoryPath));
+        return DefaultCoordinator.CleanDirectoryAsync(Path.GetFullPath(directoryPath), cancellationToken);
     }
 }

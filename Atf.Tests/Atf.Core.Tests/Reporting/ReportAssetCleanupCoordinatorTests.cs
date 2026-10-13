@@ -39,6 +39,56 @@ public sealed class ReportAssetCleanupCoordinatorTests
         Assert.Equal(0, ReportAssetCleanupCoordinator.ActiveDirectoryGateCount);
     }
 
+    [Fact(DisplayName = "Async cleanup yields during a retry delay instead of blocking the reporter thread")]
+    public async Task AsyncCleanupDoesNotBlockDuringInjectedRetryDelay()
+    {
+        var fileSystem = new FakeFileSystem(failuresBeforeDelete: 1)
+        {
+            BlockDelay = true
+        };
+        var coordinator = new ReportAssetCleanupCoordinator(
+            fileSystem,
+            [TimeSpan.Zero, TimeSpan.FromSeconds(30)]);
+
+        var cleanup = coordinator.CleanDirectoryAsync(
+            TestDirectoryPath(),
+            TestContext.Current.CancellationToken).AsTask();
+
+        await fileSystem.DelayStarted.Task.WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+        Assert.False(cleanup.IsCompleted);
+        Assert.Equal(1, fileSystem.DeleteAttempts);
+
+        fileSystem.ReleaseDelay();
+        await cleanup;
+
+        Assert.Equal(2, fileSystem.DeleteAttempts);
+        Assert.False(fileSystem.Exists);
+        Assert.Equal(0, ReportAssetCleanupCoordinator.ActiveDirectoryGateCount);
+    }
+
+    [Fact(DisplayName = "Cancelled cleanup releases its directory ownership")]
+    public async Task CancelledCleanupDoesNotLeakDirectoryGate()
+    {
+        var fileSystem = new FakeFileSystem(failuresBeforeDelete: 1) { BlockDelay = true };
+        var coordinator = new ReportAssetCleanupCoordinator(
+            fileSystem,
+            [TimeSpan.Zero, TimeSpan.FromSeconds(30)]);
+        using var cancellation = new CancellationTokenSource();
+
+        var cleanup = coordinator.CleanDirectoryAsync(TestDirectoryPath(), cancellation.Token).AsTask();
+        await fileSystem.DelayStarted.Task.WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+
+        cancellation.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => cleanup.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        Assert.Equal(0, ReportAssetCleanupCoordinator.ActiveDirectoryGateCount);
+    }
+
     [Fact(DisplayName = "Parallel sessions delete only their own reserved renderer directories")]
     public async Task ParallelSessionsDoNotCrossDeleteDirectories()
     {
@@ -135,6 +185,10 @@ public sealed class ReportAssetCleanupCoordinatorTests
         public bool Exists { get; set; } = true;
         public ConcurrentQueue<TimeSpan> Delays { get; } = new();
         public ConcurrentQueue<string> DeletedPaths { get; } = new();
+        public bool BlockDelay { get; set; }
+        public TaskCompletionSource<bool> DelayStarted { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private TaskCompletionSource<bool>? _delayRelease;
 
         public bool DirectoryExists(string directoryPath) => Exists;
 
@@ -159,7 +213,23 @@ public sealed class ReportAssetCleanupCoordinatorTests
 
         public int DeleteAttempts => Volatile.Read(ref _deleteAttempts);
 
-        public void Delay(TimeSpan delay) => Delays.Enqueue(delay);
+        public ValueTask DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
+        {
+            Delays.Enqueue(delay);
+            if (!BlockDelay || delay <= TimeSpan.Zero)
+            {
+                return ValueTask.CompletedTask;
+            }
+
+            _delayRelease = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            DelayStarted.TrySetResult(true);
+            cancellationToken.Register(
+                static state => ((TaskCompletionSource<bool>)state!).TrySetCanceled(),
+                _delayRelease);
+            return new(_delayRelease.Task);
+        }
+
+        public void ReleaseDelay() => _delayRelease?.TrySetResult(true);
     }
 }
 

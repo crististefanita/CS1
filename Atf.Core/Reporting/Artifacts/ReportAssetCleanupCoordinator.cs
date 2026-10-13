@@ -36,6 +36,11 @@ internal sealed class ReportAssetCleanupCoordinator
         ]);
 
     internal void CleanDirectory(string directoryPath)
+        => CleanDirectoryAsync(directoryPath).AsTask().GetAwaiter().GetResult();
+
+    internal async ValueTask CleanDirectoryAsync(
+        string directoryPath,
+        CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
 
@@ -47,16 +52,21 @@ internal sealed class ReportAssetCleanupCoordinator
             gate.ReferenceCount++;
         }
 
-        lock (gate.Sync)
+        var enteredGate = false;
+        try
         {
-            try
+            await gate.Sync.WaitAsync(cancellationToken).ConfigureAwait(false);
+            enteredGate = true;
+            await TryDeleteAsync(normalizedPath, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            if (enteredGate)
             {
-                TryDelete(normalizedPath);
+                gate.Sync.Release();
             }
-            finally
-            {
-                ReleaseGate(normalizedPath, gate);
-            }
+
+            ReleaseGate(normalizedPath, gate);
         }
     }
 
@@ -84,7 +94,9 @@ internal sealed class ReportAssetCleanupCoordinator
         }
     }
 
-    private void TryDelete(string directoryPath)
+    private async ValueTask TryDeleteAsync(
+        string directoryPath,
+        CancellationToken cancellationToken)
     {
         for (var attempt = 0; attempt < _retryDelays.Count; attempt++)
         {
@@ -100,11 +112,11 @@ internal sealed class ReportAssetCleanupCoordinator
             }
             catch (IOException) when (attempt < _retryDelays.Count - 1)
             {
-                _fileSystem.Delay(_retryDelays[attempt + 1]);
+                await _fileSystem.DelayAsync(_retryDelays[attempt + 1], cancellationToken).ConfigureAwait(false);
             }
             catch (UnauthorizedAccessException) when (attempt < _retryDelays.Count - 1)
             {
-                _fileSystem.Delay(_retryDelays[attempt + 1]);
+                await _fileSystem.DelayAsync(_retryDelays[attempt + 1], cancellationToken).ConfigureAwait(false);
             }
             catch (IOException)
             {
@@ -119,7 +131,7 @@ internal sealed class ReportAssetCleanupCoordinator
 
     private sealed class DirectoryGate
     {
-        public object Sync { get; } = new();
+        public SemaphoreSlim Sync { get; } = new(1, 1);
         public int ReferenceCount { get; set; }
     }
 }
@@ -128,7 +140,7 @@ internal interface IReportAssetFileSystem
 {
     bool DirectoryExists(string directoryPath);
     void DeleteDirectory(string directoryPath);
-    void Delay(TimeSpan delay);
+    ValueTask DelayAsync(TimeSpan delay, CancellationToken cancellationToken);
 }
 
 internal sealed class PhysicalReportAssetFileSystem : IReportAssetFileSystem
@@ -137,5 +149,8 @@ internal sealed class PhysicalReportAssetFileSystem : IReportAssetFileSystem
 
     public void DeleteDirectory(string directoryPath) => Directory.Delete(directoryPath, recursive: true);
 
-    public void Delay(TimeSpan delay) => Thread.Sleep(delay);
+    public ValueTask DelayAsync(TimeSpan delay, CancellationToken cancellationToken)
+        => delay <= TimeSpan.Zero
+            ? ValueTask.CompletedTask
+            : new(Task.Delay(delay, cancellationToken));
 }

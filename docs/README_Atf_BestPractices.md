@@ -282,23 +282,24 @@ Cele trei verificări sunt corecte semantic, dar produc evidence fragmentată ș
 Separă mesele doar când există responses diferite sau o limită reală de
 contract: de exemplu request-ul de creare și request-ul ulterior de read-back.
 
-### 2.6 Request-ul deține validarea response-ului
+### 2.6 Request-ul și validarea response-ului
 
 Raportul trebuie să fie lizibil ca structură:
 
 ```text
 TEST BODY
-└── GET /users
-    ├── TECHNICAL TRACE
-    ├── RESPONSE JSON
-    └── Validate: user collection contract
-        └── ASSERTION TABLE
+├── GET /users
+│   ├── TECHNICAL TRACE
+│   └── RESPONSE JSON
+└── Validate: user collection contract
+    └── ASSERTION TABLE
 ```
 
 Executorul publică trace-ul și payload-urile pe request și păstrează requestul
-activ până când validatorul își publică evidence-ul. Validatorul deschide un
-un sibling direct după request și își închide propriul nod după tabelul
-agregat. Această regulă este contractul normativ al
+activ până când validatorul își publică evidence-ul. Validatorul este creat ca
+sibling direct după request și își închide propriul nod după tabelul agregat.
+Requestul coordonează ordinea de închidere, dar nu conține validatorul. Această
+regulă este contractul normativ al
 ATF-ului și previne validări afișate sub fază greșită sau atașate unui request
 greșit.
 

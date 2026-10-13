@@ -142,7 +142,7 @@ hidratarea clientului nu are voie să reintroducă tag-uri în navigarea stâng�
 
 ## Criterii de finalizare
 
-- unit tests pentru Core, Common, adapter și orchestration;
+- unit tests pentru Core, modulul API, adapter și orchestration;
 - test de artifact verifică HTML-ul final, nu doar string-uri din builder;
 - live API suite generează HTML în artifacts/reports;
 - artifact inspector confirmă tema, self-contained, JSON scroll, tabelul de

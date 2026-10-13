@@ -227,7 +227,7 @@ TestCase
 │   │   ├── Technical trace
 │   │   ├── Response details
 │   │   └── Response JSON
-│   └── Validation(s) — direct sibling of its owning request
+│   └── Validation(s) — următorul frate direct al requestului, sub aceeași fază
 │       └── aggregate assertion table
 └── TEARDOWN
     └── Request(s)
