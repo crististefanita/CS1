@@ -10,6 +10,11 @@ colaboratorilor, vezi [ATF refactoring assessment and OOP roadmap](ATF_Refactori
 Acest document păstrează backlog-ul operațional; documentul nou păstrează
 diagnosticul detaliat al responsabilităților.
 
+Scorurile de aici sunt un baseline operațional și nu trebuie confundate cu
+scorul agresiv OOP din auditul curent. Pentru nota actualizată și măsurătorile
+din codul live (`ExtentTestScope`, `ApiTestBase`, tema CSS și client behaviour),
+folosiți documentul de refactorizare indicat mai sus.
+
 ## Executive verdict
 
 | Area | Score | Direct feedback |

@@ -253,6 +253,35 @@ public sealed class ReportingComponentTests
         Assert.DoesNotContain(".atf-tag-audit-heading", css, StringComparison.Ordinal);
     }
 
+    [Fact(DisplayName = "Category status badges share one fixed height")]
+    public void CategoryStatusBadgesUseOneHeight()
+    {
+        var css = AtfReportTheme.BuildCss();
+
+        Assert.Contains("--atf-category-badge-height: 22px;", css, StringComparison.Ordinal);
+        Assert.Contains(
+            ".category-view .badge.log {",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "height: var(--atf-category-badge-height) !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "min-height: var(--atf-category-badge-height) !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "align-items: center !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "line-height: 1 !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("\n      .badge.log {", css, StringComparison.Ordinal);
+    }
+
     [Fact(DisplayName = "Tag audit cards use the native Tags and System Environment frame")]
     public void ReportThemeUsesNativeOverviewFrameForTagAuditCards()
     {

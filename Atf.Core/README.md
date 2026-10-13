@@ -127,13 +127,52 @@ flowchart LR
     File[appsettings.json] --> Loader[AtfConfigurationLoader]
     Env[ATF_ environment override] --> Loader
     Loader --> Validate[Validate + fail fast]
+    Validate --> ApiRule[ApiConfigurationValidator]
+    Validate --> ReportRule[ReportingConfigurationValidator]
+    Validate --> RedactionRule[RedactionConfigurationValidator]
+    Validate --> RouteRule[RouteConfigurationValidator]
+    Validate --> AuthRule[AuthProfileConfigurationValidator]
     Validate --> Settings[Module-owned Api + Reporting settings]
     Settings --> Runtime[Executor / Extent lifecycle]
 ```
 
+`AtfConfigurationValidator` este doar coordonatorul boundary-ului. Fiecare
+validator intern de mai sus deține un singur set de reguli și păstrează mesajele
+de compatibilitate ale contractului public `AtfConfiguration.Validate()`. Acest
+split permite teste unitare directe pe API, reporting, redaction, routes și auth
+fără să transforme configurația într-o clasă monolitică. Nu se introduc încă
+diagnostice noi sau o schimbare de ordine: refactorul este intenționat
+comportamental neutru.
+
 ## Authentication and resilience
 
-`ConfiguredApiAuthenticator` supports configured `none` and `bearer` profiles. It separately applies a header, describes the mode and describes only token availability. `ApiRouteAuthentication` adds a typed route declaration (`ApiAuthType` + `ApiAuthRequirement` + configurable profile) so the report can distinguish route intent from the effective runtime profile. The report never contains the token.
+`ConfiguredApiAuthenticator` resolves the string-based configuration boundary to
+typed strategies for `none`, `bearer`, `api-key`, `basic` and `custom` headers.
+The remaining design weakness is at the boundary: `AuthProfileSettings.Type`
+and header placeholders are still free-form strings, so validation and runtime
+resolution duplicate the supported-mode vocabulary. `ApiRouteAuthentication`
+adds a typed route declaration (`ApiAuthType` + `ApiAuthRequirement` +
+configurable profile) so the report can distinguish route intent from the
+effective runtime profile. The report never contains the token.
+
+## Current refactor findings (2026-10-13)
+
+This kernel is not the first place to perform a broad rewrite. `ApiExecutor` is
+already a small orchestrator (about 129 lines) with separate URL, auth,
+transport and evidence seams. The high-value improvements are narrower:
+
+1. replace mutable settings plus copied dictionaries with an immutable validated
+   runtime snapshot;
+2. make the auth-mode vocabulary a typed registry at configuration load time;
+3. introduce an explicit execution outcome for transport error, cancellation,
+   final response and retry history instead of forcing callers to infer state;
+4. keep `SensitiveDataRedactor` mandatory for report output even when a local
+   diagnostic run requests less masking; disabling security should be an
+   explicit, guarded policy, not an accidental configuration switch.
+
+These are design targets, not changes made by this audit. See the
+[refactoring assessment](../docs/ATF_Refactoring_Assessment.md) for scores and
+the order of extraction.
 
 `RateLimitRetryPolicy` retries only configured statuses, reads delay headers in order, rejects unusable delays, falls back, caps the delay and stops at the retry budget. `Polling.UntilAsync` is deadline-based and returns the last value, attempt count, elapsed duration and a satisfaction flag.
 
@@ -197,7 +236,7 @@ A new Core policy is acceptable only when it is product-neutral, exposed through
 
 | Area | Required invariant | Current guard |
 |---|---|---|
-| configuration | invalid base URL/timing/report engine fails before runtime | `ConfigurationAndResilienceTests` |
+| configuration | invalid base URL/timing/report engine fails before runtime; each boundary rule is isolated | `ConfigurationAndResilienceTests`, `ConfigurationRuleTests` |
 | URL/auth | path and query are encoded; secrets are described only by state | `CoreArchitectureTests`, `HttpExecutorComponentTests` |
 | execution | transport is replaceable; retry result is explicit; reporter cannot replace the original exception | `ApiExecutorCompositionTests`, `HttpExecutorComponentTests` |
 | resilience | retry status, delay source, cap and budget are deterministic | `ConfigurationAndResilienceTests`, `CoreArchitectureTests` |

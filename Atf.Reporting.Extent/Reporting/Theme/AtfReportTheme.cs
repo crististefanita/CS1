@@ -102,6 +102,7 @@ public static class AtfReportTheme
         --atf-table-header-font-size: __ATF_FONT_TABLE_HEADER_SIZE__;
         --atf-table-cell-font-size: __ATF_FONT_TABLE_CELL_SIZE__;
         --atf-badge-font-size: __ATF_FONT_BADGE_SIZE__;
+        --atf-category-badge-height: 22px;
         /* One shared viewport for audit tables and JSON code blocks. */
         --atf-audit-scroll-height: 340px;
       }
@@ -262,6 +263,25 @@ public static class AtfReportTheme
         background: var(--atf-bg) !important;
       }
       .category-container { border: 1px solid var(--atf-border) !important; border-radius: 0 !important; box-shadow: 0 10px 26px __ATF_SHADOWSTRONG__ !important; }
+      /* Category mixes Extent's native pass badge with ATF's skip/fail
+         variants. Normalize the shared status silhouette so every semantic
+         label occupies exactly the same vertical space. */
+      .category-view .badge.log {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+        height: var(--atf-category-badge-height) !important;
+        min-height: var(--atf-category-badge-height) !important;
+        line-height: 1 !important;
+        vertical-align: middle !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+      }
+      .category-view .test-detail .meta,
+      .category-view .test-contents > .info {
+        align-items: center !important;
+      }
       .dashboard-view .card,
       .dashboard-view .card-header,
       .dashboard-view .card-body,

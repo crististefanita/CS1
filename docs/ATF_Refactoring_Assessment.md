@@ -9,21 +9,51 @@ aceeași politică de securitate.
 
 ## Verdict executiv
 
+> **Snapshot 2026-10-13 — audit read-only al codului live.** Dimensiunile
+> menționate mai jos sunt măsurători ale fișierelor actuale, nu estimări dintr-un
+> raport vechi. În această rundă se modifică doar documentația; niciun cod,
+> proiect, test sau comportament de raportare nu este schimbat.
+
 | Zonă | Notă | Feedback agresiv, dar acționabil |
 |---|---:|---|
-| Direcția dependențelor | 86 | Core/Common/Api sunt bine separate; orice nouă referință din Core spre Extent ar fi regresie arhitecturală. |
-| OOP și coeziunea claselor | 48 | Există interfețe bune, dar câteva clase coordonează simultan stare, reguli, randare și lifecycle. Sunt „god objects” în devenire. |
-| `ExtentTestScope` | 42 | Gestionează stack-ul, sincronizarea, lifecycle-ul, statusul, redaction-ul, HTML-ul, JSON-ul și tabelele de assertions. Nu mai este un scope; este un mini-framework. |
-| CSS/tema raportului | 35 | `AtfReportTheme` are aproximativ 892 de linii într-un singur builder. Un token schimbat cere navigarea unui șablon monolitic și crește riscul de regresie vizuală. |
-| JavaScript-ul raportului | 38 | `ExtentReportClientBehaviour` are aproximativ 619 linii și amestecă discovery DOM, overview, navigare, collapse, accesibilitate și reconciliere de counters. |
-| Configurație | 68 | Validatorul a fost separat, dar încă verifică mai multe subdomenii într-o singură unitate statică. Regulile sunt greu de compus și de raportat granular. |
-| Validare și assertions | 54 | `ValidationTable` este o idee corectă, dar amestecă modelul tabelar, truncarea, excepțiile, execuția și publicarea în report. |
-| Transport și auth | 62 | Porturile sunt bune, însă `ApiTransport.cs` conține URL building, auth și transport concret în același fișier/conceptual boundary. |
-| Lifecycle API | 58 | `ApiTestBase` coordonează fixture, module, setup/body/teardown, skip, excepții și finalizarea raportului. E prea mult pentru o clasă de bază. |
-| Concurență | 59 | `AsyncLocal` și lock-ul protejează o parte din stare, dar contractul de ownership și cleanup concurent trebuie făcut explicit și testat. |
-| Testabilitate | 73 | Există porturi și teste bune; lipsesc teste contractuale pentru fiecare nou colaborator după split și teste de concurență/cancellation. |
-| Documentație | 76 | Există diagrame și reguli utile, dar ierarhia request/validation a fost descrisă inconsistent în mai multe README-uri. |
-| **Scor general** | **58** | Fundament bun, dar reporting-ul și lifecycle-ul sunt prea centralizate pentru o evoluție elegantă. Refactorizarea trebuie să înceapă acolo. |
+| Direcția dependențelor | 88 | Core nu referă Extent, iar Common și Api urmează direcția corectă. Nu acceptați niciun shortcut de la Core spre renderer. |
+| OOP și coeziunea claselor | 58 | Porturile sunt bune, dar lifecycle-ul API și adaptorul Extent încă concentrează prea multe politici într-o singură fațadă. |
+| `ExtentTestScope` | 46 | Are **396 de linii** și gestionează stack async, locking, tree policy, status, redaction, HTML, JSON și assertion tables. Numele „scope” ascunde un mini-framework. |
+| CSS/tema raportului | 34 | `AtfReportTheme` are **1.048 de linii**. Este cel mai mare risc de regresie vizuală și nu poate fi întreținut elegant prin editări locale. |
+| JavaScript-ul raportului | 36 | `ExtentReportClientBehaviour` are **839 de linii** și amestecă DOM discovery, overview, navigare, collapse, accesibilitate și reconciliere de counters. |
+| Configurație | 71 | Snapshot-ul și validarea fail-fast sunt corecte, dar modelul rămâne mutabil, cu `Type` și chei libere string-based și reguli greu de compus. |
+| Validare și assertions | 61 | Agregarea într-un singur tabel este solidă; `ValidationTable` încă execută checks, acumulează erori, aplică lifecycle și publică evidence. |
+| Transport și auth | 73 | Strategiile typed există și porturile sunt injectabile; `ApiTransport.cs` încă grupează fizic trei concepte distincte și lasă auth config-ul string-based. |
+| Lifecycle API | 55 | `ApiTestBase` are **177 de linii** și coordonează fixture, module, faze, skip, teardown, cleanup, exception policy și verdict final. Este prea mult pentru un adapter xUnit. |
+| Concurență | 62 | `AsyncLocal` plus lock reduc riscul, dar ownership-ul scope-ului Extent, ordinea deterministă și rulările paralele nu au încă un contract suficient de explicit. |
+| Testabilitate | 80 | Există porturi, fakes, teste de arbore și inspecție de artifact; lipsesc matricele complete pentru cancellation, parallel isolation, redaction și runner parity. |
+| Securitate diagnostică | 71 | Redaction-ul este central și traversează JSON/text/exception, dar `RedactionSettings.Enabled` permite dezactivarea globală fără o protecție de mediu. |
+| Documentație | 87 | README-urile au diagrame și contracte reale; riscul rămas este drift-ul dintre documentația istorică, API-ul public și regulile actuale de testare. |
+| **Scor general** | **68** | Fundamentul este bun și funcțional, dar nu este încă elegant OOP: reporting-ul, lifecycle-ul și configurarea sunt încă centre de schimbare prea mari. |
+
+### Măsurători care schimbă prioritizarea
+
+`ApiExecutor` are aproximativ 129 de linii și delegă deja evidence-ul în
+`ApiExecutionReporter`; nu este primul candidat pentru o rescriere. În schimb,
+următoarele trei axe sunt reale și independente:
+
+```mermaid
+flowchart TD
+    Scope[ExtentTestScope\n396 linii] --> State[stack + lock + ownership]
+    Scope --> Evidence[trace + JSON + HTML]
+    Scope --> Verdict[status + completion]
+    Scope --> Assertions[aggregate table]
+    Base[ApiTestBase\n177 linii] --> Phases[setup/body/teardown]
+    Base --> Cleanup[cleanup + failure precedence]
+    Base --> Runner[xUnit skip/rethrow]
+    Theme[AtfReportTheme 1048 linii] --> CSS[palette + layout + responsive]
+    Behaviour[ClientBehaviour 839 linii] --> JS[DOM + overview + navigation + a11y]
+```
+
+Feedbackul direct: dacă se extrage întâi `ApiExecutor`, se consumă timp pe o
+zonă deja relativ coerentă și se păstrează problema principală. Ordinea corectă
+este `ExtentTestScope` → `ApiTestBase` → CSS/JS, cu teste contractuale înaintea
+fiecărui split.
 
 ## Ce este bun și trebuie păstrat
 
@@ -239,11 +269,34 @@ teste care fixează comportamentul deja dorit, apoi extrage colaboratori fără 
 schimbe output-ul. Dacă un diff de HTML apare fără o cerință explicită, refactorul
 se oprește și se investighează.
 
-## Decizia pentru această rundă
+## Decizia și rezultatul rundei curente
 
-Această rundă documentează și prioritizează refactorizarea; nu introduce schimbări
-de runtime speculative într-un working tree modificat concurent. Implementarea
-codului trebuie făcută pe pași mici, fiecare sincronizat în live ATF și verificat
-în `C:\work\ex\.net\.tmp\`, pentru a nu opri rulările active și pentru a nu
-confunda un build cu o validare de comportament.
+Runda curentă a implementat primul increment cu risc redus, fără schimbare de
+contract public sau de output:
+
+```mermaid
+flowchart LR
+    Scope[ExtentTestScope facade] --> Classifier[ExtentStepClassifier]
+    Scope --> Tree[ExtentPhaseContractValidator]
+    Config[AtfConfigurationValidator] --> Api[ApiConfigurationValidator]
+    Config --> Report[ReportingConfigurationValidator]
+    Config --> Redaction[RedactionConfigurationValidator]
+    Config --> Routes[RouteConfigurationValidator]
+    Config --> Auth[AuthProfileConfigurationValidator]
+```
+
+- `ExtentTestScope` deleagă clasificarea și contractul request → validation către
+  colaboratori existenți, eliminând logica duplicată din scope;
+- validatorul de configurație este acum un coordonator, iar regulile API,
+  reporting, redaction, routes și auth sunt tipuri interne cu responsabilitate
+  unică;
+- `ConfigurationRuleTests` verifică fiecare boundary, iar
+  `ExtentStepClassifierTests` fixează clasificarea folosită de arbore;
+- mesajele, ordinea validării, statusurile și fațadele publice rămân neschimbate.
+
+Verificarea se face incremental în `C:\work\ex\.net\.tmp\`, pe o copie izolată
+a repository-ului, pentru a nu opri rulările active. Următorul increment cu risc
+acceptabil este separarea `ExtentReportClientBehaviour` și `AtfReportTheme` în
+compozitori mici, numai după teste de snapshot/DOM și fără redenumirea
+artifactului.
 

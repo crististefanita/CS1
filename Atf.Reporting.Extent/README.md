@@ -9,7 +9,9 @@ trecut.
 
 ```mermaid
 flowchart LR
-    Core[Atf.Core reporting ports] --> Scope[ExtentTestScope]
+    Core[Atf.Core reporting ports] --> Scope[ExtentTestScope facade]
+    Scope --> Classifier[ExtentStepClassifier]
+    Scope --> Contract[ExtentPhaseContractValidator]
     Scope --> Tree[Extent hierarchy]
     Scope --> Evidence[Evidence renderer]
     Tree --> Theme[AtfReportTheme + palette]
@@ -31,7 +33,9 @@ Core port -> Extent scope -> Extent tree + evidence HTML -> theme/composition
 | Componentă | Face | Nu face |
 |---|---|---|
 | `ExtentTestHierarchy` | clase, scenarii, faze și status agregat | nu execută request-uri |
-| `ExtentTestScope` | deschide/închide pași și păstrează ownership-ul evidence-ului | nu decide rezultatul unei validări |
+| `ExtentTestScope` | fațadă sincronizată pentru pași, evidence și lifecycle | nu clasifică singur titlurile și nu validează singur arborele |
+| `ExtentStepClassifier` | clasifică phase/request/validation | nu creează noduri și nu publică evidence |
+| `ExtentPhaseContractValidator` | verifică request → validation sibling + un tabel | nu mută noduri și nu schimbă verdicturi |
 | `ExtentEvidenceRenderer` | envelope HTML sigur, collapsed și accesibil | nu inventează verdicturi |
 | `ExecutionEvidenceComposer` | clasifică trace-ul și reduce câmpurile tehnice | nu modifică `ApiResponse` |
 | `AtfReportTheme` | CSS, densitate, culori și responsive layout | nu citește config de business |
@@ -47,6 +51,42 @@ Atf.Core -> Atf.Reporting.Extent -> ExtentReports
 `Atf.Core` nu referă package-ul Extent și nu conține markup Extent. Orice
 renderer viitor trebuie să consume aceleași porturi, nu să copieze logica
 executorului sau a validatorilor.
+
+## Audit OOP curent — unde este presiunea reală
+
+Adaptorul funcționează, dar `ExtentTestScope` are aproximativ **396 de linii**
+și încă este fațadă, state machine, policy de arbore, redactor și renderer în
+același tip. Refactorizarea corectă este incrementală și păstrează API-ul
+`IAtfScenarioScope`:
+
+```mermaid
+flowchart TD
+    Scope[ExtentTestScope facade] --> Stack[scenario step stack]
+    Scope --> Tree[execution tree policy]
+    Scope --> Evidence[evidence publisher]
+    Scope --> Assertions[assertion table publisher]
+    Scope --> Status[status policy]
+    Scope --> Adapter[Extent node adapter]
+```
+
+Nu extrage clase doar pentru a reduce numărul de linii. Fiecare colaborator
+trebuie să aibă un contract determinist și să poată fi testat fără HTML complet:
+
+| Seam | Contract minim |
+|---|---|
+| step stack | nesting, pop idempotent, context async separat |
+| tree policy | phase → request + validation sibling, tranziții invalide respinse |
+| evidence publisher | redaction, escaping, JSON/trace fără verdict funcțional |
+| assertion publisher | un singur tabel agregat, limită de display, duplicate respins |
+| status policy | `Info` tehnic nu devine `Pass`, precedence failure/skip stabil |
+
+Cele mai mari riscuri vizuale sunt încă `AtfReportTheme` (**1.048 linii**) și
+`ExtentReportClientBehaviour` (**839 linii**). Ele trebuie împărțite pe
+intenții (`tokens/surfaces/tree/evidence/responsive`, respectiv
+`discovery/overview/disclosure/navigation/accessibility`) numai după ce
+testele de artifact fixează selectorii, culorile, fonturile, collapse-ul și
+zero overflow orizontal. Nu mutați ownership-ul evidence-ului în JavaScript ca
+să reparați un defect de layout.
 
 ## Contractul arborelui API
 
@@ -104,6 +144,10 @@ informația la hover sau pentru un cititor asistiv. Body-ul nu este tăiat:
 `TECHNICAL TRACE` este o clasificare de evidence, nu un verdict și nu o a doua
 validare. Metadata generică de fază nu este randată ca `Execution summary` pe
 ultimul request.
+
+Fațada `ExtentTestScope` nu trebuie să devină un nou god-object. Orice regulă
+nouă de structură se extrage într-o politică internă pură/testabilă, iar scope-ul
+rămâne responsabil de sincronizare, delegare și ownership-ul `AsyncLocal`.
 
 ## Contractul artifactului
 

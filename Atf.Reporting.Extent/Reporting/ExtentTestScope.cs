@@ -84,7 +84,7 @@ public sealed class ExtentTestScope : IAtfScenarioScope
             // Lifecycle phases are the direct children of a scenario. HTTP
             // requests and their aggregate validations are direct siblings
             // under the phase, matching the Extent report model.
-            if (ApiScenarioPhaseLayout.Classify(title) is not null)
+            if (ExtentStepClassifier.IsPhase(title))
             {
                 while (Current is not null)
                 {
@@ -92,15 +92,15 @@ public sealed class ExtentTestScope : IAtfScenarioScope
                     PopStep();
                 }
             }
-            else if (IsHttpStepTitle(title))
+            else if (ExtentStepClassifier.IsHttp(title))
             {
                 // A defensive boundary for callers that start a new exchange
                 // without explicitly closing a previous non-phase step.
                 CloseActiveNonPhaseStep();
             }
-            else if (IsValidationStepTitle(title))
+            else if (ExtentStepClassifier.IsValidation(title))
             {
-                if (!TryGetCurrentPhase(out _) || Current is null || !IsHttpStepTitle(Current.Title))
+                if (!TryGetCurrentPhase(out _) || Current is null || !ExtentStepClassifier.IsHttp(Current.Title))
                 {
                     throw new InvalidOperationException(
                         $"Validation '{title}' must start after an active HTTP request inside a lifecycle phase.");
@@ -131,7 +131,7 @@ public sealed class ExtentTestScope : IAtfScenarioScope
                     string.Equals(frame.Title, phase, StringComparison.Ordinal));
                 if (phaseFrame is not null)
                 {
-                    EnsureSuccessfulBodyHasContractValidation(phaseFrame);
+                    ExtentPhaseContractValidator.EnsureSuccessfulPhaseHasContractValidation(phaseFrame);
                 }
             }
 
@@ -203,7 +203,7 @@ public sealed class ExtentTestScope : IAtfScenarioScope
         lock (_sync)
         {
             var frame = Current;
-            if (frame is null || !IsValidationStepTitle(frame.Title))
+            if (frame is null || !ExtentStepClassifier.IsValidation(frame.Title))
             {
                 throw new InvalidOperationException(
                     "AssertionTable can only be published by an active 'Validate:' step paired with an API request.");
@@ -316,7 +316,7 @@ public sealed class ExtentTestScope : IAtfScenarioScope
             return;
         }
 
-        if (ApiScenarioPhaseLayout.Classify(frame.Title) is not null)
+        if (ExtentStepClassifier.IsPhase(frame.Title))
         {
             // Lifecycle phases are structural containers. Generic Extent
             // "Execution summary · N fields" rows add noise here and make
@@ -354,56 +354,9 @@ public sealed class ExtentTestScope : IAtfScenarioScope
         }
     }
 
-    private static bool IsHttpStepTitle(string title)
-    {
-        var verb = title.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-        return verb is "GET" or "POST" or "PUT" or "PATCH" or "DELETE" or "HEAD" or "OPTIONS" or "TRACE";
-    }
-
-    private static bool IsValidationStepTitle(string title) =>
-        title.StartsWith("Validate:", StringComparison.OrdinalIgnoreCase);
-
-    private static void EnsureSuccessfulBodyHasContractValidation(StepFrame phase)
-    {
-        var children = phase.Node.Model.Children.ToArray();
-        for (var index = 0; index < children.Length; index++)
-        {
-            var request = children[index];
-            if (!IsHttpStepTitle(request.Name))
-            {
-                continue;
-            }
-
-            if (request.Children.Any(child => IsValidationStepTitle(child.Name)))
-            {
-                throw new InvalidOperationException(
-                    $"API request '{request.Name}' contains a nested contract validation. " +
-                    "Validation must be its direct sibling under the lifecycle phase.");
-            }
-
-            if (index + 1 >= children.Length || !IsValidationStepTitle(children[index + 1].Name))
-            {
-                throw new InvalidOperationException(
-                    $"API request '{request.Name}' completed without contract validation. " +
-                    "Every successful response must be followed by exactly one aggregate ValidationTable sibling.");
-            }
-
-            var validation = children[index + 1];
-            var assertionEvidenceCount = validation.Logs.Count(log =>
-                log.Details.Contains("assertion-evidence", StringComparison.Ordinal));
-            if (assertionEvidenceCount != 1)
-            {
-                throw new InvalidOperationException(
-                    $"Validation '{validation.Name}' must publish exactly one aggregate AssertionTable.");
-            }
-
-            index++;
-        }
-    }
-
     private void CloseActiveNonPhaseStep()
     {
-        while (Current is not null && ApiScenarioPhaseLayout.Classify(Current.Title) is null)
+        while (Current is not null && !ExtentStepClassifier.IsPhase(Current.Title))
         {
             FlushPendingDetails();
             Current.Node.Model.Status = ExtentStatusMapper.ToExtent(AtfReportStatus.Info);
@@ -415,7 +368,7 @@ public sealed class ExtentTestScope : IAtfScenarioScope
     {
         if (_frames.Value is { Count: > 0 } frames)
         {
-            phase = frames.FirstOrDefault(frame => ApiScenarioPhaseLayout.Classify(frame.Title) is not null)!;
+            phase = frames.FirstOrDefault(frame => ExtentStepClassifier.IsPhase(frame.Title))!;
             if (phase is not null)
             {
                 return true;

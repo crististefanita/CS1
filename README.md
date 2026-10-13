@@ -4,6 +4,12 @@ This repository is a reusable, configuration-driven API automation framework for
 
 The implementation is the executable companion to the [ATF requirements](docs/ATF_Requirements.html). The normative reporting contract is maintained in [docs/ATF_Reporting_Contract.md](docs/ATF_Reporting_Contract.md); it resolves historical examples and is verified by code and the final HTML artifact.
 
+For the current read-only code audit, aggressive scores and the surgical OOP
+roadmap, see [ATF refactoring assessment](docs/ATF_Refactoring_Assessment.md).
+That document is intentionally separate from the normative contracts: it records
+what should be refactored next, while this README and the reporting contract
+describe the behavior that must not regress.
+
 ## What this framework is responsible for
 
 The ATF separates five concerns that are often accidentally mixed in API test suites:

@@ -21,6 +21,33 @@ flowchart TD
 
 `ApiTestBase` starts one scenario under the actual xUnit class, creates one module/context, executes optional phases, runs cleanup, preserves the primary failure and rethrows it so xUnit remains authoritative.
 
+### Audit OOP: `ApiTestBase` și scenariile de combinații
+
+`ApiTestBase` are aproximativ **177 de linii** și coordonează prea multe politici
+pentru o clasă de bază xUnit: phase runner, skip parity, cleanup, exception
+precedence, Extent completion și rethrow. Nu este un defect de funcționalitate,
+ci o limită clară de mentenabilitate. Ținta este un `ScenarioLifecycleRunner`
+injectabil, iar clasa de bază să rămână doar adapterul xUnit.
+
+`ApiLifecycleAndCombinationsTests` este util ca test de contract, dar ramifică
+în interior după `resource` și construiește contracte diferite în aceeași
+metodă. Asta face raportul dinamic, însă nu îl face ușor de citit. La o rundă
+ulterioară, după înghețarea testelor actuale, extrageți o politică tipizată de
+resursă sau separați scenariile users/posts; nu copiați ramificațiile în încă
+un test. Regula de siguranță este:
+
+```mermaid
+flowchart LR
+    ScenarioIntent[scenario intent] --> Runner[ScenarioLifecycleRunner]
+    Runner --> PhasePolicy[setup/body/teardown policy]
+    Runner --> CleanupPolicy[cleanup + failure precedence]
+    Runner --> ReportPolicy[scenario finalization]
+    ResourcePolicy[typed resource operation] --> Runner
+```
+
+Acestea sunt recomandări de refactorizare, nu modificări efectuate în această
+analiză.
+
 The report hierarchy is:
 
 ```text

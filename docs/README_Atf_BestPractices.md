@@ -96,6 +96,16 @@ Atf.Core.Reporting
 Tipurile private/nested folosite doar ca test doubles nu se numără ca membri
 publici ai pachetului; ele rămân detalii ale testului care le folosește.
 
+Într-un boundary cu mai multe axe de schimbare se preferă un coordonator mic și
+reguli cu responsabilitate unică. De exemplu, `AtfConfigurationValidator` nu
+validează direct toate secțiunile: deleagă către `ApiConfigurationValidator`,
+`ReportingConfigurationValidator`, `RedactionConfigurationValidator`,
+`RouteConfigurationValidator` și `AuthProfileConfigurationValidator`. Regula
+este verificată prin teste unitare pe fiecare boundary, nu doar printr-un test
+end-to-end al loaderului. Același principiu se aplică în reporting:
+`ExtentTestScope` coordonează, `ExtentStepClassifier` clasifică, iar
+`ExtentPhaseContractValidator` impune arborele request → validation sibling.
+
 ### 2.3 Adnotările trebuie să aibă efect observabil
 
 O adnotare generică precum `Framework`, `ApiTest` sau `TestCase` nu justifică
