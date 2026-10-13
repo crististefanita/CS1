@@ -100,7 +100,7 @@ public sealed class CoreArchitectureTests
     {
         var configuration = new AtfConfiguration();
 
-        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+        var exception = Assert.Throws<AtfConfigurationException>(configuration.Validate);
 
         Assert.Contains("Modules:Api", exception.Message);
     }

@@ -68,10 +68,12 @@ Core port -> Extent scope -> Extent tree + evidence HTML -> theme/composition
 | `AtfReportThemeFragments` | execution hierarchy CSS | nu schimbă Overview-ul |
 | `ExtentReportClientBehaviour` | fațadă de compoziție pentru client behaviour | nu deține toate controller-ele JS |
 | `ExtentReportClientOverviewFragments` | counters, charts și tag audit | nu navighează în Tests/Exceptions |
-| `ExtentReportClientFailureFragments` | failure triage și Open in Tests | nu recalculează Overview counters |
+| `ExtentReportClientFailureEvidenceFragments` | extrage phase/request/validation/assertion evidence | nu creează view-ul Fails și nu face routing |
+| `ExtentReportClientFailureProjectionFragments` | creează `FailureRecord`-uri stabile și proiectează lista failure-urilor | nu construiește DOM-ul view-ului și nu mută carduri din Tests |
+| `ExtentReportClientFailureFragments` | construiește view-ul Fails, enrichment-ul și `Open in Tests` | nu redescoperă evidence-ul și nu recalculează Overview counters |
 | `ReportArtifactInspector` | verifică artifactul Extent pe care îl deschide utilizatorul | nu înlocuiește verificarea browserului |
 
-## Responsibility audit — adapter separation
+## Auditul responsabilităților — separarea adaptorului
 
 Direcția dependenței și boundary-ul vendorului sunt bune, iar scope-ul a fost
 subțiat. Renderer-ul rămâne însă zona
@@ -101,7 +103,7 @@ Atf.Core -> Atf.Reporting.Extent -> ExtentReports
 renderer viitor trebuie să consume aceleași porturi, nu să copieze logica
 executorului sau a validatorilor.
 
-## Audit update — 2026-10-13
+## Actualizare de audit — 2026-10-13
 
 Cele mai importante riscuri rămase nu sunt în paleta vizuală, ci în tranziția
 arborelui și în ownership-ul resurselor:
@@ -136,7 +138,7 @@ paletă centralizată.
 | browser | DOM hidratat: click, collapse, scroll, overflow și computed styles |
 | status | combinații Pass/Fail/Skip/Warning verificate în Overview, card, chart și tags |
 
-### Implementation update — 2026-10-13
+### Actualizare de implementare — 2026-10-13
 
 - `ValidationTableRunner` publică best-effort: erorile `StartStep`, tabel,
   verdict și `CompleteStep` nu pot înlocui excepția funcțională.

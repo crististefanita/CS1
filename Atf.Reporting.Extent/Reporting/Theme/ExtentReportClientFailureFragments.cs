@@ -8,7 +8,8 @@ namespace Atf.Reporting.Extent.Theme;
 /// </summary>
 internal static class ExtentReportClientFailureFragments
 {
-    public static string Build() => ExtentReportClientFailureEvidenceFragments.Build() + """
+    public static string Build() => ExtentReportClientFailureEvidenceFragments.Build()
+        + ExtentReportClientFailureProjectionFragments.Build() + """
             function failureTestCard(nodeId, visibleDetailOnly, failureId) {
               const allNodes = Array.from(document.querySelectorAll('.test-view .node[id]'));
               const detailNodes = Array.from(document.querySelectorAll('.test-view .test-content-detail .node[id]'));

@@ -49,8 +49,12 @@ public sealed class ReportAssetCleanupCoordinatorTests
             Task.Run(() => first.CleanDirectory("session-a/renderer-assets"), TestContext.Current.CancellationToken),
             Task.Run(() => second.CleanDirectory("session-b/renderer-assets"), TestContext.Current.CancellationToken));
 
-        Assert.Equal(["session-a/renderer-assets"], firstFileSystem.DeletedPaths);
-        Assert.Equal(["session-b/renderer-assets"], secondFileSystem.DeletedPaths);
+        Assert.Equal(
+            Path.GetFullPath("session-a/renderer-assets"),
+            Assert.Single(firstFileSystem.DeletedPaths));
+        Assert.Equal(
+            Path.GetFullPath("session-b/renderer-assets"),
+            Assert.Single(secondFileSystem.DeletedPaths));
         Assert.Equal(0, ReportAssetCleanupCoordinator.ActiveDirectoryGateCount);
     }
 

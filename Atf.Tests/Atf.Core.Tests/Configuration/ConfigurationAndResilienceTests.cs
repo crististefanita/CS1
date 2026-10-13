@@ -26,7 +26,7 @@ public sealed class ConfigurationAndResilienceTests
             }
         };
 
-        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+        var exception = Assert.Throws<AtfConfigurationException>(configuration.Validate);
 
         Assert.Contains("absolute URI", exception.Message, StringComparison.Ordinal);
     }
@@ -41,7 +41,7 @@ public sealed class ConfigurationAndResilienceTests
             Polling = new PollingSettings { TimeoutSeconds = 1, IntervalMilliseconds = 1 }
         });
 
-        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+        var exception = Assert.Throws<AtfConfigurationException>(configuration.Validate);
 
         Assert.Contains("timeouts and polling interval", exception.Message, StringComparison.Ordinal);
     }
@@ -51,7 +51,7 @@ public sealed class ConfigurationAndResilienceTests
     {
         var configuration = ValidConfiguration(new ApiSettings { BaseUrl = "https://example.test" }, "allure");
 
-        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+        var exception = Assert.Throws<AtfConfigurationException>(configuration.Validate);
 
         Assert.Contains("Extent-only", exception.Message, StringComparison.Ordinal);
     }
@@ -85,7 +85,7 @@ public sealed class ConfigurationAndResilienceTests
             }
         };
 
-        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+        var exception = Assert.Throws<AtfConfigurationException>(configuration.Validate);
 
         Assert.Contains("AssertionMaxDisplayCharacters", exception.Message, StringComparison.Ordinal);
     }
@@ -108,7 +108,7 @@ public sealed class ConfigurationAndResilienceTests
             }
         };
 
-        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+        var exception = Assert.Throws<AtfConfigurationException>(configuration.Validate);
 
         Assert.Contains("DefaultAuthProfile", exception.Message, StringComparison.Ordinal);
     }
@@ -126,7 +126,7 @@ public sealed class ConfigurationAndResilienceTests
             }
         });
 
-        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+        var exception = Assert.Throws<AtfConfigurationException>(configuration.Validate);
 
         Assert.Contains("LocalPathReplacement", exception.Message, StringComparison.Ordinal);
     }
@@ -140,7 +140,7 @@ public sealed class ConfigurationAndResilienceTests
             RateLimit = new RateLimitSettings { DefaultDelaySeconds = 5, MaxDelaySeconds = 2 }
         });
 
-        var exception = Assert.Throws<InvalidOperationException>(configuration.Validate);
+        var exception = Assert.Throws<AtfConfigurationException>(configuration.Validate);
 
         Assert.Contains("MaxDelaySeconds", exception.Message, StringComparison.Ordinal);
     }
@@ -177,7 +177,7 @@ public sealed class ConfigurationAndResilienceTests
             }
         };
 
-        Assert.Throws<InvalidOperationException>(configuration.Validate);
+        Assert.Throws<AtfConfigurationException>(configuration.Validate);
     }
 
     [Fact(DisplayName = "Configuration validates authentication-specific required properties")]
@@ -192,7 +192,7 @@ public sealed class ConfigurationAndResilienceTests
             }
         });
 
-        var basicException = Assert.Throws<InvalidOperationException>(basic.Validate);
+        var basicException = Assert.Throws<AtfConfigurationException>(basic.Validate);
         Assert.Contains("UsernameEnvironmentVariable", basicException.Message, StringComparison.Ordinal);
 
         var apiKey = ValidConfiguration(new ApiSettings
@@ -204,7 +204,7 @@ public sealed class ConfigurationAndResilienceTests
             }
         });
 
-        var apiKeyException = Assert.Throws<InvalidOperationException>(apiKey.Validate);
+        var apiKeyException = Assert.Throws<AtfConfigurationException>(apiKey.Validate);
         Assert.Contains("HeaderName", apiKeyException.Message, StringComparison.Ordinal);
     }
 

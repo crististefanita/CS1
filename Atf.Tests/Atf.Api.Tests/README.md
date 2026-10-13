@@ -14,7 +14,7 @@ observabile trebuie să rămână identice.
 Nu muta aici teste live, teste de browser sau failure demos. Ele au boundary-uri
 diferite și trebuie marcate explicit în `Atf.Tests`.
 
-## Audit alignment — 2026-10-13
+## Aliniere de audit — 2026-10-13
 
 Acest boundary oferă acoperire API-facing. Testele verifică
 colaborarea dintre lifecycle, executor, validation și reporter fără să devină
@@ -73,7 +73,7 @@ Transportul și verdictul sunt separate:
 
 ```text
 HTTP exchange completed -> Info / diagnostic evidence
-ValidationTable          -> Pass or Fail / functional verdict
+ValidationTable          -> Pass sau Fail / verdict funcțional
 Scenario lifecycle       -> final scenario status
 ```
 

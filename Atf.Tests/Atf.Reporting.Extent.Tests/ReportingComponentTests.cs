@@ -42,30 +42,6 @@ public sealed class ReportingComponentTests
         Assert.Contains("class='assertion-fail' data-atf-assertion-status='fail'", html, StringComparison.Ordinal);
     }
 
-    [Fact(DisplayName = "Report theme expands the central palette without leaking placeholders")]
-    public void ReportThemeUsesCentralPalette()
-    {
-        var css = AtfReportTheme.BuildCss();
-
-        Assert.Contains(AtfReportColors.Dark, css, StringComparison.Ordinal);
-        Assert.Contains(AtfReportColors.JsonSurface, css, StringComparison.Ordinal);
-        Assert.Contains($"--atf-text: {AtfReportColors.Text}", css, StringComparison.Ordinal);
-        Assert.Contains(AtfReportColors.SecondarySectionHeadingBackground, css, StringComparison.Ordinal);
-        Assert.Contains("--atf-secondary-heading-text: var(--atf-accent)", css, StringComparison.Ordinal);
-        Assert.Contains("atf-tag-card .card-header", css, StringComparison.Ordinal);
-        Assert.Contains(".atf-tag-card .card-header", css, StringComparison.Ordinal);
-        Assert.Contains("color: var(--atf-secondary-heading-text) !important", css, StringComparison.Ordinal);
-        Assert.Contains("font-family: var(--atf-overview-font-family) !important", css, StringComparison.Ordinal);
-        Assert.Contains("font-size: var(--atf-font-base-size) !important", css, StringComparison.Ordinal);
-        Assert.Contains("tr.assertion-warning td", css, StringComparison.Ordinal);
-        Assert.Contains("tr.assertion-skip td", css, StringComparison.Ordinal);
-        Assert.Contains("body.dark .atf-tag-table, body.dark .atf-tag-table tbody, body.dark .atf-tag-table tr, body.dark .atf-tag-table td { color: var(--atf-text) !important; }", css, StringComparison.Ordinal);
-        Assert.Contains("--atf-dark: #101723", css, StringComparison.Ordinal);
-        Assert.Contains(".test-wrapper .test-list-wrapper > .test-list-item > .test-item > .test-contents", css, StringComparison.Ordinal);
-        Assert.Contains("display: none !important", css, StringComparison.Ordinal);
-        Assert.DoesNotContain("__ATF_", css, StringComparison.Ordinal);
-    }
-
     [Fact(DisplayName = "Theme and client behaviour compose all semantic fragments")]
     public void ReportingComposersResolveTheirFragmentBoundaries()
     {
@@ -98,33 +74,6 @@ public sealed class ReportingComponentTests
         Assert.DoesNotContain("extent/spark-script.js", html, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("extent/logo.png", html, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("data:", html, StringComparison.Ordinal);
-    }
-
-    [Fact(DisplayName = "Extent composition activates the native dark theme")]
-    public void ExtentDocumentUsesDarkTheme()
-    {
-        const string standardHtml = "<body class=\"spa standard\"><main /></body>";
-        const string paddedStandardHtml = "<body class=\"spa  standard\"><main /></body>";
-        const string singleQuotedStandardHtml = "<body class='spa standard'><main /></body>";
-
-        Assert.Contains("class=\"spa dark\"", ExtentNativeHtmlSanitizer.EnsureDarkExtentTheme(standardHtml), StringComparison.Ordinal);
-        Assert.Contains("class=\"spa  dark\"", ExtentNativeHtmlSanitizer.EnsureDarkExtentTheme(paddedStandardHtml), StringComparison.Ordinal);
-        Assert.Contains("class='spa dark'", ExtentNativeHtmlSanitizer.EnsureDarkExtentTheme(singleQuotedStandardHtml), StringComparison.Ordinal);
-        Assert.Equal("<body class=\"spa dark\"><main /></body>", ExtentNativeHtmlSanitizer.EnsureDarkExtentTheme("<body class=\"spa dark\"><main /></body>"));
-    }
-
-    [Fact(DisplayName = "Report composition replaces stale ATF-owned CSS and behaviour blocks")]
-    public void ReportCompositionRemovesStaleAtfBlocks()
-    {
-        const string html = "<head><style id=\"atf-custom-theme\">old-css</style></head><body><script id='atf-custom-behaviour'>old-js</script><main /></body>";
-
-        var cleaned = ExtentNativeHtmlSanitizer.RemoveAtfOwnedBlocks(html);
-
-        Assert.DoesNotContain("old-css", cleaned, StringComparison.Ordinal);
-        Assert.DoesNotContain("old-js", cleaned, StringComparison.Ordinal);
-        Assert.DoesNotContain("atf-custom-theme", cleaned, StringComparison.Ordinal);
-        Assert.DoesNotContain("atf-custom-behaviour", cleaned, StringComparison.Ordinal);
-        Assert.Contains("<main />", cleaned, StringComparison.Ordinal);
     }
 
     [Fact(DisplayName = "Report composition removes the native Log events card structurally")]
@@ -426,35 +375,6 @@ public sealed class ReportingComponentTests
         Assert.DoesNotContain(".atf-tag-audit-heading", css, StringComparison.Ordinal);
     }
 
-    [Fact(DisplayName = "Category status badges share one fixed height")]
-    public void CategoryStatusBadgesUseOneHeight()
-    {
-        var css = AtfReportTheme.BuildCss();
-
-        Assert.Contains("--atf-category-badge-height: 22px;", css, StringComparison.Ordinal);
-        Assert.Contains(
-            ".category-view .badge.log {",
-            css,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "height: var(--atf-category-badge-height) !important;",
-            css,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "min-height: var(--atf-category-badge-height) !important;",
-            css,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "align-items: center !important;",
-            css,
-            StringComparison.Ordinal);
-        Assert.Contains(
-            "line-height: 1 !important;",
-            css,
-            StringComparison.Ordinal);
-        Assert.DoesNotContain("\n      .badge.log {", css, StringComparison.Ordinal);
-    }
-
     [Fact(DisplayName = "Tag audit cards use the native Tags and System Environment frame")]
     public void ReportThemeUsesNativeOverviewFrameForTagAuditCards()
     {
@@ -722,11 +642,14 @@ public sealed class ReportingComponentTests
     public void FailureEvidenceSeparatesFactoryAndProjector()
     {
         var evidence = ExtentReportClientFailureEvidenceFragments.Build();
+        var projection = ExtentReportClientFailureProjectionFragments.Build();
         var failureView = ExtentReportClientFailureFragments.Build();
 
-        Assert.Contains("function createFailureRecord(", evidence, StringComparison.Ordinal);
-        Assert.Contains("function projectFailureRecords()", evidence, StringComparison.Ordinal);
-        Assert.Contains("return projectFailureRecords();", evidence, StringComparison.Ordinal);
+        Assert.DoesNotContain("function createFailureRecord(", evidence, StringComparison.Ordinal);
+        Assert.DoesNotContain("function projectFailureRecords()", evidence, StringComparison.Ordinal);
+        Assert.Contains("function createFailureRecord(", projection, StringComparison.Ordinal);
+        Assert.Contains("function projectFailureRecords()", projection, StringComparison.Ordinal);
+        Assert.Contains("return projectFailureRecords();", projection, StringComparison.Ordinal);
         Assert.Contains("failureScenarioRecords()", failureView, StringComparison.Ordinal);
     }
 

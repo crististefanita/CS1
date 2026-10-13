@@ -7,7 +7,7 @@ Este proiectul pentru boundary-ul Extent, grupat fizic în
 `Atf.Tests/Atf.Reporting.Extent.Tests`; testele DOM/browser rămân distincte de
 inspecția statică a artifactului.
 
-## Audit alignment — 2026-10-13
+## Aliniere de audit — 2026-10-13
 
 Testele de aici trebuie să protejeze tree, status, evidence și artifactul HTML,
 dar nu trebuie să pretindă că un regex asupra

@@ -429,7 +429,7 @@ prezentată fără avertisment; trebuie corectată sau marcată explicit ca isto
 
 ## 5. Reguli de testare a framework-ului
 
-### Audit alignment — 2026-10-13
+### Aliniere de audit — 2026-10-13
 
 Feedback-ul live se recalculează la fiecare audit. Nu este suficient să mutăm
 clase sau să adăugăm interfețe. Fiecare refactor trebuie să
@@ -450,9 +450,8 @@ Prioritățile sunt:
    `ApiModule` până când apare semantică reală;
 8. redaction, retry attempts, timeout și cancellation trebuie să aibă contracte
    explicite, nu doar loguri.
-9. test projects care vor fi consolidate în `Atf.Tests` trebuie să folosească
-   aceeași generație xUnit sau să documenteze explicit incompatibilitatea și
-   criteriul de migrare.
+9. test projects sunt deja grupate în `Atf.Tests` și folosesc aceeași generație
+   xUnit; orice abatere trebuie protejată printr-un boundary test și justificată.
 
 `Warning/Other` este o stare semantică mitigată, nu o dovadă completă de browser.
 `ReportArtifactInspector` verifică artifactul static; computed styles, click,
@@ -525,12 +524,12 @@ responsibility clarified
   -> package boundary checked (<= 8 top-level types)
   -> meaningful annotations only
   -> response validations aggregated
-  -> test body ends with validation
+  -> test body se încheie cu validare
   -> teardown owns cleanup only
   -> unit/component tests added
   -> README + diagram updated
   -> generated Extent HTML inspected
-  -> browser click-through confirms collapsed hierarchy and evidence ownership
+  -> parcurgerea prin click în browser confirmă ierarhia colapsată și ownership-ul evidence-ului
 ```
 
 O feature nu este „gata” când build-ul trece. Este gata când codul, contractul,

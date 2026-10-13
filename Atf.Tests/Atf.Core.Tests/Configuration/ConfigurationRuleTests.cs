@@ -66,7 +66,7 @@ public sealed class ConfigurationRuleTests
     [Fact(DisplayName = "Reporting configuration rule owns timestamp diagnostics")]
     public void ReportingRuleRejectsInvalidTimestampFormat()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<AtfConfigurationException>(() =>
             ReportingConfigurationValidator.Validate(new ReportingSettings { TimestampFormat = "[" }));
 
         Assert.Contains("TimestampFormat", exception.Message, StringComparison.Ordinal);
@@ -104,7 +104,7 @@ public sealed class ConfigurationRuleTests
     [Fact(DisplayName = "Redaction configuration rule owns local-path replacement diagnostics")]
     public void RedactionRuleRejectsMissingLocalPathReplacement()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<AtfConfigurationException>(() =>
             RedactionConfigurationValidator.Validate(new RedactionSettings
             {
                 RedactLocalPaths = true,

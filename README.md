@@ -10,8 +10,8 @@ scenario -> semantic step -> service -> route -> executor -> transport
                                              |
                                              +-> renderer-neutral evidence
 
-response -> validation group -> one assertion table -> scenario verdict
-resource -> cleanup registry -> reverse-order teardown
+response -> grup de validare -> un tabel de assertions -> verdict de scenariu
+resource -> registru cleanup -> teardown în ordine inversă
 ```
 
 ATF nu este UI automation, nu este un client de business și nu trebuie să
@@ -19,8 +19,8 @@ conțină logică specifică unui produs în kernelul reutilizabil.
 
 ## Starea actuală
 
-Starea codului se verifică live, nu se îngheață într-o notă în README. Numărul
-testelor, verdicturile și layout-ul final trebuie confirmate prin build, teste și
+Starea codului se verifică live, nu se îngheață într-o evaluare statică în README.
+Numărul testelor, verdicturile și layout-ul final trebuie confirmate prin build, teste și
 artefactul HTML generat. Direcția curentă este urmărită prin findings active,
 ownership, dovezi și criterii de acceptare.
 
@@ -34,10 +34,10 @@ referința externă pentru acel format și este exclus din refactorizarea curent
 
 ```mermaid
 flowchart LR
-    Contract[Report contract unchanged] --> Ports[Internal ports and policies]
+    Contract[Contract raport neschimbat] --> Ports[Porturi și politici interne]
     Ports --> Cohesion[Smaller cohesive classes]
-    Cohesion --> Tests[Unit and component tests]
-    Tests --> Proof[Same observable artifact]
+    Cohesion --> Tests[Teste unitare și de componentă]
+    Tests --> Proof[Același artifact observabil]
 ```
 
 Orice schimbare care modifică artifactul observabil este regresie, nu refactorizare.
@@ -82,11 +82,11 @@ Direcția de runtime este:
 
 ```mermaid
 flowchart LR
-    Api["Atf.Api\nmodule + live xUnit scenarios"] --> Core["Atf.Core\nconfiguration HTTP resilience ports"]
+    Api["Atf.Api\nmodul + scenarii xUnit live"] --> Core["Atf.Core\nconfigurație, HTTP, reziliență și porturi"]
     Api --> Host["Atf.Api.TestHost\nfixture composition"]
     Host --> Extent["Atf.Reporting.Extent\nExtent HTML adapter"]
     Extent --> Core
-    Internal["Atf.Tests\ncomponent and contract tests"] -. protects .-> Core
+    Internal["Atf.Tests\nteste de componentă și contract"] -. protejează .-> Core
     Internal -. protects .-> Api
     Internal -. protects .-> Extent
 ```
@@ -100,7 +100,7 @@ flowchart LR
 | `Atf.Api` | scenarii live și orchestrarea xUnit | construire manuală de `HttpClient`, route strings duplicate, HTML |
 | `Atf.Api.TestHost` | fixture-ul live și bridge-ul către renderer-ul actual | scenarii, validări business, transport policy |
 | `Atf.Reporting.Extent` | Extent tree, HTML, CSS, JavaScript, assets și session lifecycle | HTTP, validări business, decizii de scenariu |
-| `Atf.Tests/Atf.Core.Tests` | contractele kernelului | live API behavior |
+| `Atf.Tests/Atf.Core.Tests` | contractele kernelului | comportament API live |
 | `Atf.Tests/Atf.Common.Tests` | contractele modulului API din `Atf.Api/Module` | sockets și live API |
 | `Atf.Tests/Atf.Api.Tests` | boundary API, lifecycle și phase layout | apeluri la servicii externe |
 | `Atf.Tests/Atf.Api.FailureDemos` | demonstrații failure opt-in | rularea implicită a suitei |
@@ -123,16 +123,17 @@ root-ul și vendor boundary-ul.
 ```text
 Atf/
 ├── Atf.Core/                 # kernel tehnic, renderer-neutral
-├── Atf.Api/                  # modul API + scenarii live
+├── Atf.Api/                  # modulul principal ATF: API + scenarii live
 ├── Atf.Api.TestHost/         # composition root; alege renderer-ul
 ├── Atf.Reporting.Extent/     # adaptorul concret Extent/HTML
 ├── Atf.Tests/                # toate testele ATF, pe foldere
-├── docs/                     # contracte, README-uri și feedback
+├── docs/                     # documentația oficială, contracte și feedback
 └── artifacts/                # output generat, niciodată input de runtime
 ```
 
-Acesta este numărul minim de directoare de bază care păstrează boundary-urile:
-`Atf.Api/Module` concentrează vocabularul modulului, iar toate proiectele de
+Acesta este numărul minim de directoare de bază care păstrează boundary-urile.
+`Atf.Api` este modulul principal, iar `Atf.Api/Module` concentrează vocabularul
+API. `Atf.Core` rămâne fundația tehnică renderer-neutral; toate proiectele de
 teste sunt sub `Atf.Tests`. `Atf.Api.TestHost` rămâne separat: dacă este absorbit
 în `Atf.Api`, acel proiect trebuie să refere direct `Atf.Reporting.Extent` și
 scenariile nu mai sunt independente de vendor.
@@ -145,30 +146,30 @@ Reducem numărul de directoare, nu responsabilitățile și nu testele.
 
 ```mermaid
 sequenceDiagram
-    participant T as Scenario
+    participant T as Scenariu
     participant B as ApiTestBase
     participant M as ApiModule
-    participant S as Services / semantic actions
-    participant R as Route Catalog
+    participant S as Servicii / acțiuni semantice
+    participant R as Catalog rute
     participant E as ApiExecutor
     participant H as Transport/Auth
-    participant P as Reporter Port
-    participant V as Validation Table
-    participant C as Cleanup Registry
+    participant P as Port reporter
+    participant V as Tabel validare
+    participant C as Registru cleanup
 
     T->>B: setup / body / teardown
-    B->>M: compose module from Modules:Api:Config
-    T->>S: semantic operation
-    S->>R: create ApiRequest
-    R->>E: method, path, auth, operation
-    E->>H: execute exchange with retry budget
-    H-->>E: response, headers, duration
-    E->>P: request/response evidence
+    B->>M: compune modulul din Modules:Api:Config
+    T->>S: operație semantică
+    S->>R: creează ApiRequest
+    R->>E: method, path, auth, operație
+    E->>H: execută schimbul cu buget de retry
+    H-->>E: response, headere, durată
+    E->>P: evidence request/response
     E-->>S: ApiExecutionResult
-    S->>V: validate one response
-    V->>P: one aggregate assertion table
-    B->>C: reverse-order cleanup
-    B->>P: scenario verdict
+    S->>V: validează un response
+    V->>P: un tabel agregat de assertions
+    B->>C: cleanup în ordine inversă
+    B->>P: verdict de scenariu
 ```
 
 `ApiExecutor` separă transportul reușit de validarea funcțională:
@@ -241,11 +242,11 @@ ordine inversă și nu trebuie să înlocuiască failure-ul primar.
 ```mermaid
 stateDiagram-v2
     [*] --> Setup
-    Setup --> TestBody: setup passed
-    Setup --> Teardown: setup failed/skipped and cleanup exists
-    TestBody --> Teardown: body completed or resource exists
-    TestBody --> Teardown: body failed/skipped and cleanup exists
-    Teardown --> [*]: best effort cleanup
+    Setup --> TestBody: setup trecut
+    Setup --> Teardown: setup eșuat/sărit și există cleanup
+    TestBody --> Teardown: body finalizat sau există resource
+    TestBody --> Teardown: body eșuat/sărit și există cleanup
+    Teardown --> [*]: cleanup best-effort
 ```
 
 Contractul dorit este:
@@ -259,7 +260,7 @@ primary failure > teardown failure > skip > pass
 `StartStep` și callback de diagnostic. Reporter failure nu mai trebuie să oprească
 resource cleanup; această regulă este acum contract protejat prin teste.
 
-## Configuration
+## Configurație
 
 Configurația este module-owned:
 
@@ -300,7 +301,7 @@ ATF_API_TOKEN=<secret injectat la runtime>
 Tokenurile nu se commit-uiesc și nu apar în logs sau HTML. Redaction-ul acoperă
 headers, query strings, JSON, paths locale și exception text.
 
-## Route, service și step layers
+## Straturi route, service și step
 
 O route nu este doar un string. Ea descrie method, path template, resource,
 operation și auth metadata.
@@ -320,22 +321,22 @@ Reguli:
 - validators evaluează response-ul, nu creează route-uri;
 - reporter-ul publică evidence, dar nu decide validitatea business.
 
-## Test strategy
+## Strategia de testare
 
 ```text
-unit tests
+teste unitare
     configuration, URL/auth, retry, polling, redaction
         |
-component tests
+teste de componentă
     module wiring, services, validators, lifecycle, cleanup
         |
-artifact contract tests
+teste de contract ale artifactului
     HTML autonom, CSS tokens, collapsed nodes, JSON blocks, assertion table
         |
 browser smoke
     DOM, click, collapse, scroll, computed styles, overflow
         |
-live API tests
+teste API live
     contracte reale, auth, lifecycle și business coverage
 ```
 
@@ -361,7 +362,7 @@ O schimbare de reporting trebuie protejată printr-un test structural și un tes
 pe artifactul HTML final. Un test string-based nu înlocuiește un browser smoke
 test.
 
-## Quality gates
+## Porți de calitate
 
 O schimbare este completă numai când:
 
@@ -415,6 +416,7 @@ README-urile descriu ownership-ul local și trebuie să rămână sincronizate c
 codul și artifactul generat.
 
 - [Architecture și reporting guide](docs/ATF_Architecture.md)
+- [Indexul documentației](docs/README.md)
 - [Reporting contract](docs/ATF_Reporting_Contract.md)
 - [Refactoring assessment](docs/ATF_Refactoring_Assessment.md)
 - [Feedback live compilat](docs/feedback/ATF_LIVE_CODE_FEEDBACK_2026-10-13.md)
@@ -430,17 +432,17 @@ Regula „maximum opt clase într-un pachet” este un semnal de review, nu o le
 Criteriul principal rămâne un singur motiv dominant de schimbare, dependențe
 clare și teste care protejează contractul.
 
-## Adding a new API operation
+## Adăugarea unei operații API noi
 
-1. Define route metadata in `Atf.Api/Module`.
-2. Add a typed model only when the payload needs one.
-3. Add a service method for serialization and route selection.
-4. Add a semantic step only when it improves the scenario language; do not add a forwarding wrapper.
-5. Add validators that aggregate checks for one response.
-6. Register created resources immediately in `CleanupRegistry`.
-7. Add offline component tests before a live scenario.
-8. Add the live scenario only when it contributes business coverage.
-9. Generate the final HTML and inspect it in a browser.
+1. Definește metadata rutei în `Atf.Api/Module`.
+2. Adaugă un model tipizat numai când payload-ul are nevoie de el.
+3. Adaugă o metodă de service pentru serializare și alegerea rutei.
+4. Adaugă un step semantic numai dacă îmbunătățește limbajul scenariului; nu adăuga un wrapper forwarding-only.
+5. Adaugă validatori care agregă verificările pentru un singur response.
+6. Înregistrează imediat resursele create în `CleanupRegistry`.
+7. Adaugă teste offline de componentă înaintea unui scenariu live.
+8. Adaugă scenariul live numai când contribuie la acoperirea de business.
+9. Generează HTML-ul final și inspectează-l în browser.
 
-The safest extension is the one that adds domain vocabulary without moving
-transport, lifecycle or renderer policy into the scenario.
+Cea mai sigură extensie este cea care adaugă vocabular de domeniu fără să mute
+politica de transport, lifecycle sau renderer în scenariu.

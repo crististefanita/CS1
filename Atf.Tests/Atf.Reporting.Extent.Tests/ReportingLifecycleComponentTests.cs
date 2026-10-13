@@ -137,6 +137,34 @@ public sealed class ReportingLifecycleComponentTests
         }
     }
 
+    [Fact(DisplayName = "Extent lifecycle releases the reserved path when publication fails")]
+    public void FinalizeReleasesReservationAfterPublicationFailure()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-lifecycle-publish-failure-");
+        try
+        {
+            var lifecycle = new ExtentReportLifecycle(
+                new ExtentReportPathAllocator(),
+                new ThrowingArtifactPublisher());
+            lifecycle.Initialize(new ReportingSettings
+            {
+                ReportPath = Path.Combine(root.FullName, "api-report.html"),
+                TimestampEnabled = false,
+                Engine = "extent"
+            });
+            using (lifecycle.StartTest("UsersApiTests", "publish failure", "reservation release", ["api"])) { }
+
+            var exception = Record.Exception(lifecycle.FinalizeReport);
+
+            Assert.IsType<InvalidOperationException>(exception);
+            Assert.Equal(0, ExtentReportPathAllocator.ReservedPathCount);
+        }
+        finally
+        {
+            TestDirectoryCleanup.DeleteEventually(root);
+        }
+    }
+
     [Fact(DisplayName = "Extent lifecycle rejects new scenarios after finalization")]
     public void StartTestAfterFinalizationIsRejected()
     {
@@ -547,6 +575,12 @@ public sealed class ReportingLifecycleComponentTests
             Paths = paths;
             Settings = settings;
         }
+    }
+
+    private sealed class ThrowingArtifactPublisher : IExtentArtifactPublisher
+    {
+        public void Publish(ExtentReportPaths paths, ReportingSettings settings) =>
+            throw new InvalidOperationException("simulated publication failure");
     }
 }
 

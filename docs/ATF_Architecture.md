@@ -1,6 +1,7 @@
 # Configurable API ATF — architecture and reporting guide
 
-This document is the executable design guide for the repository. It records the
+This document is the executable design guide for the repository. `Atf.Api` is the
+primary ATF module; `Atf.Core` is its renderer-neutral technical foundation. It records the
 contracts discovered while comparing the generated ATF report with the legacy
 Extent report and then validating the current HTML in a browser. It is written
 for engineers who need to add another API module without copying framework code.

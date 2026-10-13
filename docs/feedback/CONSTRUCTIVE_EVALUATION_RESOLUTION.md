@@ -27,7 +27,7 @@ public, verdictul, ierarhia observabilă sau formatul artifactului.
 | composition root-ul este `Atf.Api.TestHost` | TestHost | host boundary test |
 | `Atf.Api` exprimă scenarii, nu infrastructură | `Atf.Api` | API composition test |
 | un response are un singur model de validation și publisher | `Atf.Api/Module` | aggregate-table contract test |
-| reporter failure nu schimbă rezultatul funcțional | Common/Extent | throwing-reporter matrix |
+| reporter failure nu schimbă rezultatul funcțional | `Atf.Api/Module` + `Atf.Reporting.Extent` | throwing-reporter matrix |
 | warning-ul nu este promovat la failure și nu este pierdut la completion | Extent | `ExtentScopeStatusPolicyTests` |
 | cleanup continuă după failure | `CleanupRegistry` | reverse-order lifecycle test |
 | config runtime este immutable snapshot | `Atf.Core` | snapshot isolation test |
@@ -73,7 +73,7 @@ o singură dată și rămâne autoritatea assertions. Acest seam este protejat p
 `ValidationEvaluatorTests` și `ValidationOutcomePolicyTests`; nu se redeschide
 fără o regresie concretă.
 
-### CON-01 — cleanup și lock lifecycle — open, P1
+### CON-01 — cleanup și lock lifecycle — closed, P1
 
 - resource action rulează chiar dacă `StartStep`, tabelul sau `CompleteStep` eșuează;
 - lock-ul nu acoperă filesystem I/O care poate bloca;
@@ -81,16 +81,22 @@ fără o regresie concretă.
 - testele paralele verifică lipsa scurgerilor între sesiuni;
 - bariera verificată pornește 20 de rezervări simultan, fără `Task.Delay` arbitrar.
 
-### CFG-01 — configuration rules — open, P2
+Matricea filesystem este protejată de `ReportAssetCleanupCoordinatorTests`:
+retry pentru lock și permisiune, failure epuizat fără gate leak, sesiuni cu
+directoare distincte și cleanup repetat idempotent.
 
-Regulile de config trebuie să fie independente și să producă diagnostice
-`Code + Path + Message`. Snapshot-ul este singura valoare consumată de runtime.
+### CFG-01 — configuration rules — closed, P2
 
-### TEST-01 — separarea testelor mari — open, P1 pentru viteza feedback-ului
+Regulile de config sunt independente și produc `AtfConfigurationException` cu
+`Code + Path + Detail`. Snapshot-ul este singura valoare consumată de runtime,
+iar testele acoperă URL/timeout, auth necunoscut, duplicate routes și
+izolarea mutațiilor ulterioare.
 
-`ReportingComponentTests` și `ReportingLifecycleComponentTests` concentrează
-prea multe contracte într-o singură unitate de diagnostic. Separarea trebuie
-să fie pe seam-uri, fără schimbare de output:
+### TEST-01 — separarea testelor mari — mitigated, P1 pentru viteza feedback-ului
+
+`ReportThemeContractTests` separă deja theme/sanitizer de componenta generală.
+Separarea client-behaviour și lifecycle trebuie continuată incremental, fără
+schimbare de output:
 
 ```text
 ExtentScopeTreeContractTests

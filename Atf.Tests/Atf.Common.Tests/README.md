@@ -1,21 +1,24 @@
-# Atf.Common.Tests — API module component tests
+# Atf.Common.Tests — teste de componentă ale modulului API
 
-The project name is retained for compatibility, but its physical location is
-now `Atf.Tests/Atf.Common.Tests`. It protects the former `Atf.Common` module
-that is now owned by `Atf.Api/Module`; there is no separate `Atf.Common`
-production project and no pending move to `Atf.Tests/Api`.
+Numele proiectului este păstrat pentru compatibilitate, dar locația fizică este
+acum `Atf.Tests/Atf.Common.Tests`. Protejează fostul modul `Atf.Common`, deținut
+acum de `Atf.Api/Module`; nu există un proiect de producție separat `Atf.Common`
+și nu este planificată mutarea în `Atf.Tests/Api`.
 
-Keep new tests here only when they verify API-module composition, routes,
-services, validation, lifecycle, fixtures or cleanup. Framework-neutral rules
-belong in `Atf.Core.Tests`; Extent artifact rules belong in
+Păstrează aici teste noi numai când verifică compoziția modulului API, rute,
+servicii, validare, lifecycle, fixture-uri sau cleanup. Regulile neutre față de
+framework aparțin în `Atf.Core.Tests`, iar regulile pentru artifactul Extent în
 `Atf.Reporting.Extent.Tests`.
 
-The module boundaries and evidence flow are described in the
-[architecture and reporting guide](../../docs/ATF_Architecture.md).
+Boundary-urile modulului și fluxul evidence sunt descrise în
+[ghidul de arhitectură și raportare](../../docs/ATF_Architecture.md).
 
-This is the fast, offline quality gate for the API-module layer. It verifies route semantics, service serialization, justified semantic actions, validation aggregation, fixtures/data and cleanup without contacting a live API.
+Acesta este quality gate-ul rapid și offline pentru layer-ul modulului API. Verifică
+semantica rutelor, serializarea serviciilor, acțiunile semantice justificate,
+agregarea validărilor, fixture-urile/datele și cleanup-ul fără să contacteze un
+API live.
 
-## Audit alignment — 2026-10-13
+## Aliniere de audit — 2026-10-13
 
 Acoperirea modulului este bună. Riscul structural rămas este densitatea
 compoziției și compatibilitatea unor API-uri
@@ -23,7 +26,7 @@ de validare; publicarea raportului este acum izolată prin publisher-ul
 best-effort, iar pașii forwarding-only nu mai sunt păstrați. Testele de aici trebuie să țină
 modulul renderer-neutral și să păstreze autoritatea rezultatului funcțional.
 
-## Component flow
+## Fluxul componentelor
 
 ```mermaid
 flowchart LR
@@ -39,30 +42,30 @@ flowchart LR
     Table --> Reporter[Recording reporter]
 ```
 
-## Coverage matrix
+## Matricea de acoperire
 
-| Test group | Protected behavior |
+| Grup de teste | Comportament protejat |
 |---|---|
-| `RoutingServicesAndDataTests` | token encoding, route metadata, service bodies, module composition, data uniqueness and fixture errors |
-| `ValidationComponentTests` | status, allowed status, headers, body, JSONPath, relationships and JSON Schema |
-| `ValidationAndLifecycleTests` | one-table aggregation, Pass/Fail step closure, reverse cleanup and best-effort failures |
-| ValidationTableContractTests | hard failure versus warning-only soft assertion semantics |
+| `RoutingServicesAndDataTests` | codificarea tokenurilor, metadata rutelor, body-urile serviciilor, compoziția modulului, unicitatea datelor și erorile fixture-ului |
+| `ValidationComponentTests` | status, statusuri permise, headere, body, JSONPath, relații și JSON Schema |
+| `ValidationAndLifecycleTests` | agregare într-un singur tabel, închiderea pașilor Pass/Fail, cleanup în ordine inversă și failure-uri best-effort |
+| `ValidationTableContractTests` | semantica failure-ului dur față de assertion-ul soft care produce doar warning |
 
-## What these tests prove
+## Ce demonstrează aceste teste
 
-- route templates are encoded safely and remain configurable;
-- services preserve route metadata, auth profile and typed JSON payload;
-- `ApiModule` exposes typed services while hiding executor wiring; semantic steps
-  are introduced only when they add orchestration or domain language;
-- validators publish all rows and raise `ApiValidationException` only after evidence;
-- ApiAssertions.SoftContract keeps failed rows visible, emits Warning and does not throw;
-- every response contract opens and closes exactly one aggregate reporter step, including unexpected exceptions;
-- consecutive response contracts remain isolated under their own request and never combine rows;
-- assertion `ACTUAL` values use the reporter's configured maximum length, so the
-  diagnostic table stays readable without changing assertion semantics;
-- malformed response shapes are contract failures;
-- resources are cleaned in reverse order even when one action fails;
-- a fake executor is enough, so no test depends on a token or network.
+- template-urile de rută sunt codificate sigur și rămân configurabile;
+- serviciile păstrează metadata rutei, profilul de autentificare și payload-ul JSON tipizat;
+- `ApiModule` expune servicii tipizate și ascunde cablarea executorului; pașii
+  semantici apar numai când adaugă orchestrare sau limbaj de domeniu;
+- validatorii publică toate rândurile și ridică `ApiValidationException` numai după evidence;
+- `ApiAssertions.SoftContract` păstrează rândurile eșuate vizibile, emite Warning și nu aruncă excepții;
+- fiecare contract de response deschide și închide exact un step agregat de raportare, inclusiv la excepții neașteptate;
+- contractele consecutive de response rămân izolate sub request-ul propriu și nu combină rândurile;
+- valorile assertion-ului `ACTUAL` folosesc limita maximă configurată pentru reporter,
+  astfel încât tabelul de diagnostic rămâne lizibil fără schimbarea semanticii;
+- formele invalide ale response-ului sunt failure-uri de contract;
+- resursele sunt curățate în ordine inversă chiar când o acțiune eșuează;
+- un executor fake este suficient, astfel încât niciun test nu depinde de token sau rețea.
 
 Sunt protejate prin teste și trebuie păstrate ca regresii următoarele cazuri:
 
@@ -73,37 +76,38 @@ Sunt protejate prin teste și trebuie păstrate ca regresii următoarele cazuri:
 - JSON invalid, schema invalidă și colecție goală cu politică explicită;
 - test care eșuează dacă un step nou este doar forwarding fără semantică.
 
-## Extension recipe
+## Rețetă de extindere
 
 ```text
 1. RouteSettings / ApiRoutes metadata
-2. typed request and response model
-3. service serialization
-4. semantic step if useful
-5. validator / schema
-6. fake-executor component test
-7. live scenario in Atf.Api
+2. model tipizat pentru request și response
+3. serializarea serviciului
+4. step semantic, dacă este util
+5. validator / schemă
+6. test de componentă cu executor fake
+7. scenariu live în Atf.Api
 ```
 
-Keep the test seam at `IApiExecutor`. Inspect the produced `ApiRequest` and `ApiRoute` rather than reconstructing service internals.
+Păstrează seam-ul de test la `IApiExecutor`. Inspectează `ApiRequest` și
+`ApiRoute` produse, în loc să reconstruiești internals ale serviciului.
 
-## Why the lifecycle tests matter
+## De ce contează testele de lifecycle
 
 ```mermaid
 flowchart TD
-    Request[HTTP request step] --> Evidence[trace + response JSON]
-    Evidence --> Contract[one response contract]
-    Contract --> Table[one ValidationTable]
+    Request[pas request HTTP] --> Evidence[trace + JSON response]
+    Evidence --> Contract[un contract de response]
+    Contract --> Table[un ValidationTable]
     Table --> CloseContract[CompleteStep]
-    CloseContract --> Next[next request or phase closes request]
+    CloseContract --> Next[următorul request sau faza închide request-ul]
 ```
 
-The recording reporter asserts the lifecycle events, not an implementation detail:
-`start:Validate:*` must be paired with `complete:Pass` or `complete:Fail`. This
-protects the same hierarchy later rendered by Extent without requiring a browser
-or a live service.
+Reporterul de înregistrare verifică evenimentele de lifecycle, nu un detaliu de implementare:
+`start:Validate:*` trebuie asociat cu `complete:Pass` sau `complete:Fail`. Acest
+Acest lucru protejează aceeași ierarhie randată ulterior de Extent fără să
+necesite browser sau serviciu live.
 
-## Run
+## Rulare
 
 ```powershell
 dotnet test .\Atf.Tests\Atf.Common.Tests\Atf.Common.Tests.csproj --no-restore --logger "console;verbosity=normal"

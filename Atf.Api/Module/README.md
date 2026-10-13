@@ -4,7 +4,7 @@ Acest director este fostul `Atf.Common`, absorbit în modulul API pentru a
 elimina un proiect cu un singur consumator. Nu este un „Common” generic și nu
 conține Extent, xUnit lifecycle sau logică de produs.
 
-## Ownership
+## Ownership și responsabilități
 
 ```mermaid
 flowchart LR

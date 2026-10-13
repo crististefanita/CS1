@@ -4,7 +4,7 @@ Acest folder păstrează numai constatările active despre codul ATF, separarea
 responsabilităților, teste și mentenanță. Nu este jurnal de implementare și nu
 repetă probleme deja închise.
 
-## Scope
+## Domeniu
 
 Feedback-ul de aici acoperă:
 
@@ -22,7 +22,7 @@ pentru format și nu este modificat de acest registru.
 flowchart LR
     Code[Live code] --> Finding[Active finding]
     Finding --> Rule[OOP/module rule]
-    Rule --> Test[Unit or component test]
+    Rule --> Test[Test unitar sau de componentă]
     Test --> Status[closed / mitigated / open]
     Format[Existing report format] -. external contract .-> Test
 ```
@@ -47,17 +47,19 @@ Documentele generale rămân în `docs/`:
 Ultima rulare offline verificată cu binarele curente a fost:
 
 ```text
-Atf.Core.Tests:             83/83
+Atf.Core.Tests:             91/91
 Atf.Tests/Atf.Common.Tests: 67/67
-Atf.Reporting.Extent.Tests: 118/118
+Atf.Reporting.Extent.Tests: 119/119
 Atf.Tests/Atf.Api.Tests:    52/52
-Total:                      320/320
+Total:                      329/329
 ```
 
-Aceste totaluri sunt dovadă pentru suitele offline. Notele nu se păstrează în
-feedback; ele se recalculează live la fiecare audit. Build-ul de verificare
-izolat a trecut cu 0 warning și 0 error. Formatul raportului și validarea
-vizuală rămân în afara acestui registru.
+Aceste totaluri sunt dovadă pentru suitele offline. Staging-ul verificat este
+`C:\work\ex\.net\.tmp\Atf-feedback-20261013-r14`; build-ul a trecut cu 0
+warning și 0 error, API-ul cu 19 pass și 8 skip, iar failure-demo cu 4 fail
+intenționate. Raportul a fost verificat în TAB MCP pe Overview, Tests, Fails,
+Categories, expand/collapse, response details și Open in Tests. Notele nu se
+păstrează în feedback; ele se recalculează live la fiecare audit.
 
 ## Taxonomia statusului
 

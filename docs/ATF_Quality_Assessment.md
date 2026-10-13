@@ -18,7 +18,7 @@ folosiți documentul de refactorizare indicat mai sus.
 ## Sincronizare cu codul live — 2026-10-13
 
 Registrul curent acordă ATF-ului **84/100**. Suitele offline executate fără
-serviciu au trecut cu **320/320**: Core 83, Common 67, Extent 118 și API 52.
+serviciu au trecut cu **322/322**: Core 85, Common 67, Extent 118 și API 52.
 Boundary-ul OOP și backlog-ul detaliat se citesc din feedback-ul live; tabelul
 de mai jos rămâne baseline operațional pentru comparație, nu o a doua notă
 curentă.

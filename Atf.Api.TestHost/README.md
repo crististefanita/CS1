@@ -14,9 +14,9 @@ Prin urmare, acesta este unul dintre cele cinci directoare arhitecturale de cod
 păstrate la rădăcina repository-ului: `Atf.Core`, `Atf.Api`, `Atf.Api.TestHost`,
 `Atf.Reporting.Extent` și `Atf.Tests`. `docs` și `artifacts` sunt directoare de
 suport; codul modulelor și toate proiectele de test ATF sunt grupate acum în
-`Atf.Api/Module` and `Atf.Tests` respectively.
+`Atf.Api/Module` și `Atf.Tests`, respectiv.
 
-The dependency direction is intentional:
+Direcția dependențelor este intenționată:
 
 ```mermaid
 flowchart LR

@@ -1,15 +1,17 @@
-# Atf.Core.Tests — kernel and artifact contract tests
+# Atf.Core.Tests — teste pentru kernel și contractul artifactului
 
-This is the test project for `Atf.Core`, physically grouped under
-`Atf.Tests/Atf.Core.Tests`. It is renderer-neutral and must not import Extent
-implementation details.
+Acesta este proiectul de teste pentru `Atf.Core`, grupat fizic sub
+`Atf.Tests/Atf.Core.Tests`. Este neutru față de renderer și nu trebuie să importe
+detalii de implementare Extent.
 
-The complete test-to-artifact strategy is in the
-[architecture and reporting guide](../../docs/ATF_Architecture.md).
+Strategia completă test–artifact este în
+[ghidul de arhitectură și raportare](../../docs/ATF_Architecture.md).
 
-This is the fast, offline quality gate for `Atf.Core`. It does not start a service, open a socket or require a token. Network and reporting boundaries are replaced with deterministic fakes or temporary files.
+Acesta este quality gate-ul rapid și offline pentru `Atf.Core`. Nu pornește un
+serviciu, nu deschide socket și nu necesită token. Boundary-urile de rețea și
+raportare sunt înlocuite cu fake-uri deterministe sau fișiere temporare.
 
-## Audit alignment — 2026-10-13
+## Aliniere de audit — 2026-10-13
 
 Testele trebuie să apere direcția de dependență și autoritatea rezultatului, nu
 să repete testele adaptorului Extent.
@@ -21,7 +23,7 @@ auth state, URL/query encoding, configuration snapshot, redaction și reporting
 ports. Testele pentru CSS, DOM, Extent selectors sau computed styles aparțin
 adaptorului și browser contractului.
 
-## Protected contracts
+## Contracte protejate
 
 ```mermaid
 flowchart LR
@@ -33,19 +35,19 @@ flowchart LR
     V --> A[Final HTML artifact]
 ```
 
-| Test group | Protected behavior |
+| Grup de teste | Comportament protejat |
 |---|---|
-| `ConfigurationAndResilienceTests` | module binding, validation, retry, polling and JSON formatting |
-| `CoreArchitectureTests` | URL/query encoding, auth, transport, path and asset policy |
-| `HttpExecutorComponentTests` | retry result, route metadata, JSON evidence and auth state |
-| `ApiExecutorCompositionTests` | injected ports and exception preservation |
-| `ReportingComponentTests` | class status precedence and evidence classification |
-| `ReportingStructureTests` | phase-owned request + validation-sibling hierarchy, aggregate validation, active-step evidence and suppression of generic phase summaries |
-| `ReportingLifecycleComponentTests` | fixture composition, identity forwarding and idempotent finalization |
+| `ConfigurationAndResilienceTests` | binding-ul modulului, validare, retry, polling și formatare JSON |
+| `CoreArchitectureTests` | codificarea URL/query, auth, transport, politici de cale și asset-uri |
+| `HttpExecutorComponentTests` | rezultatul retry-ului, metadata rutei, evidence JSON și starea auth |
+| `ApiExecutorCompositionTests` | porturi injectate și păstrarea excepțiilor |
+| `ReportingComponentTests` | precedența statusului clasei și clasificarea evidence-ului |
+| `ReportingStructureTests` | ierarhia request + validation sibling deținută de fază, validare agregată, evidence al step-ului activ și suprimarea rezumatelor generice de fază |
+| `ReportingLifecycleComponentTests` | compoziția fixture-ului, propagarea identității și finalizare idempotentă |
 
-## Testing rule
+## Regula de testare
 
-Tests verify observable contracts:
+Testele verifică contracte observabile:
 
 ```text
 fake transport -> ApiExecutionResult
@@ -54,20 +56,23 @@ temporary HTML -> ReportArtifactInspection
 in-memory Extent -> node hierarchy
 ```
 
-They should not assert private helper calls. For example, executor composition injects all ports and verifies the interaction contract without requiring a real `HttpClient`.
+Nu trebuie să verifice apeluri către helperi privați. De exemplu, compoziția
+executorului injectează toate porturile și verifică contractul de interacțiune
+fără să necesite un `HttpClient` real.
 
-### Annotation policy
+### Politica adnotărilor
 
-The generic `framework` tag is forbidden. The test project and namespace already
-identify ATF tests; annotations are retained only when they change filtering,
-execution policy or report navigation. `AnnotationPolicyTests` protects the
-scenario source and configured tag order from regression.
+Tag-ul generic `framework` este interzis. Proiectul de teste și namespace-ul
+identifică deja testele ATF; adnotările sunt păstrate numai când schimbă filtrarea,
+politica de execuție sau navigarea raportului. `AnnotationPolicyTests` protejează
+sursa scenariului și ordinea configurată a tag-urilor împotriva regresiilor.
 
-## Renderer boundary
+## Boundary-ul renderer-ului
 
-Core tests stay renderer-neutral. `AtfAssertion` is the semantic row contract;
-HTML formatting, Extent selectors, dark theme tokens, collapse rules and final
-artifact inspection are tested in `Atf.Tests/Atf.Reporting.Extent.Tests`.
+Testele Core rămân neutre față de renderer. `AtfAssertion` este contractul semantic
+al rândului; formatarea HTML, selectorii Extent, tokenurile temei dark, regulile de
+collapse și inspecția artifactului final sunt testate în
+`Atf.Tests/Atf.Reporting.Extent.Tests`.
 
 ```mermaid
 flowchart LR
@@ -81,21 +86,22 @@ flowchart LR
     UX --> Acceptance
 ```
 
-A green unit test is not sufficient for the final browser contract: the HTML
-artifact must still be opened and checked after the live API run.
+Un test unitar verde nu este suficient pentru contractul final de browser:
+artifactul HTML trebuie deschis și verificat după rularea API live.
 
 `ReportArtifactInspector` este dovadă pentru artifactul static; nu îl redenumiți
 și nu îl tratați ca test browser. Pentru click, disclosure, scroll și fonturi
 calculate este necesar un seam DOM separat.
 
-This is stronger than testing a CSS string in isolation.
+Aceasta este o dovadă mai puternică decât testarea izolată a unui string CSS.
 
-## Run
+## Rulare
 
 ```powershell
 dotnet test .\Atf.Tests\Atf.Core.Tests\Atf.Core.Tests.csproj --no-restore --logger "console;verbosity=normal"
 ```
 
-When reporting CSS or Extent structure changes, run this project before live API tests.
+Când se schimbă CSS-ul sau structura Extent, rulează acest proiect înaintea
+testelor API live.
 
 

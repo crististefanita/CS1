@@ -1,10 +1,10 @@
 # Atf.Tests — testarea internă a ATF-ului
 
-The test strategy and the browser-validated report contract are documented in
-the [architecture and reporting guide](../docs/ATF_Architecture.md).
-The normative rules for cohesive OOP design, meaningful annotations, aggregate
-validations and test lifecycle are in the
-[ATF best-practices README](../docs/README_Atf_BestPractices.md).
+Strategia de testare și contractul raportului validat în browser sunt documentate
+în [ghidul de arhitectură și raportare](../docs/ATF_Architecture.md).
+Regulile normative pentru design OOP coerent, adnotări cu sens, validări agregate
+și lifecycle-ul testelor sunt în
+[README-ul de bune practici ATF](../docs/README_Atf_BestPractices.md).
 
 Aceasta este secțiunea dedicată testării ATF-ului însuși, nu testării unui API
 produs. Ea protejează contractele reutilizabile ale soluției înainte de rularea
@@ -15,16 +15,16 @@ director; nu mai există proiecte de testare ATF la rădăcina repository-ului.
 
 | Proiect | Tip dominant | Ce protejează |
 |---|---|---|
-| `Atf.Core.Tests` | unit + component contract tests | configurație, HTTP, autentificare, executor, retry/polling și lifecycle port |
-| `Atf.Common.Tests` | module component tests pentru `Atf.Api/Module` | rute, servicii, validări și cleanup |
-| `Atf.Api.Tests` | API/reporting component tests | boundary tests, phase layout și evidence fără serviciu |
-| `Atf.Api.FailureDemos` | failure fixtures opt-in | căi de failure controlate, fără contaminarea suitei normale |
-| `Atf.Reporting.Extent.Tests` | adapter/report artifact tests | ownership Extent, envelope HTML, theme și collapse contract |
+| `Atf.Core.Tests` | teste unitare și de componentă pentru contracte | configurație, HTTP, autentificare, executor, retry/polling și portul de lifecycle |
+| `Atf.Common.Tests` | teste de componentă pentru modulul `Atf.Api/Module` | rute, servicii, validări și cleanup |
+| `Atf.Api.Tests` | teste de componentă API/raportare | teste de boundary, layout-ul fazelor și evidence fără serviciu |
+| `Atf.Api.FailureDemos` | fixture-uri de failure opt-in | căi de failure controlate, fără contaminarea suitei normale |
+| `Atf.Reporting.Extent.Tests` | teste pentru adaptor și artifactul raportului | ownership Extent, envelope HTML, temă și contractul collapse |
 
 ## Structura minimă țintă
 
-La rădăcina repository-ului păstrăm doar modulele care exprimă un boundary
-real:
+La rădăcina repository-ului păstrăm modulul principal `Atf.Api`, fundația
+`Atf.Core` și boundary-urile care îl susțin:
 
 ```text
 Atf.Core/                 # kernel tehnic
@@ -80,18 +80,18 @@ modificare poate fi verificată fără serviciu, ea aparține testelor de sub `A
 | cleanup determinist | `CleanupRegistry` | `ValidationAndLifecycleTests` | failure în setup/body/teardown și duplicate ownership |
 | artifact consumabil | `ReportArtifactInspector` | `ReportArtifactInspectorTests` | HTML static, tokens, self-contained artifact și overflow guards |
 
-## Audit update — 2026-10-13
+## Actualizare de audit — 2026-10-13
 
 Suitea internă oferă acoperire offline pentru contractele componente. Această
 acoperire nu înseamnă că raportarea este validată
 vizual în browser și nu înlocuiește rularea live.
 
-Verificarea offline a working tree-ului curent a trecut cu **320/320** teste:
+Verificarea offline a working tree-ului curent a trecut cu **329/329** teste:
 
 ```text
-Atf.Core.Tests               83/83
+Atf.Core.Tests               91/91
 Atf.Common.Tests             67/67
-Atf.Reporting.Extent.Tests   118/118
+Atf.Reporting.Extent.Tests   119/119
 Atf.Api.Tests                52/52
 ```
 
@@ -124,11 +124,10 @@ verde nu trebuie folosit ca dovadă pentru separarea responsabilităților inter
 
 ### Datorie de toolchain
 
-Proiectele API folosesc xUnit v3.2.2, în timp ce proiectele interne din ținta
-`Atf.Tests` folosesc încă xUnit 2.9.3. Până la consolidare, diferența trebuie
-tratată ca incompatibilitate documentată și verificată; după consolidare trebuie
-aleasă o singură generație, pentru a evita lifecycle și discovery semantics
-divergente.
+Toate proiectele de test din soluția curentă folosesc xUnit v3. Diferențele de
+discovery sau lifecycle nu mai sunt acceptate ca explicație pentru un test
+instabil; orice abatere trebuie introdusă printr-un test de boundary și
+documentată explicit.
 
 ## De ce nu se numește totul `Atf.Unit.Tests`
 
@@ -145,8 +144,9 @@ valoare operațională, precum `smoke`, `lifecycle`, `combination`, `contract`,
 ## Regula de execuție
 
 ```text
-CURRENT: Atf.Tests/Core + Atf.Tests/Module + Atf.Tests/Api + Atf.Tests/Reporting.Extent
-         offline component contracts                          live / target API
+CURRENT: Atf.Tests/Atf.Core.Tests + Atf.Tests/Atf.Common.Tests +
+         Atf.Tests/Atf.Api.Tests + Atf.Tests/Atf.Reporting.Extent.Tests
+         offline component contracts; Atf.Api rămâne live API
 ```
 
 ```powershell
@@ -217,13 +217,13 @@ flowchart TB
     U --> C --> L
 ```
 
-`Atf.Api` is the live acceptance boundary and owns the module implementation
-under `Atf.Api/Module`. Any offline API-composition or reporting-contract test
-found in that assembly is transitional and should move to `Atf.Common.Tests`,
-`Atf.Core.Tests` or `Atf.Reporting.Extent.Tests` according to its seam. The runner total is
-not automatically equal to the number of API scenarios shown by Extent; reconcile
-them by explicit inventory labels, never by blindly reusing a container count or a
-number copied into this README.
+`Atf.Api` este boundary-ul de acceptanță live și deține implementarea modulului
+din `Atf.Api/Module`. Orice test offline de compoziție API sau contract de
+raportare găsit în acel assembly este tranzitoriu și trebuie mutat în
+`Atf.Common.Tests`, `Atf.Core.Tests` sau `Atf.Reporting.Extent.Tests`, conform
+seam-ului său. Totalul runner-ului nu este automat egal cu numărul scenariilor
+API afișate de Extent; corelează-le prin etichete explicite de inventar, nu prin
+reutilizarea oarbă a unui count de container sau a unei valori copiate în README.
 
 ### Regula de verificare a raportului
 
@@ -235,9 +235,11 @@ flowchart TD
     Browser --> Evidence[GET, aggregate validation, JSON and tables visible at the right level]
 ```
 
-Unit tests prove the close/open protocol, component tests prove the node hierarchy,
-and the browser check proves that Extent's hydrated DOM preserves the intended
-collapsed phase → request + validation sibling layout, with transport evidence under the request and the aggregate table under validation. The three layers are complementary, not substitutes.
+Testele unitare dovedesc protocolul de deschidere/închidere, testele de componentă
+dovedesc ierarhia nodurilor, iar verificarea în browser dovedește că DOM-ul
+hidratat de Extent păstrează layout-ul dorit, cu faze collapse → request +
+validation sibling, evidence de transport sub request și tabelul agregat sub
+validation. Cele trei niveluri sunt complementare, nu substituibile.
 
 Ordinea este intenționată: un defect de configurare, routing sau reporting trebuie să eșueze în testele offline, înainte de a consuma timp și date pe serviciul live.
 
