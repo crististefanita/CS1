@@ -13,13 +13,11 @@ Scope-ul acestei runde este explicit:
 
 - [`Atf_Refactoring_Feedback.md`](Atf_Refactoring_Feedback.md) — contractele
   închise pentru OOP, module, ownership, tag-uri și concurență;
-- [`Atf_Lifecycle_Combination.md`](Atf_Lifecycle_Combination.md) — contractele
-  închise LC-01 și LC-06; criteriile de aici se aplică la orice regresie nouă
-  a harness-ului DOM, lifecycle-ului sau randării raportului.
+- feedback-ul nou observabil care afectează direct aceste contracte.
 
-Prin urmare, procedura de mai jos se aplică doar regresiilor noi sau feedback-ului
-nou care afectează contractele de refactorizare. Nu redeschide LC-01/LC-06 fără
-o regresie observabilă în cod, test sau artifact.
+`Atf_Lifecycle_Combination.md` este exclus explicit din această rundă: nu este
+citit, modificat sau folosit ca criteriu de închidere. Procedura de mai jos se
+aplică numai regresiilor noi sau feedback-ului nou din scope-ul de refactorizare.
 
 ## Principiul de lucru
 
