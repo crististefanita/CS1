@@ -182,14 +182,23 @@ internal static class ExtentReportClientBehaviour
               return node?.closest('.card') || null;
             }
 
-            function selectTestItem(listItem) {
-              if (!listItem) return;
-              document.querySelectorAll('.test-view .test-list-wrapper > .test-list-item > .test-item').forEach(function (item) {
-                const selected = item === listItem;
-                item.classList.toggle('active', selected);
-                const contents = item.querySelector(':scope > .test-contents');
-                if (contents) contents.classList.toggle('d-none', !selected);
-              });
+            function renderViewItem(view, listItem) {
+              if (!view || !listItem) return;
+              const items = Array.from(view.querySelectorAll(':scope > .test-list > .test-list-wrapper > .test-list-item > .test-item'));
+              items.forEach(function (item) { item.classList.toggle('active', item === listItem); });
+
+              const detailBody = view.querySelector(':scope > .test-content > .test-content-detail > .detail-body');
+              const contents = listItem.querySelector(':scope > .test-contents');
+              if (!detailBody || !contents) return;
+
+              const clone = contents.cloneNode(true);
+              clone.classList.remove('d-none');
+              detailBody.replaceChildren(clone);
+            }
+
+            function renderFirstViewItem(view) {
+              const firstItem = view?.querySelector(':scope > .test-list > .test-list-wrapper > .test-list-item > .test-item');
+              if (firstItem) renderViewItem(view, firstItem);
             }
 
             function openFailureTest(link) {
@@ -200,12 +209,10 @@ internal static class ExtentReportClientBehaviour
               });
               toggleView('test-view');
               if (listItem) {
-                selectTestItem(listItem);
-                // Keep Extent's native projection: it moves the selected test
-                // into the right-hand detail pane. Directly revealing
-                // .test-contents would render the detail inside the left list.
-                listItem.click();
-                listItem.classList.add('active');
+                // Never call Extent's native .test-item click here: its
+                // global handler clones the source payload into every view,
+                // which pollutes the left navigation and the Exception pane.
+                renderViewItem(document.querySelector('.test-view'), listItem);
               }
               window.location.hash = 'test-id=' + (testId || '');
               // Extent's native click/hash handlers populate the right pane
@@ -784,13 +791,25 @@ internal static class ExtentReportClientBehaviour
                 document.querySelectorAll('.main-content > .view').forEach(function (candidate) {
                   candidate.classList.toggle('d-none', !candidate.classList.contains(view));
                 });
-                if (view === 'test-view') {
-                  document.querySelectorAll('.test-item').forEach(function (item) {
-                    item.classList.remove('d-none');
-                  });
-                }
+                const activeView = document.querySelector('.main-content > .' + view);
+                if (activeView) renderFirstViewItem(activeView);
                 window.currentView = view;
               };
+
+              // Scope Extent's item projection to the view that owns the
+              // clicked item. The bundled handler uses global selectors and
+              // therefore writes a Tests detail into Exception and vice
+              // versa. Capturing here keeps each view isolated.
+              document.addEventListener('click', function (event) {
+                const target = event.target instanceof Element ? event.target : null;
+                const item = target?.closest('.main-content > .view .test-list-wrapper > .test-list-item > .test-item');
+                if (!item) return;
+                const view = item.closest('.main-content > .view');
+                if (!view) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                renderViewItem(view, item);
+              }, true);
             }
 
             function start() {

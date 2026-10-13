@@ -1,7 +1,6 @@
 using Atf.Core.Security;
 using AventStack.ExtentReports;
 using AventStack.ExtentReports.Reporter;
-using System.Globalization;
 using System.Reflection;
 
 namespace Atf.Reporting.Extent;
@@ -13,9 +12,8 @@ namespace Atf.Reporting.Extent;
 /// </summary>
 public sealed class ExtentReportLifecycle : IAtfReportSession
 {
-    private static readonly object ReportPathSync = new();
-    private static readonly HashSet<string> ReservedReportPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _sync = new();
+    private readonly Lifecycle.ExtentReportPathAllocator _pathAllocator;
     private ExtentReports? _reports;
     private ExtentSparkReporter? _reporter;
     private ExtentTestHierarchy? _hierarchy;
@@ -26,6 +24,16 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
     private Assembly? _testAssembly;
     private SensitiveDataRedactor _redactor = new();
     private bool _finalized;
+
+    public ExtentReportLifecycle()
+        : this(new Lifecycle.ExtentReportPathAllocator())
+    {
+    }
+
+    internal ExtentReportLifecycle(Lifecycle.ExtentReportPathAllocator pathAllocator)
+    {
+        _pathAllocator = pathAllocator ?? throw new ArgumentNullException(nameof(pathAllocator));
+    }
 
     public string ReportPath => _reportPath ?? throw new InvalidOperationException("Extent reporting has not been initialized.");
 
@@ -50,18 +58,12 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
 
             var settingsSnapshot = settings.Snapshot();
             var apiSnapshot = api?.Snapshot();
-            var path = ResolvePath(settingsSnapshot);
-            var reportDirectory = Path.GetDirectoryName(path)!;
-            var nativeDirectory = Path.Combine(
-                reportDirectory,
-                $".atf-render-{Guid.NewGuid():N}");
-            var nativePath = Path.Combine(nativeDirectory, Path.GetFileName(path));
-            Directory.CreateDirectory(nativeDirectory);
+            var reportPaths = _pathAllocator.Allocate(settingsSnapshot);
 
             // Extent's native asset bootstrap writes an `extent` directory
             // beside its report. Keep that transient directory private to this
             // session; only the composed HTML is published to the final path.
-            var reporter = new ExtentSparkReporter(nativePath);
+            var reporter = new ExtentSparkReporter(reportPaths.NativePath);
             reporter.Config.DocumentTitle = settingsSnapshot.DocumentTitle;
             reporter.Config.ReportName = settingsSnapshot.ReportName;
             reporter.Config.OfflineMode = true;
@@ -79,9 +81,9 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
             _hierarchy = new ExtentTestHierarchy(_sync);
             _settings = settingsSnapshot;
             _redactor = new SensitiveDataRedactor(apiSnapshot?.Redaction);
-            _reportPath = path;
-            _nativeReportPath = nativePath;
-            _nativeReportDirectory = nativeDirectory;
+            _reportPath = reportPaths.PublishedPath;
+            _nativeReportPath = reportPaths.NativePath;
+            _nativeReportDirectory = reportPaths.NativeDirectory;
             _finalized = false;
         }
     }
@@ -145,35 +147,4 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
         }
     }
 
-    private static string ResolvePath(ReportingSettings settings)
-    {
-        var resolved = new Atf.Core.Reporting.Artifacts.ReportPathResolver().Resolve(settings.ReportPath);
-        var directory = Path.GetDirectoryName(resolved) ?? Directory.GetCurrentDirectory();
-        var extension = Path.GetExtension(resolved);
-        var name = Path.GetFileNameWithoutExtension(resolved);
-        var timestamp = settings.TimestampEnabled
-            ? $"_{DateTime.Now.ToString(settings.TimestampFormat, CultureInfo.InvariantCulture)}"
-            : string.Empty;
-        var candidate = Path.Combine(directory, $"{name}{timestamp}{extension}");
-
-        lock (ReportPathSync)
-        {
-            if (!File.Exists(candidate) && ReservedReportPaths.Add(candidate))
-            {
-                return candidate;
-            }
-
-            // A timestamp is descriptive, not an identity. The suffix is
-            // reserved in-process before Extent starts writing, so parallel
-            // sessions cannot select the same path during the same second.
-            do
-            {
-                var runId = Guid.NewGuid().ToString("N")[..10];
-                candidate = Path.Combine(directory, $"{name}{timestamp}_run-{runId}{extension}");
-            }
-            while (File.Exists(candidate) || !ReservedReportPaths.Add(candidate));
-
-            return candidate;
-        }
-    }
 }

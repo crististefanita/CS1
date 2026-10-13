@@ -26,6 +26,8 @@ public sealed class ReportingComponentTests
         Assert.Contains("font-size: var(--atf-font-base-size) !important", css, StringComparison.Ordinal);
         Assert.Contains("body.dark .atf-tag-table, body.dark .atf-tag-table tbody, body.dark .atf-tag-table tr, body.dark .atf-tag-table td { color: var(--atf-text) !important; }", css, StringComparison.Ordinal);
         Assert.Contains("--atf-dark: #101723", css, StringComparison.Ordinal);
+        Assert.Contains(".test-wrapper .test-list-wrapper > .test-list-item > .test-item > .test-contents", css, StringComparison.Ordinal);
+        Assert.Contains("display: none !important", css, StringComparison.Ordinal);
         Assert.DoesNotContain("__ATF_", css, StringComparison.Ordinal);
     }
 
@@ -100,15 +102,20 @@ public sealed class ReportingComponentTests
         Assert.Contains("['VALIDATION', evidence.validation]", script, StringComparison.Ordinal);
         Assert.Contains("['ASSERTION', evidence.assertion", script, StringComparison.Ordinal);
         Assert.Contains("Open in Tests", script, StringComparison.Ordinal);
-        Assert.Contains("listItem.click()", script, StringComparison.Ordinal);
+        Assert.Contains("function renderViewItem(view, listItem)", script, StringComparison.Ordinal);
+        Assert.Contains("detailBody.replaceChildren(clone)", script, StringComparison.Ordinal);
+        Assert.Contains("renderViewItem(document.querySelector('.test-view'), listItem)", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("listItem.click()", script, StringComparison.Ordinal);
         Assert.Contains("window.location.hash = 'test-id='", script, StringComparison.Ordinal);
         Assert.Contains("setTimeout(function ()", script, StringComparison.Ordinal);
-        Assert.Contains(".test-contents would render the detail inside the left list", script, StringComparison.Ordinal);
+        Assert.Contains("global handler clones the source payload into every view", script, StringComparison.Ordinal);
         Assert.Contains("function failureTestCard(nodeId, visibleDetailOnly)", script, StringComparison.Ordinal);
         Assert.Contains("visibleDetailOnly", script, StringComparison.Ordinal);
         Assert.Contains("Poll only that visible detail pane", script, StringComparison.Ordinal);
         Assert.Contains("candidate.dataset.atfPhase || phaseKey(title)", script, StringComparison.Ordinal);
         Assert.Contains("event.stopImmediatePropagation()", script, StringComparison.Ordinal);
+        Assert.Contains("const activeView = document.querySelector('.main-content > .' + view)", script, StringComparison.Ordinal);
+        Assert.Contains("renderFirstViewItem(activeView)", script, StringComparison.Ordinal);
         Assert.Contains(".atf-failure-schematic", css, StringComparison.Ordinal);
         Assert.Contains(".atf-failure-open", css, StringComparison.Ordinal);
     }
@@ -242,8 +249,7 @@ public sealed class ReportingComponentTests
 
         Assert.Contains(".dashboard-view .category-container > .card > .card-header p", css, StringComparison.Ordinal);
         Assert.Contains(".dashboard-view .sysenv-container > .card > .card-header p", css, StringComparison.Ordinal);
-        Assert.Contains(".atf-tag-card .card-header p", css, StringComparison.Ordinal);
-        Assert.Contains(".atf-tag-card .card-header p { margin: 0 !important; color: var(--atf-secondary-heading-text) !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-font-base-size) !important;", css, StringComparison.Ordinal);
+        Assert.Contains(".dashboard-view .atf-tag-card > .card-header p { margin: 0 !important; color: var(--atf-secondary-heading-text) !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-font-base-size) !important;", css, StringComparison.Ordinal);
         Assert.DoesNotContain(".atf-tag-audit-heading", css, StringComparison.Ordinal);
     }
 
@@ -261,18 +267,81 @@ public sealed class ReportingComponentTests
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            ".atf-tag-card { min-width: 0 !important; border: 1px solid var(--atf-border) !important; border-radius: 8px !important; background: var(--atf-bg) !important;",
+            ".atf-tag-card { min-width: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important;",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            ".atf-tag-card .card-header { min-height: 0 !important; padding: 14px 24px 16px !important; border-bottom: 1px solid var(--atf-border) !important; background: var(--atf-secondary-heading-bg) !important;",
+            ".dashboard-view .atf-tag-card { min-width: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important;",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            ".atf-tag-card .card-body { padding: 0 24px 16px !important; background: var(--atf-bg) !important; }",
+            ".atf-tag-card .card-header { min-height: 0 !important; padding: 14px 24px 16px !important; border: 1px solid var(--atf-border) !important; border-bottom: 0 !important; border-radius: 8px 8px 0 0 !important; background: var(--atf-secondary-heading-bg) !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .atf-tag-card > .card-header p { margin: 0 !important; color: var(--atf-secondary-heading-text) !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".atf-tag-scroll { height: var(--atf-audit-scroll-height) !important; max-height: var(--atf-audit-scroll-height) !important; overflow-x: hidden !important; overflow-y: auto !important; border: 1px solid var(--atf-border) !important; border-top: 0 !important; border-radius: 0 0 8px 8px !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".atf-tag-table { width: 100% !important; margin: 0 !important; table-layout: fixed !important; border: 0 !important;",
             css,
             StringComparison.Ordinal);
         Assert.DoesNotContain(".atf-tag-total", css, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Native Tags and System Environment tables reuse the audit panel cell contract")]
+    public void NativeOverviewTablesUseSinglePanelAndAuditCellContract()
+    {
+        var css = AtfReportTheme.BuildCss();
+
+        Assert.Contains(
+            ".dashboard-view .category-container > .card,\n      .dashboard-view .sysenv-container > .card {",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "border: 0 !important;\n        border-radius: 0 !important;\n        background: transparent !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .category-container > .card > .card-header,\n      .dashboard-view .sysenv-container > .card > .card-header {",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "border: 1px solid var(--atf-border) !important;\n        border-bottom: 0 !important;\n        border-radius: 8px 8px 0 0 !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .category-container > .card > .card-body,\n      .dashboard-view .sysenv-container > .card > .card-body {",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "padding: 0 !important;\n        border: 1px solid var(--atf-border) !important;\n        border-top: 0 !important;\n        border-radius: 0 0 8px 8px !important;\n        background: var(--atf-bg) !important;\n        overflow-x: hidden !important;\n        overflow-y: auto !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .category-container > .card > .card-body > table,\n      .dashboard-view .sysenv-container > .card > .card-body > table {",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "border: 0 !important;\n        border-collapse: collapse !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .category-container > .card > .card-body > table th,\n      .dashboard-view .category-container > .card > .card-body > table td,\n      .dashboard-view .sysenv-container > .card > .card-body > table th,\n      .dashboard-view .sysenv-container > .card > .card-body > table td {",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "padding: 7px 9px !important;\n        border: 1px solid var(--atf-border) !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "font-size: var(--atf-overview-font-size) !important;\n        line-height: 1.32 !important;",
+            css,
+            StringComparison.Ordinal);
     }
 
     [Fact(DisplayName = "Tag audit tables contain only a header and data rows")]

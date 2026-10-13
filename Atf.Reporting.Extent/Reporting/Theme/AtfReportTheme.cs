@@ -156,6 +156,12 @@ public static class AtfReportTheme
       .test-detail .name, .test-status { color: var(--atf-text) !important; }
       .test-detail .text-sm, .text-sm, .text-muted { color: var(--atf-muted) !important; }
       .test-contents { background: transparent !important; }
+      /* Extent keeps the source payload inside each navigation item and
+         clones it into the view's right-hand detail pane. The source payload
+         must never become a second navigation tree when an item is selected. */
+      .test-wrapper .test-list-wrapper > .test-list-item > .test-item > .test-contents {
+        display: none !important;
+      }
       .test-wrapper, .test-content, .test-content-detail { overflow-x: hidden !important; }
     
       /* Categories are already rendered once in the test header. Extent
@@ -513,15 +519,16 @@ public static class AtfReportTheme
       }
       .atf-tag-audit-body { width: 100% !important; padding: 12px 0 14px !important; background: var(--atf-bg) !important; }
       .atf-tag-grid { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 12px !important; align-items: start !important; width: 100% !important; }
-      .atf-tag-card { min-width: 0 !important; border: 1px solid var(--atf-border) !important; border-radius: 8px !important; background: var(--atf-bg) !important; box-shadow: none !important; overflow: hidden !important; }
+      .atf-tag-card { min-width: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; overflow: visible !important; }
+      .dashboard-view .atf-tag-card { min-width: 0 !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; box-shadow: none !important; overflow: visible !important; }
       /* Audit card headings are first-class Overview headings. Keep their
          typography and accent colour identical to native Tags/System-Environment
          headings; only the table body remains secondary/compact. */
-      .atf-tag-card .card-header { min-height: 0 !important; padding: 14px 24px 16px !important; border-bottom: 1px solid var(--atf-border) !important; background: var(--atf-secondary-heading-bg) !important; color: var(--atf-secondary-heading-text) !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-font-base-size) !important; line-height: 1.35 !important; }
-      .atf-tag-card .card-header p { margin: 0 !important; color: var(--atf-secondary-heading-text) !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-font-base-size) !important; font-weight: 550 !important; line-height: 1.35 !important; }
-      .atf-tag-card .card-body { padding: 0 24px 16px !important; background: var(--atf-bg) !important; }
-      .atf-tag-scroll { height: var(--atf-audit-scroll-height) !important; max-height: var(--atf-audit-scroll-height) !important; overflow-x: hidden !important; overflow-y: auto !important; }
-      .atf-tag-table { width: 100% !important; margin: 0 !important; table-layout: fixed !important; border: 1px solid __ATF_TABLEBORDER__ !important; border-collapse: collapse !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-overview-font-size) !important; line-height: 1.32 !important; }
+      .atf-tag-card .card-header { min-height: 0 !important; padding: 14px 24px 16px !important; border: 1px solid var(--atf-border) !important; border-bottom: 0 !important; border-radius: 8px 8px 0 0 !important; background: var(--atf-secondary-heading-bg) !important; color: var(--atf-secondary-heading-text) !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-font-base-size) !important; line-height: 1.35 !important; }
+      .dashboard-view .atf-tag-card > .card-header p { margin: 0 !important; color: var(--atf-secondary-heading-text) !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-font-base-size) !important; font-weight: 550 !important; line-height: 1.35 !important; }
+      .atf-tag-card .card-body { padding: 0 !important; background: transparent !important; }
+      .atf-tag-scroll { height: var(--atf-audit-scroll-height) !important; max-height: var(--atf-audit-scroll-height) !important; overflow-x: hidden !important; overflow-y: auto !important; border: 1px solid var(--atf-border) !important; border-top: 0 !important; border-radius: 0 0 8px 8px !important; background: var(--atf-bg) !important; }
+      .atf-tag-table { width: 100% !important; margin: 0 !important; table-layout: fixed !important; border: 0 !important; border-collapse: collapse !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-overview-font-size) !important; line-height: 1.32 !important; }
       .atf-tag-table th, .atf-tag-table td { padding: 7px 9px !important; border: 1px solid var(--atf-border) !important; color: var(--atf-text) !important; background: var(--atf-bg) !important; overflow-wrap: anywhere !important; word-break: break-word !important; vertical-align: top !important; font-family: var(--atf-overview-font-family) !important; font-size: var(--atf-overview-font-size) !important; }
       .atf-tag-table th { color: var(--atf-muted) !important; background: var(--atf-panel-2) !important; font-weight: 600 !important; letter-spacing: .05em !important; text-transform: uppercase !important; text-align: left !important; }
       .atf-tag-table th:nth-child(n+2), .atf-tag-table td:nth-child(n+2) { width: 4.2rem !important; text-align: right !important; white-space: nowrap !important; }
@@ -548,6 +555,89 @@ public static class AtfReportTheme
       .dashboard-view .category-container > .card > .card-header {
         padding-left: 24px !important;
         padding-right: 24px !important;
+      }
+      /* Native Tags and System/Environment use the same single-panel
+         contract as the audit cards: framed heading, connected scroll body,
+         and one border system for every table cell. */
+      .dashboard-view .category-container > .card,
+      .dashboard-view .sysenv-container > .card {
+        min-width: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+      }
+      .dashboard-view .category-container > .card > .card-header,
+      .dashboard-view .sysenv-container > .card > .card-header {
+        height: auto !important;
+        min-height: 0 !important;
+        padding: 14px 24px 16px !important;
+        border: 1px solid var(--atf-border) !important;
+        border-bottom: 0 !important;
+        border-radius: 8px 8px 0 0 !important;
+        background: var(--atf-secondary-heading-bg) !important;
+        color: var(--atf-secondary-heading-text) !important;
+        font-family: var(--atf-overview-font-family) !important;
+        font-size: var(--atf-font-base-size) !important;
+        line-height: 1.35 !important;
+      }
+      .dashboard-view .category-container > .card > .card-body,
+      .dashboard-view .sysenv-container > .card > .card-body {
+        height: calc(100% - 54px) !important;
+        max-height: calc(100% - 54px) !important;
+        padding: 0 !important;
+        border: 1px solid var(--atf-border) !important;
+        border-top: 0 !important;
+        border-radius: 0 0 8px 8px !important;
+        background: var(--atf-bg) !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+      }
+      .dashboard-view .category-container > .card > .card-body > table,
+      .dashboard-view .sysenv-container > .card > .card-body > table {
+        width: 100% !important;
+        margin: 0 !important;
+        table-layout: fixed !important;
+        border: 0 !important;
+        border-collapse: collapse !important;
+        font-family: var(--atf-overview-font-family) !important;
+        font-size: var(--atf-overview-font-size) !important;
+        line-height: 1.32 !important;
+      }
+      .dashboard-view .category-container > .card > .card-body > table th,
+      .dashboard-view .category-container > .card > .card-body > table td,
+      .dashboard-view .sysenv-container > .card > .card-body > table th,
+      .dashboard-view .sysenv-container > .card > .card-body > table td {
+        padding: 7px 9px !important;
+        border: 1px solid var(--atf-border) !important;
+        color: var(--atf-text) !important;
+        background: var(--atf-bg) !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+        vertical-align: top !important;
+        font-family: var(--atf-overview-font-family) !important;
+        font-size: var(--atf-overview-font-size) !important;
+        line-height: 1.32 !important;
+      }
+      .dashboard-view .category-container > .card > .card-body > table th,
+      .dashboard-view .sysenv-container > .card > .card-body > table th {
+        color: var(--atf-muted) !important;
+        background: var(--atf-panel-2) !important;
+        font-weight: 600 !important;
+        letter-spacing: .05em !important;
+        text-transform: uppercase !important;
+        text-align: left !important;
+      }
+      .dashboard-view .category-container > .card > .card-body > table thead th,
+      .dashboard-view .sysenv-container > .card > .card-body > table thead th {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 1 !important;
+      }
+      .dashboard-view .category-container > .card > .card-body > table tbody tr:nth-child(odd) td,
+      .dashboard-view .sysenv-container > .card > .card-body > table tbody tr:nth-child(odd) td {
+        background: __ATF_WHITE018__ !important;
       }
       .test-contents > .mt-4 > .accordion > .card {
         background: transparent !important;
