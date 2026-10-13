@@ -69,9 +69,10 @@ scenario
         └── un tabel agregat ASSERTION / EXPECTED / ACTUAL / RESULT
 ```
 
-Requestul este copil direct al fazei, iar validarea este copil direct al requestului
-care a produs răspunsul. Validarea nu este atașată retrospectiv ultimului request și
-nu este împărțită în câte un nod pentru fiecare assertion.
+Requestul este copil direct al fazei, iar validarea este următorul copil direct al
+aceleiași faze, imediat după requestul care a produs răspunsul. Validarea nu este
+copilul requestului, nu este atașată retrospectiv ultimului request și nu este
+împărțită în câte un nod pentru fiecare assertion.
 
 Transportul și verdictul sunt separate:
 

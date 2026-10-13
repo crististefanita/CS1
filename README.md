@@ -198,7 +198,7 @@ TestCase
     │   │   ├── Technical trace
     │   │   ├── Response details
     │   │   └── Response JSON
-    │   └── Validation(s) — direct sibling of its owning request
+    │   └── Validation(s) — următorul nod frate al request-ului
     │       └── aggregate assertion table
     └── TEARDOWN
         └── Request(s)
@@ -209,7 +209,7 @@ Reguli obligatorii:
 - setup, test body și teardown sunt faze sub același scenario;
 - un request și validarea lui sunt noduri frați direcți sub aceeași fază;
 - trace-ul tehnic, response details și response JSON aparțin request-ului;
-- validarea nu este copilul request-ului și nu este atașată altui request;
+- validarea aparține response-ului imediat anterior și nu este atașată altui request;
 - un response produce o singură validare agregată;
 - assertions pentru același response apar într-un singur tabel;
 - validation nu devine copilul request-ului și nici copilul validatorului anterior;

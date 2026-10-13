@@ -1,6 +1,6 @@
 # ATF — lifecycle, combinații și contractul raportării
 
-Registrul activ pentru statusuri, lifecycle, assertions și randarea raportului.
+Registrul de verificare pentru statusuri, lifecycle, assertions și randarea raportului.
 Contractele stabile rămân în `docs/ATF_Reporting_Contract.md` și în
 `Atf.Reporting.Extent/README.md`. Acest document nu păstrează căi temporare,
 scoruri sau rezultate istorice de rulare.
@@ -44,23 +44,26 @@ collapse, assertion tables și JSON.
 
 **Dovezi:** `ExtentReportClientDomContractController`, testul de compoziție
 `ClientBehaviourEmbedsDomContractHarness`, `ReportArtifactInspector` și
-verificarea TAB MCP pe artifactul final. Fluxul verificat include click pe
-failure, triage și `Open in Tests` cu deep-link către testul sursă.
+verificarea TAB MCP pe artifact. Artifactul mai nou conține același harness,
+iar verificarea interactivă anterioară a confirmat click pe failure, triage și
+`Open in Tests` cu deep-link către testul sursă.
 
 ## LC-06 — evidence fără regresii vizuale (rezolvat)
 
 **Priority:** `P2` · **Owner:** `Atf.Reporting.Extent`
 
 Computed styles sunt colectate de același harness pentru rândurile de navigare,
-badge-uri, evidence JSON și overflow. Verificarea TAB MCP a confirmat `display`,
-`align-items`, poziția statusului, culorile/fonturile calculate și
-`overflow-x/y` pe artifactul final. Contractul static este protejat prin
-`ReportArtifactInspector` și testele Extent.
+badge-uri, evidence JSON și overflow. Contractul static al artifactului mai nou
+confirmă harness-ul, technical trace-ul, response duration-ul și regulile de
+collapse; verificarea TAB MCP a confirmat anterior `display`, `align-items`,
+poziția statusului, culorile/fonturile calculate și `overflow-x/y`. Contractul
+static este protejat prin `ReportArtifactInspector` și testele Extent.
 
 ## Regula de acceptare
 
 Un TODO lifecycle se închide numai cu test de politică, test de componentă,
 artifact static și verificare DOM pentru comportamentul interactiv. LC-01 și
-LC-06 îndeplinesc aceste criterii; nu mai există TODO-uri active în acest
-registru. Formatul aprobat al raportului este contract extern și nu se schimbă
-accidental.
+LC-06 îndeplinesc aceste criterii pe cod și testele existente; artifactul mai
+nou reconfirmă contractele statice fără a schimba formatul. Nu mai există
+TODO-uri active în acest registru. Formatul aprobat al raportului este contract
+extern și nu se schimbă accidental.

@@ -21,8 +21,9 @@ Feedback-ul de aici acoperă:
 
 Contractul raportului este definit permanent în `docs/ATF_Reporting_Contract.md`
 și rezumat în `Atf.Reporting.Extent/README.md`. Registrul de refactorizare este
-închis pentru RF-02–RF-05; documentul de lifecycle este păstrat separat și nu a
-fost reevaluat în această rundă.
+închis pentru RF-02–RF-05, iar contractele lifecycle LC-01 și LC-06 sunt închise.
+Artifactele noi reconfirmă static aceste contracte; feedback-ul nu redeschide un
+item fără o regresie observabilă.
 
 ```mermaid
 flowchart LR
@@ -59,6 +60,16 @@ Documentele de feedback descriu starea finding-urilor, acțiunile, testele și
 criteriile de acceptare. Contractele stabile și diagramele normative apar în README-urile
 proiectului și în documentele permanente din `docs/`; feedback-ul poate trimite
 către ele, dar nu le înlocuiește.
+
+## Starea auditului live
+
+La ultima verificare disponibilă, artifactul nou conține harness-ul DOM read-only,
+metadata-ul secondary collapsed, ierarhia `phase → request + validation`,
+evidence collapsed și selectorul de tag-uri limitat la tag-uri de selecție.
+Lista claselor rămâne fără pills/adnotări. Codul și testele protejează aceste
+contracte; nu există TODO activ de refactorizare sau lifecycle în acest registru.
+Verificarea statică și verificarea interactivă MCP sunt raportate separat atunci
+când politica tab-ului nu permite controlul unui artifact `file://`.
 
 ## Procedura obligatorie
 

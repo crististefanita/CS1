@@ -13,13 +13,13 @@ Scope-ul acestei runde este explicit:
 
 - [`Atf_Refactoring_Feedback.md`](Atf_Refactoring_Feedback.md) — contractele
   închise pentru OOP, module, ownership, tag-uri și concurență;
-- [`Atf_Lifecycle_Combination.md`](Atf_Lifecycle_Combination.md) — backlog
-  activ pentru LC-01 și LC-06 în această rundă; criteriile de aici se aplică
-  harness-ului DOM și regresiilor vizuale ale raportului.
+- [`Atf_Lifecycle_Combination.md`](Atf_Lifecycle_Combination.md) — contractele
+  închise LC-01 și LC-06; criteriile de aici se aplică la orice regresie nouă
+  a harness-ului DOM, lifecycle-ului sau randării raportului.
 
 Prin urmare, procedura de mai jos se aplică doar regresiilor noi sau feedback-ului
-nou care afectează contractele de refactorizare. Documentul lifecycle rămâne
-disponibil pentru o rundă separată, explicit autorizată.
+nou care afectează contractele de refactorizare. Nu redeschide LC-01/LC-06 fără
+o regresie observabilă în cod, test sau artifact.
 
 ## Principiul de lucru
 
@@ -126,8 +126,8 @@ layout, font, culoare, scroll sau overflow. Un test de string nu înlocuiește G
 | RF-02 fațade | porturi și delegare | izolare între puncte de legătură | client/theme inclus | numai dacă UI se schimbă | — |
 | RF-03 namespace-uri | regulă de boundary | direcția dependențelor | — | — | — |
 | RF-04 sesiuni | alocare/cleanup | două sesiuni | ownership path/asset | — | obligatoriu |
-| LC-01 harness DOM | selectori și helperi | fluxuri complete | artifact real | obligatoriu | — |
-| LC-06 vizual | contracte token | compoziție theme | HTML/CSS | stiluri calculate | — |
+| LC-01 harness DOM | selectori și helperi | fluxuri complete | artifact real | obligatoriu la regresie | — |
+| LC-06 vizual | contracte token | compoziție theme | HTML/CSS | stiluri calculate la regresie | — |
 | RF-05 navigare/tag-uri | proiecție fără tag-uri în lista clasei | detalii scenariu | lista stângă fără pills/`tag`; detalii cu tag-uri | obligatoriu | — |
 
 ### 6. Validează raportul prin TAB MCP
@@ -153,6 +153,11 @@ Artifactul final include harness-ul read-only `window.__atfDomContract.inspect()
 În TAB MCP, harness-ul sau probele DOM echivalente trebuie folosite pentru a
 raporta selectori, cardinalitate, relații de poziționare și computed styles;
 prezența unui string în HTML nu este suficientă.
+
+Dacă un artifact local `file://` nu poate fi controlat de politica tab-ului MCP,
+nu se folosește browserul Windows și nu se încearcă ocolirea politicii. Se
+separă explicit dovada statică a artifactului de dovada interactivă MCP și nu se
+declară o interacțiune ca fiind verificată dacă nu a fost executată efectiv.
 
 Nu se închide un TODO pe baza unei capturi sau a faptului că HTML-ul conține
 textul așteptat.
