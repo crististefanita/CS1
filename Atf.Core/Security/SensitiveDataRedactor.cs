@@ -1,59 +1,44 @@
-using Atf.Core.Configuration;
 using Atf.Core.Configuration.Security;
+using Atf.Core.Security.Redaction;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 
 namespace Atf.Core.Security;
 
 /// <summary>
-/// Central report-boundary redaction. Secrets are masked before evidence
-/// reaches any reporter while HTTP execution continues to use original data.
+/// Composes the report-boundary redaction policies. The facade owns ordering;
+/// each concrete transformation has one responsibility and can be tested in
+/// isolation without coupling the reporting boundary to regex or JSON details.
 /// </summary>
 public sealed class SensitiveDataRedactor
 {
-    private static readonly Regex EmailPattern = new(
-        @"(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+(?![\w.-])",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private static readonly Regex AuthorizationPattern = new(
-        @"(?<prefix>\b(?:Bearer|Basic|Token|Api[- ]?Key)\s+)(?!(?:required|available|missing|not|none|token)\b)[^\s,;]+",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private static readonly Regex HeaderPattern = new(
-        @"(?<prefix>\b(?:Authorization|Proxy-Authorization|X-Api-Key|Api-Key|Cookie|Set-Cookie)\s*[:=]\s*)[^\r\n,;]+",
-        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private static readonly Regex WindowsAbsolutePathPattern = new(
-        @"(?<![\w])(?<path>(?:[A-Za-z]:\\|\\\\)[^\r\n""']+?)(?=(?::line\s+\d+|[\)\],;]|$))",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
-    private static readonly JsonSerializerOptions PrettyJsonOptions = new()
-    {
-        WriteIndented = true
-    };
-    private readonly RedactionSettings _settings;
-    private readonly HashSet<string> _sensitiveKeys;
-    private readonly HashSet<string> _piiKeys;
+    private readonly RedactionContext _context;
+    private readonly SecretPatternRedactor _secretPatterns;
+    private readonly QueryStringRedactor _queryStrings;
+    private readonly LocalPathRedactor _localPaths;
+    private readonly PiiRedactor _pii;
+    private readonly StructuredJsonRedactor _structuredJson;
 
     public SensitiveDataRedactor(RedactionSettings? settings = null)
     {
-        _settings = settings ?? new RedactionSettings();
-        _sensitiveKeys = _settings.SensitiveKeys
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .Select(Normalize)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        _piiKeys = _settings.PiiKeys
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .Select(Normalize)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _context = RedactionContext.Create(settings ?? new RedactionSettings());
+        _secretPatterns = new(_context);
+        _queryStrings = new(_context);
+        _localPaths = new(_context);
+        _pii = new(_context);
+        _structuredJson = new(_context, RedactText);
     }
 
     public string RedactField(string field, string? value)
     {
         value ??= string.Empty;
-        if (!_settings.Enabled)
+        if (_context.IsSensitiveField(field))
         {
-            return value;
+            return _context.Replacement;
         }
 
-        return IsSensitiveField(field) ? _settings.Replacement : RedactText(RedactQueryString(value));
+        var querySafe = _queryStrings.Apply(value);
+        return !_context.Settings.Enabled ? querySafe : RedactText(querySafe);
     }
 
     /// <summary>
@@ -63,33 +48,28 @@ public sealed class SensitiveDataRedactor
     public string RedactText(string? value)
     {
         value ??= string.Empty;
-        if (!_settings.Enabled || value.Length == 0)
+        if (value.Length == 0)
         {
             return value;
         }
 
-        var redacted = AuthorizationPattern.Replace(value, match => match.Groups["prefix"].Value + _settings.Replacement);
-        redacted = HeaderPattern.Replace(redacted, match => match.Groups["prefix"].Value + _settings.Replacement);
-        if (_settings.RedactLocalPaths)
+        var redacted = _secretPatterns.Apply(value);
+        if (!_context.Settings.Enabled)
         {
-            redacted = WindowsAbsolutePathPattern.Replace(
-                redacted,
-                _settings.LocalPathReplacement);
+            return redacted;
         }
-        var keyPattern = string.Join("|", ReportKeys().Select(Regex.Escape));
-        redacted = Regex.Replace(
-            redacted,
-            $@"(?<prefix>\b(?:{keyPattern})\s*[:=]\s*)[^\s,;&]+",
-            $"${{prefix}}{_settings.Replacement}",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        return _settings.PiiEnabled
-            ? EmailPattern.Replace(redacted, _settings.Replacement)
-            : redacted;
+
+        if (_context.Settings.RedactLocalPaths)
+        {
+            redacted = _localPaths.Apply(redacted);
+        }
+
+        return _context.Settings.PiiEnabled ? _pii.Apply(redacted) : redacted;
     }
 
     public string RedactJson(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json) || !_settings.Enabled)
+        if (string.IsNullOrWhiteSpace(json))
         {
             return json ?? string.Empty;
         }
@@ -102,83 +82,14 @@ public sealed class SensitiveDataRedactor
                 return json;
             }
 
-            RedactNode(node);
-            return node.ToJsonString(PrettyJsonOptions);
+            _structuredJson.Apply(node);
+            return node.ToJsonString(RedactionContext.PrettyJsonOptions);
         }
         catch (JsonException)
         {
             // A malformed or plain-text body still belongs to the evidence
-            // boundary; never bypass redaction just because it is not JSON.
+            // boundary; never bypass redaction because it is not JSON.
             return RedactText(json);
         }
     }
-
-    private void RedactNode(JsonNode node)
-    {
-        if (node is JsonObject obj)
-        {
-            foreach (var property in obj.ToList())
-            {
-                if (IsSensitiveField(property.Key))
-                {
-                    obj[property.Key] = _settings.Replacement;
-                }
-                else if (property.Value is JsonValue value && value.TryGetValue<string>(out var text))
-                {
-                    obj[property.Key] = RedactText(text);
-                }
-                else if (property.Value is not null)
-                {
-                    RedactNode(property.Value);
-                }
-            }
-        }
-        else if (node is JsonArray array)
-        {
-            for (var index = 0; index < array.Count; index++)
-            {
-                var item = array[index];
-                if (item is not null)
-                {
-                    if (item is JsonValue value && value.TryGetValue<string>(out var text))
-                    {
-                        array[index] = RedactText(text);
-                    }
-                    else
-                    {
-                        RedactNode(item);
-                    }
-                }
-            }
-        }
-    }
-
-    private bool IsSensitiveField(string field)
-    {
-        var key = Normalize(field);
-        return _sensitiveKeys.Contains(key) || (_settings.PiiEnabled && _piiKeys.Contains(key));
-    }
-
-    private IEnumerable<string> ReportKeys() => _settings.PiiEnabled
-        ? _sensitiveKeys.Concat(_piiKeys).Distinct(StringComparer.OrdinalIgnoreCase)
-        : _sensitiveKeys;
-
-    private string RedactQueryString(string value)
-    {
-        if (!value.Contains('?', StringComparison.Ordinal) && !value.Contains('&', StringComparison.Ordinal))
-        {
-            return value;
-        }
-
-        var keyPattern = string.Join("|", ReportKeys().Select(Regex.Escape));
-        var redacted = Regex.Replace(
-            value,
-            $"(?<prefix>[?&](?:{keyPattern})=)[^&]*",
-            $"${{prefix}}{_settings.Replacement}",
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        return RedactText(redacted);
-    }
-
-    private static string Normalize(string value) =>
-        value.Trim().Replace('-', '_').ToLowerInvariant();
 }

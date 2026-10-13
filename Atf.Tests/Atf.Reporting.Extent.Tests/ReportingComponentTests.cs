@@ -1,4 +1,6 @@
 using Atf.Core.Reporting;
+using Atf.Core.Reporting.Evidence;
+using Atf.Reporting.Extent.Evidence;
 using AventStack.ExtentReports;
 
 namespace Atf.Reporting.Extent.Tests;
@@ -8,6 +10,37 @@ public sealed class ReportingComponentTests
     private static readonly string[] ClassOrder = ["UsersApiTests", "PostsApiTests"];
     private static readonly string[] ScenarioOrder = ["USERS API — test only"];
     private static readonly string[] TagOrder = ["api", "smoke"];
+
+    [Fact(DisplayName = "Warning assertion rows use the warning emoji instead of the failure emoji")]
+    public void WarningAssertionRowsUseWarningEmoji()
+    {
+        var html = AssertionEvidenceFormatter.BuildTableHtml([
+            new AtfAssertion("HTTP status", "201 Created", "200 OK", false, AtfReportStatus.Warning)
+        ]);
+
+        Assert.Contains("aria-label='Warning'", html, StringComparison.Ordinal);
+        Assert.Contains("title='Warning'>⚠️</span>", html, StringComparison.Ordinal);
+        Assert.Contains("class='assertion-warning'", html, StringComparison.Ordinal);
+        Assert.Contains("data-atf-assertion-status='warning'", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("class='assertion-fail'", html, StringComparison.Ordinal);
+        Assert.DoesNotContain("title='Fail'>❌</span>", html, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Assertion evidence uses typed row classes for pass, warning, skip and fail")]
+    public void AssertionEvidenceUsesTypedRowClasses()
+    {
+        var html = AssertionEvidenceFormatter.BuildTableHtml([
+            new AtfAssertion("pass", "expected", "actual", true, AtfReportStatus.Pass),
+            new AtfAssertion("warning", "expected", "actual", false, AtfReportStatus.Warning),
+            new AtfAssertion("skip", "expected", "actual", false, AtfReportStatus.Skip),
+            new AtfAssertion("fail", "expected", "actual", false, AtfReportStatus.Fail)
+        ]);
+
+        Assert.Contains("class='assertion-pass' data-atf-assertion-status='pass'", html, StringComparison.Ordinal);
+        Assert.Contains("class='assertion-warning' data-atf-assertion-status='warning'", html, StringComparison.Ordinal);
+        Assert.Contains("class='assertion-skip' data-atf-assertion-status='skip'", html, StringComparison.Ordinal);
+        Assert.Contains("class='assertion-fail' data-atf-assertion-status='fail'", html, StringComparison.Ordinal);
+    }
 
     [Fact(DisplayName = "Report theme expands the central palette without leaking placeholders")]
     public void ReportThemeUsesCentralPalette()
@@ -24,11 +57,28 @@ public sealed class ReportingComponentTests
         Assert.Contains("color: var(--atf-secondary-heading-text) !important", css, StringComparison.Ordinal);
         Assert.Contains("font-family: var(--atf-overview-font-family) !important", css, StringComparison.Ordinal);
         Assert.Contains("font-size: var(--atf-font-base-size) !important", css, StringComparison.Ordinal);
+        Assert.Contains("tr.assertion-warning td", css, StringComparison.Ordinal);
+        Assert.Contains("tr.assertion-skip td", css, StringComparison.Ordinal);
         Assert.Contains("body.dark .atf-tag-table, body.dark .atf-tag-table tbody, body.dark .atf-tag-table tr, body.dark .atf-tag-table td { color: var(--atf-text) !important; }", css, StringComparison.Ordinal);
         Assert.Contains("--atf-dark: #101723", css, StringComparison.Ordinal);
         Assert.Contains(".test-wrapper .test-list-wrapper > .test-list-item > .test-item > .test-contents", css, StringComparison.Ordinal);
         Assert.Contains("display: none !important", css, StringComparison.Ordinal);
         Assert.DoesNotContain("__ATF_", css, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Theme and client behaviour compose all semantic fragments")]
+    public void ReportingComposersResolveTheirFragmentBoundaries()
+    {
+        var css = AtfReportTheme.BuildCss();
+        var script = ExtentReportClientBehaviour.Build();
+
+        Assert.Contains(".category-view .badge.log", css, StringComparison.Ordinal);
+        Assert.Contains(".helm-trace-table", css, StringComparison.Ordinal);
+        Assert.Contains("function buildTagAudit()", script, StringComparison.Ordinal);
+        Assert.Contains("function configureFailureView()", script, StringComparison.Ordinal);
+        Assert.Contains("function configureExecutionHierarchy()", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("__ATF_", css, StringComparison.Ordinal);
+        Assert.DoesNotContain("__ATF_", script, StringComparison.Ordinal);
     }
 
     [Fact(DisplayName = "Extent asset inliner embeds the offline resources")]
@@ -57,10 +107,10 @@ public sealed class ReportingComponentTests
         const string paddedStandardHtml = "<body class=\"spa  standard\"><main /></body>";
         const string singleQuotedStandardHtml = "<body class='spa standard'><main /></body>";
 
-        Assert.Contains("class=\"spa dark\"", ExtentReportDocumentComposer.EnsureDarkExtentTheme(standardHtml), StringComparison.Ordinal);
-        Assert.Contains("class=\"spa  dark\"", ExtentReportDocumentComposer.EnsureDarkExtentTheme(paddedStandardHtml), StringComparison.Ordinal);
-        Assert.Contains("class='spa dark'", ExtentReportDocumentComposer.EnsureDarkExtentTheme(singleQuotedStandardHtml), StringComparison.Ordinal);
-        Assert.Equal("<body class=\"spa dark\"><main /></body>", ExtentReportDocumentComposer.EnsureDarkExtentTheme("<body class=\"spa dark\"><main /></body>"));
+        Assert.Contains("class=\"spa dark\"", ExtentNativeHtmlSanitizer.EnsureDarkExtentTheme(standardHtml), StringComparison.Ordinal);
+        Assert.Contains("class=\"spa  dark\"", ExtentNativeHtmlSanitizer.EnsureDarkExtentTheme(paddedStandardHtml), StringComparison.Ordinal);
+        Assert.Contains("class='spa dark'", ExtentNativeHtmlSanitizer.EnsureDarkExtentTheme(singleQuotedStandardHtml), StringComparison.Ordinal);
+        Assert.Equal("<body class=\"spa dark\"><main /></body>", ExtentNativeHtmlSanitizer.EnsureDarkExtentTheme("<body class=\"spa dark\"><main /></body>"));
     }
 
     [Fact(DisplayName = "Report composition replaces stale ATF-owned CSS and behaviour blocks")]
@@ -68,13 +118,45 @@ public sealed class ReportingComponentTests
     {
         const string html = "<head><style id=\"atf-custom-theme\">old-css</style></head><body><script id='atf-custom-behaviour'>old-js</script><main /></body>";
 
-        var cleaned = ExtentReportDocumentComposer.RemoveAtfOwnedBlocks(html);
+        var cleaned = ExtentNativeHtmlSanitizer.RemoveAtfOwnedBlocks(html);
 
         Assert.DoesNotContain("old-css", cleaned, StringComparison.Ordinal);
         Assert.DoesNotContain("old-js", cleaned, StringComparison.Ordinal);
         Assert.DoesNotContain("atf-custom-theme", cleaned, StringComparison.Ordinal);
         Assert.DoesNotContain("atf-custom-behaviour", cleaned, StringComparison.Ordinal);
         Assert.Contains("<main />", cleaned, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Report composition removes the native Log events card structurally")]
+    public void ReportCompositionRemovesNativeLogEventsCard()
+    {
+        const string html = """
+            <div class="row">
+              <div class="col-md-3"><div class="card"><div class="card-header"><h6 class="card-title">Tests</h6></div><div class="card-body"><canvas /></div></div></div>
+              <div class="col-md-3"><div class="card"><div class="card-header"><h6 class="card-title">Log events</h6></div><div class="card-body"><canvas id="events-analysis" /></div><div class="card-footer"><div>old counter</div></div></div></div>
+              <div class="col-md-3"><div class="card"><h6 class="card-title">Keep this</h6></div></div>
+            </div>
+            """;
+
+        var cleaned = ExtentNativeOverviewPruner.RemoveNativeLogEventsCard(html);
+
+        Assert.DoesNotContain("Log events", cleaned, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("events-analysis", cleaned, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Keep this", cleaned, StringComparison.Ordinal);
+        Assert.Contains("Tests", cleaned, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Report composition removes the orphaned native events chart script")]
+    public void ReportCompositionRemovesNativeEventsChartScript()
+    {
+        const string html = "<body>before</body>" +
+            "/* -- [ events chart ] -- */ (function drawEventsChart() { var stale = true; })();";
+
+        var cleaned = ExtentNativeOverviewPruner.RemoveNativeEventsChart(html);
+
+        Assert.DoesNotContain("drawEventsChart", cleaned, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("events chart", cleaned, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("before", cleaned, StringComparison.Ordinal);
     }
 
     [Fact(DisplayName = "Embedded report behaviour exposes dependency-free view navigation")]
@@ -89,12 +171,98 @@ public sealed class ReportingComponentTests
         Assert.Contains("window.currentView = view", script, StringComparison.Ordinal);
     }
 
+    [Fact(DisplayName = "Failure behaviour composes evidence records before the DOM view projection")]
+    public void FailureBehaviourKeepsEvidenceAndViewResponsibilitiesSeparated()
+    {
+        var script = ExtentReportClientBehaviour.Build();
+
+        var evidenceBoundary = script.IndexOf("function failureEvidenceRecords(card)", StringComparison.Ordinal);
+        var viewBoundary = script.IndexOf("function createFailureViewItem(record)", StringComparison.Ordinal);
+
+        Assert.True(evidenceBoundary >= 0, "The failure evidence fragment must be composed into the client contract.");
+        Assert.True(viewBoundary > evidenceBoundary, "Failure records must be prepared before the DOM view is rendered.");
+        Assert.Equal(1, CountOccurrences(script, "function failureEvidenceRecords(card)"));
+        Assert.Equal(1, CountOccurrences(script, "function createFailureViewItem(record)"));
+        Assert.Contains("scenarioCard.dataset.atfFailureIds", script, StringComparison.Ordinal);
+        Assert.Contains("function evidenceKey(value, fallback)", script, StringComparison.Ordinal);
+        Assert.Contains("const evidenceId = [phaseId, requestId, validationCardId, assertionId].join('::')", script, StringComparison.Ordinal);
+        Assert.Contains("evidenceId: failure.evidence.evidenceId", script, StringComparison.Ordinal);
+        Assert.Contains("data-atf-evidence-id", script, StringComparison.Ordinal);
+    }
+
+    private static int CountOccurrences(string value, string token)
+    {
+        var count = 0;
+        var offset = 0;
+        while ((offset = value.IndexOf(token, offset, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            offset += token.Length;
+        }
+
+        return count;
+    }
+
+    [Fact(DisplayName = "Client behaviour opens the overview by default and links category tests to Tests")]
+    public void ClientBehaviourOpensOverviewAndLinksCategoryTests()
+    {
+        var script = ExtentReportClientBehaviour.Build();
+        var css = AtfReportTheme.BuildCss();
+
+        Assert.Contains("function initialView()", script, StringComparison.Ordinal);
+        Assert.Contains("return 'dashboard-view'", script, StringComparison.Ordinal);
+        Assert.Contains("function openInitialView()", script, StringComparison.Ordinal);
+        Assert.Contains("toggleView(initialView())", script, StringComparison.Ordinal);
+        Assert.Contains("function setActiveNavigation(view)", script, StringComparison.Ordinal);
+        Assert.Contains("'dashboard-view': 'nav-dashboard'", script, StringComparison.Ordinal);
+        Assert.Contains("function configureCategoryLinks()", script, StringComparison.Ordinal);
+        Assert.Contains(".category-view .tag-test-status a.linked[data-atf-test-id]", script, StringComparison.Ordinal);
+        Assert.Contains("function installCategoryNavigation()", script, StringComparison.Ordinal);
+        Assert.Contains("openTestById(target.getAttribute('data-atf-test-id'))", script, StringComparison.Ordinal);
+        Assert.Contains("link.setAttribute('href', '#test-id='", script, StringComparison.Ordinal);
+        Assert.Contains("configureCategoryLinks()", script, StringComparison.Ordinal);
+        Assert.Contains("installCategoryNavigation()", script, StringComparison.Ordinal);
+        Assert.Contains("setTimeout(openInitialView, 0)", script, StringComparison.Ordinal);
+        Assert.Contains(".category-view .tag-test-status a.linked", css, StringComparison.Ordinal);
+    }
+
     [Fact(DisplayName = "Exception view publishes API triage fields and a deterministic Tests link")]
     public void ExceptionViewProvidesFailureTriageAndTestLink()
     {
         var script = ExtentReportClientBehaviour.Build();
         var css = AtfReportTheme.BuildCss();
 
+        Assert.Contains("function ensureFailureNavigation()", script, StringComparison.Ordinal);
+        Assert.Contains("function failureScenarioRecords()", script, StringComparison.Ordinal);
+        Assert.Contains("function reconcileFailureNavigationOrder()", script, StringComparison.Ordinal);
+        Assert.Contains("menu.insertBefore(failureItem, overviewItem)", script, StringComparison.Ordinal);
+        Assert.Contains("function failureEvidenceRecords(card)", script, StringComparison.Ordinal);
+        Assert.Contains("row.dataset.atfAssertionStatus === 'fail'", script, StringComparison.Ordinal);
+        Assert.Contains("evidenceId: evidenceId", script, StringComparison.Ordinal);
+        Assert.Contains("phaseId: phaseId", script, StringComparison.Ordinal);
+        Assert.Contains("requestId: requestId", script, StringComparison.Ordinal);
+        Assert.Contains("validationId: validationCardId", script, StringComparison.Ordinal);
+        Assert.Contains("assertionId: assertionId", script, StringComparison.Ordinal);
+        Assert.Contains("row.dataset.atfEvidenceId = evidence.evidenceId || ''", script, StringComparison.Ordinal);
+        Assert.Contains("dataset.atfFailureIds", script, StringComparison.Ordinal);
+        Assert.Contains("function requestForValidation(validationCard, phase, card)", script, StringComparison.Ordinal);
+        Assert.Contains("function failureIdFor(testId, nodeId, title, ordinal)", script, StringComparison.Ordinal);
+        Assert.Contains("data-atf-failure-id", script, StringComparison.Ordinal);
+        Assert.Contains("failure-id=", script, StringComparison.Ordinal);
+        Assert.Contains("id = 'nav-exception'", script, StringComparison.Ordinal);
+        Assert.Contains("fa fa-bug", script, StringComparison.Ordinal);
+        Assert.Contains("link.title = 'Fails'", script, StringComparison.Ordinal);
+        Assert.Contains("aria-label', 'Fails'", script, StringComparison.Ordinal);
+        Assert.Contains(">Fails</span>", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("Failures / Bugs", script, StringComparison.Ordinal);
+        Assert.Contains("className = 'test-wrapper row view exception-view d-none'", script, StringComparison.Ordinal);
+        Assert.Contains("class=\"test-list-tools\"><ul class=\"tools\">", script, StringComparison.Ordinal);
+        Assert.Contains("ensureFailureNavigation();", script, StringComparison.Ordinal);
+        Assert.Contains(".atf-failure-index", css, StringComparison.Ordinal);
+        Assert.Contains(".exception-view .test-list-item .test-item[status=\"fail\"]", css, StringComparison.Ordinal);
+        Assert.Contains(".exception-view .test-list-tools", css, StringComparison.Ordinal);
+        Assert.Contains("clear: both", css, StringComparison.Ordinal);
+        Assert.Contains(".exception-view .test-list-wrapper", css, StringComparison.Ordinal);
         Assert.Contains("function configureFailureView()", script, StringComparison.Ordinal);
         Assert.Contains("data-atf-failure-details", script, StringComparison.Ordinal);
         Assert.Contains("['PHASE', evidence.phase]", script, StringComparison.Ordinal);
@@ -109,7 +277,7 @@ public sealed class ReportingComponentTests
         Assert.Contains("window.location.hash = 'test-id='", script, StringComparison.Ordinal);
         Assert.Contains("setTimeout(function ()", script, StringComparison.Ordinal);
         Assert.Contains("global handler clones the source payload into every view", script, StringComparison.Ordinal);
-        Assert.Contains("function failureTestCard(nodeId, visibleDetailOnly)", script, StringComparison.Ordinal);
+        Assert.Contains("function failureTestCard(nodeId, visibleDetailOnly, failureId)", script, StringComparison.Ordinal);
         Assert.Contains("visibleDetailOnly", script, StringComparison.Ordinal);
         Assert.Contains("Poll only that visible detail pane", script, StringComparison.Ordinal);
         Assert.Contains("candidate.dataset.atfPhase || phaseKey(title)", script, StringComparison.Ordinal);
@@ -166,15 +334,18 @@ public sealed class ReportingComponentTests
         var script = ExtentReportClientBehaviour.Build();
 
         Assert.Contains("function reportScenarioData()", script, StringComparison.Ordinal);
+        Assert.Contains("else if (status.includes('warning')) totals.other++", script, StringComparison.Ordinal);
         Assert.Contains("const total = data.scenarioCards.length", script, StringComparison.Ordinal);
+        Assert.Contains("['Total tests warning', scenarioStatusTotals.other]", script, StringComparison.Ordinal);
+        Assert.Contains("'</b> warnings'", script, StringComparison.Ordinal);
+        Assert.Contains("replace(/\\bothers\\b/gi, 'warnings')", script, StringComparison.Ordinal);
         Assert.Contains("setText(summaryValue('Tests Passed'), totals.passed)", script, StringComparison.Ordinal);
         Assert.Contains("setText(summaryValue('Tests Failed'), totals.failed)", script, StringComparison.Ordinal);
         Assert.Contains("statusGroup.parentCount = total", script, StringComparison.Ordinal);
+        Assert.Contains("statusGroup.warningParent = totals.other", script, StringComparison.Ordinal);
         Assert.Contains("function removeExecutionPhaseChart(dashboard)", script, StringComparison.Ordinal);
-        Assert.Contains("function removeLogEventsChart(dashboard)", script, StringComparison.Ordinal);
-        Assert.Contains("removeLogEventsChart(dashboard)", script, StringComparison.Ordinal);
-        Assert.Contains("dashboard.querySelector('#events-analysis')", script, StringComparison.Ordinal);
-        Assert.Contains("chart.destroy?.()", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("removeLogEventsChart", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("events-analysis", script, StringComparison.Ordinal);
         Assert.Contains("function updateOverviewCharts(totals)", script, StringComparison.Ordinal);
         Assert.Contains("dataset.data = [totals.passed, totals.failed, totals.other, totals.skipped]", script, StringComparison.Ordinal);
         Assert.DoesNotContain("function labelOverviewMetrics(dashboard)", script, StringComparison.Ordinal);
@@ -182,7 +353,9 @@ public sealed class ReportingComponentTests
         Assert.DoesNotContain("phases passed", script, StringComparison.Ordinal);
         Assert.DoesNotContain("phases failed", script, StringComparison.Ordinal);
         Assert.Contains("const nativeTagTable = dashboard.querySelector('.category-container table')", script, StringComparison.Ordinal);
+        Assert.Contains("headerCells[4].textContent = 'WARNING'", script, StringComparison.Ordinal);
         Assert.Contains("const tagTotal = totals.passed + totals.failed + totals.skipped + totals.other", script, StringComparison.Ordinal);
+        Assert.Contains("status.includes('warning') ? 'other'", script, StringComparison.Ordinal);
         Assert.Contains("cells[5].textContent = Math.round(totals.passed / Math.max(tagTotal, 1) * 100) + '%'", script, StringComparison.Ordinal);
         Assert.DoesNotContain("__ATF_TEST_TOTAL__", script, StringComparison.Ordinal);
     }
@@ -534,6 +707,40 @@ public sealed class ReportingComponentTests
         Assert.DoesNotContain("document.addEventListener('click', toggleCard, true)", script, StringComparison.Ordinal);
     }
 
+    [Fact(DisplayName = "Navigation controller owns failure tab ordering")]
+    public void NavigationControllerOwnsFailureTabOrdering()
+    {
+        var navigation = ExtentReportClientNavigationController.Build();
+        var failure = ExtentReportClientFailureFragments.Build();
+
+        Assert.Contains("function reconcileFailureNavigationOrder()", navigation, StringComparison.Ordinal);
+        Assert.Contains("menu.insertBefore(failureItem, overviewItem)", navigation, StringComparison.Ordinal);
+        Assert.DoesNotContain("function reconcileFailureNavigationOrder()", failure, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Failure evidence separates record factory from index projection")]
+    public void FailureEvidenceSeparatesFactoryAndProjector()
+    {
+        var evidence = ExtentReportClientFailureEvidenceFragments.Build();
+        var failureView = ExtentReportClientFailureFragments.Build();
+
+        Assert.Contains("function createFailureRecord(", evidence, StringComparison.Ordinal);
+        Assert.Contains("function projectFailureRecords()", evidence, StringComparison.Ordinal);
+        Assert.Contains("return projectFailureRecords();", evidence, StringComparison.Ordinal);
+        Assert.Contains("failureScenarioRecords()", failureView, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Failure view resolves evidence before publishing evidence attributes")]
+    public void FailureViewResolvesEvidenceBeforeUse()
+    {
+        var script = ExtentReportClientFailureFragments.Build();
+        var evidenceDeclaration = script.IndexOf("const evidence = failureEvidence(card);", StringComparison.Ordinal);
+        var evidenceAttribute = script.IndexOf("row.dataset.atfEvidenceId = evidence.evidenceId", StringComparison.Ordinal);
+
+        Assert.True(evidenceDeclaration >= 0, "Failure view must resolve evidence before rendering metadata.");
+        Assert.True(evidenceAttribute > evidenceDeclaration, "Evidence attributes must be assigned after evidence resolution.");
+    }
+
     [Fact(DisplayName = "Extent evidence renderer keeps details collapsed and escapes values")]
     public void EvidenceRendererBuildsSafeCollapsedEnvelope()
     {
@@ -622,6 +829,64 @@ public sealed class ReportingComponentTests
         Assert.Equal(
             ["method", "url", "route.path.template", "auth.profile", "response.status", "response.content.type", "response.duration.ms", "attempt"],
             details.Select(detail => detail.Key).ToArray());
+    }
+
+    [Fact(DisplayName = "Technical trace duplicate policy preserves all diagnostic occurrences when requested")]
+    public void TechnicalTraceCanPreserveDuplicateOccurrences()
+    {
+        var details = EvidenceTableFormatter.CompactTechnicalTraceDetails(
+        [
+            new("method", "GET"),
+            new("url", "https://example.test/users?page=1"),
+            new("url", "https://example.test/users?page=2"),
+            new("route.path.template", "/users"),
+            new("auth.profile", "anonymous"),
+            new("response.status", "429"),
+            new("response.status", "200"),
+            new("response.content.type", "application/json"),
+            new("response.duration.ms", "42"),
+            new("attempt", "1"),
+            new("attempt", "2")
+        ], DuplicateTechnicalTraceKeyPolicy.KeepAll);
+
+        Assert.Equal(
+            ["https://example.test/users?page=1", "https://example.test/users?page=2"],
+            details.Where(detail => detail.Key.Equals("url", StringComparison.OrdinalIgnoreCase))
+                .Select(detail => detail.Value)
+                .ToArray());
+        Assert.Equal(
+            ["429", "200"],
+            details.Where(detail => detail.Key.Equals("response.status", StringComparison.OrdinalIgnoreCase))
+                .Select(detail => detail.Value)
+                .ToArray());
+        Assert.Equal(
+            ["1", "2"],
+            details.Where(detail => detail.Key.Equals("attempt", StringComparison.OrdinalIgnoreCase))
+                .Select(detail => detail.Value)
+                .ToArray());
+    }
+
+    [Fact(DisplayName = "Technical trace keeps final values by default for the compact response contract")]
+    public void TechnicalTraceKeepsFinalValuesByDefault()
+    {
+        var details = EvidenceTableFormatter.CompactTechnicalTraceDetails(
+        [
+            new("method", "GET"),
+            new("url", "https://example.test/users?page=1"),
+            new("url", "https://example.test/users?page=2"),
+            new("route.path.template", "/users"),
+            new("auth.profile", "anonymous"),
+            new("response.status", "429"),
+            new("response.status", "200"),
+            new("response.content.type", "application/json"),
+            new("response.duration.ms", "42"),
+            new("attempt", "1"),
+            new("attempt", "2")
+        ]);
+
+        Assert.Equal("https://example.test/users?page=2", details.Single(detail => detail.Key == "url").Value);
+        Assert.Equal("200", details.Single(detail => detail.Key == "response.status").Value);
+        Assert.Equal("2", details.Single(detail => detail.Key == "attempt").Value);
     }
 
     [Fact(DisplayName = "Execution evidence renders assertion details as one escaped table")]

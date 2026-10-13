@@ -40,7 +40,8 @@ public sealed class ApiExecutorCompositionTests
         var result = await executor.ExecuteAsync(new ApiRequest(
             HttpMethod.Get,
             "/custom",
-            AuthProfile: "anonymous"));
+            AuthProfile: "anonymous"),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, result.Response.StatusCode);
         Assert.Equal(1, transport.Calls);
@@ -74,7 +75,9 @@ public sealed class ApiExecutorCompositionTests
             new FakeUrlBuilder("https://example.test/items"));
 
         var actual = await Assert.ThrowsAsync<HttpRequestException>(() =>
-            executor.ExecuteAsync(new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous")));
+            executor.ExecuteAsync(
+                new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous"),
+                TestContext.Current.CancellationToken));
 
         Assert.Same(expected, actual);
     }
@@ -112,7 +115,9 @@ public sealed class ApiExecutorCompositionTests
             transport,
             new FakeUrlBuilder("https://example.test/items"));
 
-        var result = await executor.ExecuteAsync(new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous"));
+        var result = await executor.ExecuteAsync(
+            new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous"),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, result.Response.StatusCode);
         Assert.Equal(1, transport.Calls);

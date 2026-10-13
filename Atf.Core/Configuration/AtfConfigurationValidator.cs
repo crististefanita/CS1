@@ -15,7 +15,7 @@ internal static class AtfConfigurationValidator
 
         if (!configuration.Modules.ContainsKey("api"))
         {
-            throw new InvalidOperationException("Modules:Api configuration is required.");
+            ConfigurationRuleViolation.Throw("ATF-MODULE-001", "Modules:Api", "API module configuration is required.");
         }
 
         ApiConfigurationValidator.Validate(configuration.Api);

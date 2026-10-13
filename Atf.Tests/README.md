@@ -6,36 +6,65 @@ The normative rules for cohesive OOP design, meaningful annotations, aggregate
 validations and test lifecycle are in the
 [ATF best-practices README](../docs/README_Atf_BestPractices.md).
 
-Aceasta este secțiunea dedicată testării ATF-ului însuși, nu testării unui API produs. Ea protejează contractele reutilizabile ale soluției înainte de rularea scenariilor live din `Atf.Api`.
+Aceasta este secțiunea dedicată testării ATF-ului însuși, nu testării unui API
+produs. Ea protejează contractele reutilizabile ale soluției înainte de rularea
+scenariilor live. Toate proiectele de testare ATF sunt grupate sub acest
+director; nu mai există proiecte de testare ATF la rădăcina repository-ului.
 
 ## Organizare
 
 | Proiect | Tip dominant | Ce protejează |
 |---|---|---|
-| `Atf.Core.Tests` | unit + component contract tests | configurație, HTTP, autentificare, executor, retry/polling, lifecycle port și artifactul HTML |
-| `Atf.Common.Tests` | module component tests | `ApiModule`, rute, servicii, pași, fixture-uri, validări și cleanup |
+| `Atf.Core.Tests` | unit + component contract tests | configurație, HTTP, autentificare, executor, retry/polling și lifecycle port |
+| `Atf.Common.Tests` | module component tests pentru `Atf.Api/Module` | rute, servicii, validări și cleanup |
 | `Atf.Api.Tests` | API/reporting component tests | boundary tests, phase layout și evidence fără serviciu |
-| `Atf.Tests/Atf.Reporting.Extent.Tests` | adapter/report artifact tests | ownership Extent, envelope HTML, theme și collapse contract |
-| `Atf.Api` | live acceptance tests | comportamentul API-ului țintă și contractele de business |
+| `Atf.Api.FailureDemos` | failure fixtures opt-in | căi de failure controlate, fără contaminarea suitei normale |
+| `Atf.Reporting.Extent.Tests` | adapter/report artifact tests | ownership Extent, envelope HTML, theme și collapse contract |
+
+## Structura minimă țintă
+
+La rădăcina repository-ului păstrăm doar modulele care exprimă un boundary
+real:
+
+```text
+Atf.Core/                 # kernel tehnic
+Atf.Api/                  # modul API și scenarii live
+Atf.Api.TestHost/         # composition root pentru renderer
+Atf.Reporting.Extent/     # adaptor Extent
+Atf.Tests/                # toate testele ATF
+docs/                     # documentație și feedback
+artifacts/                # rapoarte generate
+```
+
+Conținutul fostului `Atf.Common` este în `Atf.Api/Module`, iar
+`Atf.Api.Tests` și `Atf.Api.FailureDemos` sunt proiecte grupate în `Atf.Tests`,
+nu proiecte concurente la rădăcină. `Atf.Api.TestHost` nu se mută în `Atf.Api`, deoarece ar
+introduce dependența directă de Extent în proiectul scenariilor. Orice director
+nou la rădăcină trebuie să justifice un boundary, o dependență sau un lifecycle
+independent și să aibă teste proprii.
 
 ## Cum se citește soluția
 
 ```mermaid
 flowchart LR
     Core[Atf.Core\npolicy + renderer-neutral ports]
-    Common[Atf.Common\nmodule language + validators]
+    Module[Atf.Api/Module\nmodule language + validators]
     Api[Atf.Api\nscenario intent + live service]
-    CoreTests[Atf.Core.Tests\nunit/component/artifact]
-    CommonTests[Atf.Common.Tests\nmodule component]
-    Core --> Common --> Api
+    CoreTests[Atf.Core.Tests\nunit/component]
+    CommonTests[Atf.Common.Tests\nAtf.Api/Module component]
+    Core --> Module --> Api
     CoreTests -. protects .-> Core
-    CommonTests -. protects .-> Common
+    CommonTests -. protects .-> Module
     Api -. consumes .-> Core
-    Api -. consumes .-> Common
+    Api -. owns .-> Module
 ```
 
-Regula de ownership este simplă: `Core` nu cunoaște domeniul, `Common` nu cunoaște
-runnerul sau markup-ul Extent, iar `Api` nu construiește transportul. Dacă o
+Structura simplificată este aplicată. Nu absorbim `Atf.Core` și nu mutăm
+Extent în API.
+
+Regula de ownership este simplă: `Core` nu cunoaște domeniul,
+`Atf.Api/Module` nu cunoaște runnerul sau markup-ul Extent, iar `Api` nu
+construiește transportul. Dacă o
 modificare poate fi verificată fără serviciu, ea aparține testelor de sub `Atf.Tests`.
 
 ## Contracte observabile și dovada lor
@@ -49,7 +78,57 @@ modificare poate fi verificată fără serviciu, ea aparține testelor de sub `A
 | contract funcțional agregat | `ValidationTable` | `ValidationComponentTests` | JSON invalid, schema invalid și colecție goală |
 | lifecycle de reporting | `ValidationTable.Run` + `CompleteStep` | `ValidationAndLifecycleTests` | validarea agregată rămâne frate direct al requestului sub aceeași fază |
 | cleanup determinist | `CleanupRegistry` | `ValidationAndLifecycleTests` | failure în setup/body/teardown și duplicate ownership |
-| artifact consumabil | `ReportArtifactInspector` | `ReportArtifactInspectorTests` | DOM semantic, responsive layout și overflow |
+| artifact consumabil | `ReportArtifactInspector` | `ReportArtifactInspectorTests` | HTML static, tokens, self-contained artifact și overflow guards |
+
+## Audit update — 2026-10-13
+
+Suitea internă oferă acoperire offline pentru contractele componente. Această
+acoperire nu înseamnă că raportarea este validată
+vizual în browser și nu înlocuiește rularea live.
+
+Verificarea offline a working tree-ului curent a trecut cu **320/320** teste:
+
+```text
+Atf.Core.Tests               83/83
+Atf.Common.Tests             67/67
+Atf.Reporting.Extent.Tests   118/118
+Atf.Api.Tests                52/52
+```
+
+Acest rezultat dovedește contractele de componentă, nu și randarea DOM în
+browser. Reporter failure isolation, lifecycle precedence și soft-warning
+propagation sunt acum protejate de teste de componentă. Rămân necesare
+eliminarea leak-urilor din path/lock registries și un contract browser pentru
+click, collapse, scroll și computed styles. Pentru soft assert, rândul
+`RESULT = Fail` rămâne vizibil semantic, xUnit nu eșuează, iar scenariul este
+proiectat ca `Warning`; în Overview, bucket-ul intern `other` este afișat ca
+`WARNING`/`Other` conform suprafeței, fără a fi confundat cu un verdict `Fail`.
+
+Regula de mentenanță este să adăugăm testul lângă seam-ul pe care îl protejează:
+evaluarea funcțională nu trebuie să depindă de succesul publicării diagnosticului,
+iar un test static de HTML nu trebuie prezentat ca dovadă de randare browser.
+
+### Matricea de testare pentru următorul increment
+
+| Strat | Owner | Exemplu de contract |
+|---|---|---|
+| unit | `Atf.Core.Tests` / `Atf.Common.Tests` | reguli pure, config, retry, redaction, evaluare tabel |
+| component | `Atf.Api.Tests` / Extent tests | lifecycle, tree ownership, reporter failure, status precedence |
+| artifact | `Atf.Reporting.Extent.Tests` | HTML autonom, tokens, roles, JSON block, assertion table |
+| browser | contract DOM separat | click, collapse, scroll, computed styles, overflow |
+| live | `Atf.Api` | business contract, auth și comportament al serviciului țintă |
+
+Un fix nu se declară complet dacă acoperă doar un strat inferior. În special,
+`ReportArtifactInspectorTests` nu trebuie numite browser tests, iar un test live
+verde nu trebuie folosit ca dovadă pentru separarea responsabilităților interne.
+
+### Datorie de toolchain
+
+Proiectele API folosesc xUnit v3.2.2, în timp ce proiectele interne din ținta
+`Atf.Tests` folosesc încă xUnit 2.9.3. Până la consolidare, diferența trebuie
+tratată ca incompatibilitate documentată și verificată; după consolidare trebuie
+aleasă o singură generație, pentru a evita lifecycle și discovery semantics
+divergente.
 
 ## De ce nu se numește totul `Atf.Unit.Tests`
 
@@ -66,8 +145,8 @@ valoare operațională, precum `smoke`, `lifecycle`, `combination`, `contract`,
 ## Regula de execuție
 
 ```text
-Atf.Core.Tests -> Atf.Common.Tests -> Atf.Api
-offline           offline             live / target API
+CURRENT: Atf.Tests/Core + Atf.Tests/Module + Atf.Tests/Api + Atf.Tests/Reporting.Extent
+         offline component contracts                          live / target API
 ```
 
 ```powershell
@@ -121,9 +200,9 @@ Un test ATF este sănătos când testează un contract observabil la nivelul pot
 | Contract | Owner | Test seam | Verdictul verificat |
 |---|---|---|---|
 | settings valide | `Atf.Core` | loader + config fake | fail fast înainte de execuție |
-| request semantic | `Atf.Common` | `IApiExecutor` fake | method/path/body/auth/route metadata |
+| request semantic | `Atf.Api/Module` | `IApiExecutor` fake | method/path/body/auth/route metadata |
 | exchange HTTP | `Atf.Core` | `IApiTransport` / `HttpMessageHandler` fake | response, attempts, duration, retry events |
-| contract funcțional | `Atf.Common` | `IAtfReporter` recording fake | toate rândurile într-un singur tabel |
+| contract funcțional | `Atf.Api/Module` | `IAtfReporter` recording fake | toate rândurile într-un singur tabel |
 | lifecycle | `Atf.Api` + `Atf.Core` | fixture/context fake | setup → body → teardown; cleanup chiar la failure |
 | request/validation tree | `Atf.Api.Tests` + `Atf.Tests/Atf.Reporting.Extent.Tests` | Extent in-memory tree | fiecare request este urmat de exact un sibling de validare, în ordinea execuției |
 | raport consumabil | `Atf.Core` | HTML artifact real | Extent embedded, dark, collapsed, fără `extent/` |
@@ -133,14 +212,15 @@ Un test ATF este sănătos când testează un contract observabil la nivelul pot
 ```mermaid
 flowchart TB
     L[Live API scenarios\nAtf.Api]
-    C[Module component tests\nAtf.Common.Tests]
+    C[Module component tests\nAtf.Common.Tests -> Atf.Api/Module]
     U[Kernel + reporting contract tests\nAtf.Core.Tests]
     U --> C --> L
 ```
 
-`Atf.Api` is the live acceptance boundary. Any offline API-composition or
-reporting-contract test found in that assembly is transitional and should move to
-`Atf.Common.Tests` or `Atf.Core.Tests` according to its seam. The runner total is
+`Atf.Api` is the live acceptance boundary and owns the module implementation
+under `Atf.Api/Module`. Any offline API-composition or reporting-contract test
+found in that assembly is transitional and should move to `Atf.Common.Tests`,
+`Atf.Core.Tests` or `Atf.Reporting.Extent.Tests` according to its seam. The runner total is
 not automatically equal to the number of API scenarios shown by Extent; reconcile
 them by explicit inventory labels, never by blindly reusing a container count or a
 number copied into this README.
@@ -173,6 +253,7 @@ Ordinea este intenționată: un defect de configurare, routing sau reporting tre
 | `CleanupRunsAfterSetupFailure` | scenario harness + registry | teardown rulează dacă ownership-ul a fost dobândit înainte de failure |
 | `ParallelScopesNeverMixEvidence` | două task-uri + reporter recording | requesturile și tabelele rămân în scenariul lor |
 | `RunnerSkipMatchesExtentSkip` | xUnit v3 scenario harness + Extent scope | un skip de precondiție este `Skipped` în ambele rezultate, nu `Passed` în runner |
+| `ValidationReporterFailurePreservesFunctionalOutcome` | throwing reporter + validation runner | `StartStep`, tabelul, Warning și `CompleteStep` nu maschează cauza originală |
 
 ### Prioritate P1 — acoperire de contract API
 
@@ -195,6 +276,13 @@ Ordinea este intenționată: un defect de configurare, routing sau reporting tre
 | report lifecycle | run repetat în același proces, flush idempotent, retenție și cleanup controlat |
 | browser contract | DOM semantic, toate details collapsed, zero overflow orizontal la viewport îngust |
 
+### Regula pentru testele arhitecturale
+
+Testele noi trebuie să verifice ownership-ul și efectul observabil. Nu introduceți
+teste care fixează o clasă internă doar pentru că există astăzi. Dacă un split OOP
+este justificat, el trebuie să aibă un seam consumat de cel puțin două cazuri sau
+o politică distinctă care merită testată separat.
+
 ## Sugestii de îmbunătățire profundă
 
 1. **Păstrează sesiunea de execuție izolată de adapterul Extent.** `IAtfReportSession` deține starea unei singure rulări, iar `ExtentReportLifecycle` este adaptorul concret. Următorul pas este un context `AsyncLocal` doar pentru corelarea explicită a transportului, nu pentru starea globală a raportului.
@@ -202,7 +290,7 @@ Ordinea este intenționată: un defect de configurare, routing sau reporting tre
 3. **Adaugă un redactor central.** Nicio componentă nu ar trebui să decidă local ce este secret; `ISensitiveDataRedactor` trebuie aplicat înainte de `Detail`, `Json`, exception și snapshot.
 4. **Validează configurația ca schemă.** JSON este implementarea curentă; blueprint-ul declarativ YAML poate fi introdus ulterior printr-un provider, dar semantic trebuie să rămână aceeași configurație pe module.
 5. **Construiește un registry declarativ de operații.** `ApiRoutes` este acum scris în C#; un registry configurabil ar permite generarea operațiilor și a matricei de smoke/negative/relationship fără recompilarea motorului.
-6. **Fă testarea de raportare contract-first.** `ReportArtifactInspector` trebuie extins treptat de la verificări de substring la verificări DOM/semantică pentru ordinea overview-ului, collapsed state, tabele și lipsa overflow-ului.
+6. **Fă testarea de raportare contract-first.** `ReportArtifactInspector` protejează contractul HTML static; collapsed state, ordinea overview-ului, click-urile și computed styles trebuie acoperite separat prin browser/DOM smoke tests.
 7. **Separă modelul de verdict de modelul de prezentare.** `ApiExecutionResult`, `ValidationTable` și statusul Extent trebuie să aibă conversii explicite; un `Info` tehnic nu trebuie să poată produce accidental `Pass` funcțional.
 8. **Introdu contracte de compatibilitate pentru configurație.** Fiecare cheie configurabilă trebuie să aibă default, validator, exemplu, override environment și test de binding.
 9. **Tratează raportul ca produs.** Adaugă screenshot/DOM checks la breakpoint-uri, accesibilitate minimă pentru disclosure controls și un contract de regresie pentru culori, densitate și înălțimea code-block-urilor.

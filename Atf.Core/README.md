@@ -5,6 +5,11 @@ For the complete dependency, lifecycle and Extent artifact model, see the
 
 `Atf.Core` is the product-neutral kernel. It owns policies that should behave identically for every API module and remain testable without a live service.
 
+It remains a separate project in the simplified architecture. The former
+`Atf.Common` implementation now lives in `Atf.Api/Module`; product routes, API models and scenario intent
+must never move into Core. Core describes execution and evidence semantics; the
+Extent adapter owns their HTML presentation.
+
 ## Responsibility boundary
 
 ```mermaid
@@ -21,6 +26,33 @@ flowchart LR
 
 Core does not know product route names, domain models, business schemas or scenario decisions. It does know how a configured request is represented, how URLs and auth are applied safely, how one exchange is retried and measured, and how evidence is delivered to the reporting port.
 
+**Boundary status:** the renderer split is now implemented. `AtfAssertion` and
+the reporting ports remain in Core as renderer-neutral contracts; Extent HTML
+formatters and `ReportArtifactInspector` live in `Atf.Reporting.Extent`. Core
+must not reintroduce `helm-*`, HTML tags, theme tokens or browser selectors.
+
+## Responsibility audit — strict OOP view
+
+`Atf.Core` is the strongest boundary in the solution, but it is not yet a
+collection of perfectly cohesive classes. The pressure points are intentional
+backlog items, not reasons to break the project into more packages:
+
+| Type/area | Current responsibility | Refactoring target |
+|---|---|---|
+| `ApiExecutor` | timeout budget, URL/auth selection, retry loop, result creation and evidence orchestration | keep it as coordinator; extract an execution budget and an attempt runner only when tests expose a distinct policy |
+| `Http/Transport/IApiTransport.cs` | transport port | isolates network I/O from orchestration |
+| `Http/Transport/HttpClientTransport.cs` | production HTTP transport | owns request/response conversion, not retry policy |
+| `Http/Transport/IApiAuthenticator.cs` + `ConfiguredApiAuthenticator.cs` | authentication port and configured adapter | delegates typed auth strategies and redacts diagnostics |
+| `Http/Routing/ApiUrlBuilder.cs` | URL construction port/implementation | owns only base URL and query encoding |
+| `Configuration/ApiSettings.cs` and sibling settings files | JSON binding models and snapshot copying | keep binding models at the configuration edge and keep runtime values immutable |
+| `SensitiveDataRedactor` | structured JSON, free text, headers, query/path and PII masking | compose small redaction policies behind one facade; compile patterns once |
+| `AtfAssertion` | renderer-neutral assertion row model | keep verdict data independent from HTML and Extent |
+
+The Core rule is simple: a new policy must be product-neutral, injectable when
+it performs I/O or time-based work, and covered by a deterministic test. Do not
+move presentation rules into Core just because the final HTML is the easiest
+place to observe them.
+
 ## Public contracts and patterns
 
 | Contract / component | Pattern | Responsibility |
@@ -33,15 +65,18 @@ Core does not know product route names, domain models, business schemas or scena
 | `ApiExecutor` | pipeline/orchestrator | Executes one exchange and emits evidence in stable order |
 | `RateLimitRetryPolicy` | strategy | Decides bounded retry behavior for configured statuses |
 | `Polling` | deadline policy | Polls until satisfied or until the deadline |
-| `IAtfReporter` | reporting port | Receives evidence without exposing Extent to domain code |
+| `IAtfValidationReporter` | narrow validation port | lifecycle + assertion evidence/status without scenario completion |
+| `IAtfCleanupReporter` | narrow cleanup port | lifecycle + pass/warning only |
+| `IAtfScenarioCompletionReporter` | scenario completion port | pass/fail/skip at scenario boundary |
+| `IAtfReporter` | compatibility aggregate | retained for existing fakes/adapters; new consumers use narrow ports |
 | `SensitiveDataRedactor` | boundary policy | Sanitizes structured and free-form evidence before it reaches a reporter |
-| `ReportArtifactInspector` | executable specification | Verifies the HTML users actually open |
+| `AtfAssertion` | evidence model | Carries assertion name, expected, actual and verdict without presentation |
 
 ## Exchange sequence
 
 ```mermaid
 sequenceDiagram
-    participant Caller as Common service
+    participant Caller as API module service
     participant X as ApiExecutor
     participant U as UrlBuilder
     participant A as Authenticator
@@ -64,7 +99,7 @@ sequenceDiagram
 ```
 
 `HTTP exchange completed` does not imply `functional contract passed`. The executor
-publishes transport evidence with an informational status; `Atf.Common` then opens
+publishes transport evidence with an informational status; `Atf.Api/Module` then opens
 exactly one aggregate contract validation as the next sibling of that request under the same
 phase and decides whether that response satisfies the requested contract.
 The validation closes immediately after its table is published. The rendered
@@ -83,7 +118,7 @@ The result is intentionally split into transport facts and functional verdict:
 |---|---|---|
 | `ApiResponse` | transport | status, headers, raw body, URL and duration observed |
 | `Attempts` / `RetryEvents` | executor + retry policy | how the exchange reached its final response |
-| `ValidationTable` | Common validators | all expected-vs-actual contract checks |
+| `ValidationTable` | API module validators | all expected-vs-actual contract checks |
 | Extent `Info` | reporter | technical evidence only; never a business pass |
 | Extent `Pass`/`Fail` | validation/scenario lifecycle | functional contract and scenario outcome |
 
@@ -119,6 +154,15 @@ teams can choose whether business identifiers remain available for diagnostics.
 Local Windows paths in exception evidence are masked by default as
 `[LOCAL_PATH]` while preserving the source line suffix. Set
 `RedactLocalPaths=false` only for a deliberately local diagnostic run.
+`Redaction.Enabled=false` is not a secret bypass: authorization, token,
+cookie, API-key and configured sensitive fields remain masked. The flag only
+turns off optional path/PII transformations for an explicitly local run.
+
+Runtime composition uses `ApiSettingsSnapshot`: the executor deep-copies
+`RateLimit`, `Polling`, `AuthProfiles`, `Redaction` and `Routes` at
+construction time. Mutating an array, header dictionary or profile in the
+host configuration after execution starts cannot change an active request;
+this is protected by `ApiSettingsSnapshotTests`.
 
 Configuration contract:
 
@@ -157,6 +201,36 @@ effective runtime profile. The report never contains the token.
 
 ## Current refactor findings (2026-10-13)
 
+Core este într-o poziție bună, dar findings-urile active nu înseamnă că toate
+politicile sunt complet închise. Kernelul trebuie să rămână renderer-neutral și
+determinist; orice logică Extent, HTML, CSS, JavaScript sau xUnit aparține
+adaptorului ori host-ului.
+
+Punctele care cer refactorizare, nu funcționalitate nouă, sunt:
+
+- `ApiExecutor` rămâne coordonator; `ApiAttemptRunner` se extrage numai dacă
+  retry history, timeout-ul și cancellation au un contract separat și teste proprii;
+- `ApiExecutionResult` trebuie să păstreze explicit response-ul final, cauza de
+  transport, cancellation, duration, correlation id și fiecare attempt;
+- `IAtfReporter` este un port necesar, dar publicarea evidence nu trebuie să
+  poată înlocui excepția funcțională;
+- redaction-ul trebuie verificat printr-o matrice pentru header, query, path,
+  request body, response body și exception text;
+- snapshot-ul de configurație trebuie să rămână immutable după validarea de startup;
+- testele xUnit nu sunt responsabilitatea Core și nu trebuie importate doar pentru
+  a verifica politici de execuție.
+
+### Contract de autoritate
+
+```text
+transport fact -> ApiExecutionResult -> validation outcome -> scenario verdict
+                         \-> evidence publication (best effort)
+```
+
+Un failure al reporterului poate reduce diagnosticul, dar nu poate transforma un
+failure funcțional în Pass și nu poate înlocui cauza originală. Acesta este
+contractul pe care trebuie să-l protejeze testele Core.
+
 This kernel is not the first place to perform a broad rewrite. `ApiExecutor` is
 already a small orchestrator (about 129 lines) with separate URL, auth,
 transport and evidence seams. The high-value improvements are narrower:
@@ -170,9 +244,30 @@ transport and evidence seams. The high-value improvements are narrower:
    diagnostic run requests less masking; disabling security should be an
    explicit, guarded policy, not an accidental configuration switch.
 
-These are design targets, not changes made by this audit. See the
-[refactoring assessment](../docs/ATF_Refactoring_Assessment.md) for scores and
-the order of extraction.
+The redaction split is now implemented: `SensitiveDataRedactor` composes
+`StructuredJsonRedactor`, `SecretPatternRedactor`, `QueryStringRedactor`,
+`LocalPathRedactor` and `PiiRedactor`. The public facade owns only ordering and
+the report-boundary contract; the strategies own one transformation each.
+`ApiScenarioOutcome` is also implemented in the API host as the explicit
+closed lifecycle result. The remaining design target is immutable runtime
+configuration and typed auth vocabulary, not a second nullable outcome model.
+See the [refactoring assessment](../docs/ATF_Refactoring_Assessment.md) for
+the extraction rationale and open seams.
+
+The redaction order is deterministic:
+
+```text
+field -> sensitive-field replacement
+      -> query-string masking
+      -> secret-pattern masking
+      -> optional local-path masking
+      -> optional PII masking
+JSON  -> recursive field-aware traversal -> same text pipeline for strings
+```
+
+The `Enabled` setting does not disable secret masking. It only controls the
+optional path/PII transformations, so a diagnostic configuration cannot
+accidentally publish credentials.
 
 `RateLimitRetryPolicy` retries only configured statuses, reads delay headers in order, rejects unusable delays, falls back, caps the delay and stops at the retry budget. `Polling.UntilAsync` is deadline-based and returns the last value, attempt count, elapsed duration and a satisfaction flag.
 
@@ -190,7 +285,7 @@ ApplyCustomTheme + inline    final HTML normalization
        |
 ReportAssetCleaner            remove sibling extent asset folder
        |
-ReportArtifactInspector       verify consumer-facing contract
+Atf.Reporting.Extent           render and inspect consumer-facing HTML contract
 ```
 
 The final report must be one timestamped, self-contained HTML file; Extent assets are embedded; no `extent` folder is delivered; all surfaces share `--atf-dark`; class → scenario → phase → API step is preserved; request/response/JSON/assertion evidence is collapsed by default; JSON is wrapped and vertically scrollable; technical trace and assertions are compact tables.
@@ -220,7 +315,6 @@ HttpExecutorComponentTests     retry result, route metadata and evidence
 ApiExecutorCompositionTests    injected ports and exception preservation
 ReportingComponentTests         status aggregation and evidence classification
 ReportingStructureTests         phase/request + validation ownership and active-step evidence
-ReportArtifactInspectorTests    final HTML contract
 ReportingLifecycleComponentTests fixture composition and finalization
 ```
 
@@ -241,7 +335,7 @@ A new Core policy is acceptable only when it is product-neutral, exposed through
 | execution | transport is replaceable; retry result is explicit; reporter cannot replace the original exception | `ApiExecutorCompositionTests`, `HttpExecutorComponentTests` |
 | resilience | retry status, delay source, cap and budget are deterministic | `ConfigurationAndResilienceTests`, `CoreArchitectureTests` |
 | reporting | status aggregation is failure-first; one response produces one aggregate validation table on the next sibling under the same phase | `ReportingComponentTests`, `ReportingStructureTests`, `ApiExecutorReportingTests` |
-| artifact | final HTML is self-contained and follows the visual/report contract | `ReportArtifactInspectorTests` |
+| evidence model | assertion rows remain renderer-neutral and preserve actual values | `ReportingComponentTests`, `ApiExecutorReportingTests` |
 
 ## Test additions recommended for Core
 
@@ -266,8 +360,23 @@ The highest-value additions are deterministic and do not require a live endpoint
 
 ### Remaining safe increments
 
-The current kernel intentionally supports `none` and `bearer` authentication,
-JSON configuration and renderer-neutral reporting ports. The Extent lifecycle,
+Înaintea oricărei extinderi de API, adăugați teste pentru:
+
+| Seam | Test obligatoriu | Criteriu |
+|---|---|---|
+| transport | timeout și cancellation | cauza originală și starea anulării rămân distincte |
+| retry | exhaustion și `Retry-After` | nu se emite verdict funcțional Pass dintr-un exchange nereușit |
+| concurrency | două execuții paralele | evidence și scope-urile nu se amestecă |
+| redaction | matrice de secrete | niciun secret nu ajunge în reporter, exception sau snapshot |
+| configuration | chei necunoscute/conflictuale | fail fast cu path complet și mesaj determinist |
+| reporting port | reporter care aruncă | rezultatul funcțional rămâne autoritar |
+
+Acestea sunt teste de contract; nu introduceți un nou strat `Shared` sau
+`Utils` pentru a le găzdui.
+
+The current kernel intentionally supports `none`, `bearer`, `apikey`, `basic`
+and `custom` authentication strategies behind a JSON-friendly string boundary,
+plus renderer-neutral reporting ports. The Extent lifecycle,
 presentation and asset inlining are implemented by `Atf.Reporting.Extent`; no
 static Extent manager owns test state. Future renderers must depend on the same
 Core contracts and deterministic artifact tests.

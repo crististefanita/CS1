@@ -1,10 +1,26 @@
 using Atf.Core.Configuration.Security;
 using Atf.Core.Security;
+using System.Text.RegularExpressions;
 
 namespace Atf.Core.Tests.Security;
 
 public sealed class SensitiveDataRedactorTests
 {
+    [Fact(DisplayName = "Redaction facade composes focused strategies instead of owning regex state")]
+    public void FacadeUsesFocusedRedactionStrategies()
+    {
+        var fields = typeof(SensitiveDataRedactor).GetFields(
+            System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.NonPublic);
+
+        Assert.DoesNotContain(fields, field => typeof(Regex).IsAssignableFrom(field.FieldType));
+        Assert.Contains(fields, field => field.FieldType.Name == "SecretPatternRedactor");
+        Assert.Contains(fields, field => field.FieldType.Name == "QueryStringRedactor");
+        Assert.Contains(fields, field => field.FieldType.Name == "LocalPathRedactor");
+        Assert.Contains(fields, field => field.FieldType.Name == "PiiRedactor");
+        Assert.Contains(fields, field => field.FieldType.Name == "StructuredJsonRedactor");
+    }
+
     [Fact(DisplayName = "Redactor masks structured secrets but keeps business PII diagnostic by default")]
     public void RedactsStructuredJson()
     {
@@ -42,14 +58,27 @@ public sealed class SensitiveDataRedactorTests
         Assert.Contains("3", result, StringComparison.Ordinal);
     }
 
-    [Fact(DisplayName = "Disabled redaction preserves payload exactly")]
-    public void DisabledRedactionPreservesPayload()
+    [Fact(DisplayName = "Global redaction switch cannot disable secret masking")]
+    public void DisabledOptionalRedactionStillMasksSecrets()
     {
         var redactor = new SensitiveDataRedactor(new RedactionSettings { Enabled = false });
         const string payload = "Authorization: Bearer secret-value; owner=person@example.test";
 
-        Assert.Equal(payload, redactor.RedactText(payload));
-        Assert.Equal(payload, redactor.RedactJson(payload));
+        var result = redactor.RedactText(payload);
+
+        Assert.DoesNotContain("secret-value", result, StringComparison.Ordinal);
+        Assert.Contains("person@example.test", result, StringComparison.Ordinal);
+    }
+
+    [Fact(DisplayName = "Global redaction switch cannot disable structured secret masking")]
+    public void DisabledOptionalRedactionStillMasksStructuredSecrets()
+    {
+        var redactor = new SensitiveDataRedactor(new RedactionSettings { Enabled = false });
+
+        var result = redactor.RedactJson("{\"password\":\"secret-value\",\"owner\":\"person@example.test\"}");
+
+        Assert.DoesNotContain("secret-value", result, StringComparison.Ordinal);
+        Assert.Contains("person@example.test", result, StringComparison.Ordinal);
     }
 
     [Fact(DisplayName = "Redactor masks authorization headers, bearer values and query secrets")]

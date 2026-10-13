@@ -1,12 +1,13 @@
 using Atf.Common.Validation;
 using Atf.Api.Infrastructure;
+using Atf.Api.TestHost;
 using System.Net;
 using Xunit;
 
 namespace Atf.Api;
 
 [Collection("API ATF")]
-public sealed class UsersApiTests(ITestOutputHelper output, Atf.Reporting.Extent.ExtentCollectionFixture fixture)
+public sealed class UsersApiTests(ITestOutputHelper output, ApiTestFixture fixture)
     : ApiTestBase(output, fixture)
 {
     [Fact(DisplayName = "Users: list returns a valid JSON collection")]
@@ -48,6 +49,25 @@ public sealed class UsersApiTests(ITestOutputHelper output, Atf.Reporting.Extent
                 "Validate: missing authentication",
                 new ResponseContract()
                     .ExpectStatusOneOf(HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden));
+        });
+
+    [Fact(DisplayName = "Users: soft contract mismatch is warning-only")]
+    [Trait("Category", "reporting")]
+    public Task SoftContractMismatchIsWarningOnly() => RunScenarioAsync(
+        "GET /public/v2/users — soft contract warning",
+        ["api", "users", "reporting", "soft-assert"],
+        async context =>
+        {
+            var result = await context.Users.ListAsync(authProfile: "anonymous");
+
+            // Deliberately mismatched, non-blocking expectation. The failed
+            // row must remain visible while the scenario is classified as
+            // Warning/Other in the report instead of silently passing.
+            ApiAssertions.SoftContract(
+                context.Reporter,
+                result.Response,
+                "Validate: soft contract warning",
+                contract => contract.Status(HttpStatusCode.Created));
         });
 
 }

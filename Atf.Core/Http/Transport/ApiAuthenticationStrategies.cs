@@ -16,12 +16,12 @@ internal interface IApiAuthenticationStrategy
     void Apply(
         HttpRequestMessage message,
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader);
 
     string DescribeTokenState(
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader);
 }
 
@@ -51,14 +51,14 @@ internal sealed class NoAuthenticationStrategy : IApiAuthenticationStrategy
     public void Apply(
         HttpRequestMessage message,
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader)
     {
     }
 
     public string DescribeTokenState(
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader) => "not applicable";
 }
 
@@ -69,7 +69,7 @@ internal sealed class BearerAuthenticationStrategy : IApiAuthenticationStrategy
     public void Apply(
         HttpRequestMessage message,
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader)
     {
         var token = tokenReader(TokenVariable(profile, settings));
@@ -81,7 +81,7 @@ internal sealed class BearerAuthenticationStrategy : IApiAuthenticationStrategy
 
     public string DescribeTokenState(
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader)
     {
         var variable = TokenVariable(profile, settings);
@@ -90,7 +90,7 @@ internal sealed class BearerAuthenticationStrategy : IApiAuthenticationStrategy
             : "bearer token available";
     }
 
-    private static string TokenVariable(AuthProfileSettings profile, ApiSettings settings) =>
+    private static string TokenVariable(AuthProfileSettings profile, ApiSettingsSnapshot settings) =>
         string.IsNullOrWhiteSpace(profile.TokenEnvironmentVariable)
             ? settings.TokenEnvironmentVariable
             : profile.TokenEnvironmentVariable;
@@ -103,7 +103,7 @@ internal sealed class ApiKeyAuthenticationStrategy : IApiAuthenticationStrategy
     public void Apply(
         HttpRequestMessage message,
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader)
     {
         var key = tokenReader(TokenVariable(profile, settings));
@@ -116,7 +116,7 @@ internal sealed class ApiKeyAuthenticationStrategy : IApiAuthenticationStrategy
 
     public string DescribeTokenState(
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader)
     {
         var variable = TokenVariable(profile, settings);
@@ -125,7 +125,7 @@ internal sealed class ApiKeyAuthenticationStrategy : IApiAuthenticationStrategy
             : "api key available";
     }
 
-    private static string TokenVariable(AuthProfileSettings profile, ApiSettings settings) =>
+    private static string TokenVariable(AuthProfileSettings profile, ApiSettingsSnapshot settings) =>
         string.IsNullOrWhiteSpace(profile.TokenEnvironmentVariable)
             ? settings.TokenEnvironmentVariable
             : profile.TokenEnvironmentVariable;
@@ -138,7 +138,7 @@ internal sealed class BasicAuthenticationStrategy : IApiAuthenticationStrategy
     public void Apply(
         HttpRequestMessage message,
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader)
     {
         var usernameVariable = profile.UsernameEnvironmentVariable ?? "ATF_API_USERNAME";
@@ -154,7 +154,7 @@ internal sealed class BasicAuthenticationStrategy : IApiAuthenticationStrategy
 
     public string DescribeTokenState(
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader)
     {
         var usernameVariable = profile.UsernameEnvironmentVariable ?? "ATF_API_USERNAME";
@@ -173,7 +173,7 @@ internal sealed class CustomHeadersAuthenticationStrategy : IApiAuthenticationSt
     public void Apply(
         HttpRequestMessage message,
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader)
     {
         foreach (var header in profile.Headers)
@@ -187,7 +187,7 @@ internal sealed class CustomHeadersAuthenticationStrategy : IApiAuthenticationSt
 
     public string DescribeTokenState(
         AuthProfileSettings profile,
-        ApiSettings settings,
+        ApiSettingsSnapshot settings,
         Func<string, string?> tokenReader) =>
         profile.Headers.Count == 0 ? "custom headers not configured" : "custom headers configured";
 

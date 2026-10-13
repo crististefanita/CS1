@@ -12,6 +12,7 @@ namespace Atf.Reporting.Extent.Lifecycle;
 internal interface IExtentReportPathAllocator
 {
     ExtentReportPaths Allocate(ReportingSettings settings);
+    void Release(ExtentReportPaths paths);
 }
 
 internal sealed class ExtentReportPathAllocator : IExtentReportPathAllocator
@@ -50,6 +51,27 @@ internal sealed class ExtentReportPathAllocator : IExtentReportPathAllocator
 
         Directory.CreateDirectory(nativeDirectory);
         return new ExtentReportPaths(publishedPath, nativePath, nativeDirectory);
+    }
+
+    public void Release(ExtentReportPaths paths)
+    {
+        ArgumentNullException.ThrowIfNull(paths);
+
+        lock (Sync)
+        {
+            ((ICollection<string>)ReservedPaths).Remove(paths.PublishedPath);
+        }
+    }
+
+    internal static int ReservedPathCount
+    {
+        get
+        {
+            lock (Sync)
+            {
+                return ReservedPaths.Count;
+            }
+        }
     }
 
     private string ReservePublishedPath(

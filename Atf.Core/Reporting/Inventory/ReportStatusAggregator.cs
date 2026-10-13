@@ -3,7 +3,7 @@ namespace Atf.Core.Reporting.Inventory;
 /// <summary>
 /// Thread-safe status aggregation for a logical test class. A class is failed
 /// if any scenario fails; otherwise it is skipped when at least one scenario is
-/// skipped; otherwise it is passed.
+/// skipped; otherwise a warning is preserved; otherwise it is passed.
 /// </summary>
 public sealed class ReportStatusAggregator
 {
@@ -50,6 +50,11 @@ public sealed class ReportStatusAggregator
         if (current == AtfReportStatus.Skip || next == AtfReportStatus.Skip)
         {
             return AtfReportStatus.Skip;
+        }
+
+        if (current == AtfReportStatus.Warning || next == AtfReportStatus.Warning)
+        {
+            return AtfReportStatus.Warning;
         }
 
         return AtfReportStatus.Pass;

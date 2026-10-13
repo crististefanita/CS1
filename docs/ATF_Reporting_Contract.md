@@ -29,7 +29,7 @@ Regulile sunt:
 
 ## Layer ownership
 
-    Atf.Core -> Atf.Common -> Atf.Api
+    Atf.Core -> Atf.Api/Module -> Atf.Api
          ^           ^          ^
          |           |          |
          +--- Atf.Reporting.Extent adapter
@@ -53,8 +53,13 @@ the ATF metadata is explanatory navigation context.
 
 ReportStepScope garantează închiderea idempotentă a unui pas. Cleanup-ul este
 deținut de CleanupRegistry: se execută în ordine inversă, best-effort, cu
-status Pass/Warning, și nu se repetă după prima execuție. O eroare de cleanup
-nu înlocuiește failure-ul principal.
+status Pass/Warning, și nu se repetă după prima execuție. Custom teardown-ul
+intră într-un `finally` interior înainte de cleanup. O eroare de cleanup nu
+înlocuiește failure-ul principal.
+
+Un reporter defect nu trebuie să poată opri acțiunea de resource cleanup; acest
+seam este protejat prin teste. Hardening-ul rămas este izolarea lock-urilor și a
+operațiilor de filesystem în rulări paralele.
 
 Retry-ul păstrează tentativa, headerul, delay-ul și motivul. CancellationToken
 este transmis transportului și delay-ului; snapshot-ul de configurație este
@@ -100,8 +105,8 @@ din dashboard după inițializarea chart-urilor, deoarece dublează agregarea
 vizibilă și poate fi confundat cu verdictul testelor. Evenimentele Info/Pass/Fail
 rămân păstrate în nodurile de test și în trace-ul fiecărui schimb HTTP.
 
-Metadata secundară afișează `API test cases (Extent)`, `API test classes (Extent)`,
-`API scenarios passed`, `API scenarios failed` și `API scenarios skipped`.
+Metadata secundară afișează `ATF tests in this run`, `API test classes (Extent)`,
+`Total tests passed`, `Total tests failed` și `Total tests skipped`.
 Numărul de teste este obținut din cardurile directe de scenariu Extent; class
 roots și feature groups sunt context de navigație, nu cazuri suplimentare.
 
@@ -117,4 +122,4 @@ headerul testului și în auditul secundar.
 - live API suite generează HTML în artifacts/reports;
 - artifact inspector confirmă tema, self-contained, JSON scroll, tabelul de
   assertions, technical trace și ierarhia request/validation;
-- raportul generat este deschis și parcurs în browser MCP înainte de livrare.
+- raportul generat este deschis și parcurs în TAB MCP înainte de livrare.

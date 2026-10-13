@@ -42,14 +42,19 @@ internal sealed class ExtentTestHierarchy
                 _classTests[testClassName] = classTest;
             }
 
+            var scenario = classTest.CreateNode(WebUtility.HtmlEncode(scenarioName), description);
+            // Categories describe the executable scenario, not the shared
+            // class container. Assigning them to the class root makes Extent
+            // propagate the union of every scenario tag to every sibling and
+            // corrupts status-aware Overview/tag totals (for example a single
+            // soft warning appears as several passed scenarios too).
             foreach (var category in categories
                          .Where(category => !string.IsNullOrWhiteSpace(category))
                          .Distinct(StringComparer.OrdinalIgnoreCase))
             {
-                classTest.AssignCategory(category);
+                scenario.AssignCategory(category);
             }
 
-            var scenario = classTest.CreateNode(WebUtility.HtmlEncode(scenarioName), description);
             return new ExtentTestScope(
                 scenario,
                 testClassName,

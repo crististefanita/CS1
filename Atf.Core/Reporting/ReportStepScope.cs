@@ -1,4 +1,6 @@
-namespace Atf.Core.Reporting;
+using Atf.Core.Reporting.Ports;
+
+namespace Atf.Core.Reporting.Lifecycle;
 
 /// <summary>
 /// Renderer-neutral disposable lifecycle guard for one report step. It gives
@@ -7,11 +9,11 @@ namespace Atf.Core.Reporting;
 /// </summary>
 public sealed class ReportStepScope : IDisposable
 {
-    private readonly IAtfReporter _reporter;
+    private readonly IAtfLifecycleReporter _reporter;
     private AtfReportStatus _status = AtfReportStatus.Info;
     private int _completed;
 
-    public ReportStepScope(IAtfReporter reporter, string title)
+    public ReportStepScope(IAtfLifecycleReporter reporter, string title)
     {
         _reporter = reporter ?? throw new ArgumentNullException(nameof(reporter));
         ArgumentException.ThrowIfNullOrWhiteSpace(title);

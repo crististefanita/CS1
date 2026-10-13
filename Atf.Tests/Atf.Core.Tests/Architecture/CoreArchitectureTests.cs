@@ -9,11 +9,30 @@ namespace Atf.Core.Tests.Architecture;
 
 public sealed class CoreArchitectureTests
 {
+    [Fact(DisplayName = "Reporting ports expose capability-specific contracts")]
+    public void ReportingPortsDoNotRequireScenarioCompletion()
+    {
+        Assert.DoesNotContain(
+            typeof(IAtfValidationReporter).GetMethods(),
+            method => method.Name is nameof(IAtfScenarioCompletionReporter.PassTest)
+                or nameof(IAtfScenarioCompletionReporter.FailTest)
+                or nameof(IAtfScenarioCompletionReporter.SkipTest));
+
+        Assert.DoesNotContain(
+            typeof(IAtfCleanupReporter).GetMethods(),
+            method => method.Name is nameof(IAtfEvidenceReporter.Json)
+                or nameof(IAtfEvidenceReporter.AssertionTable)
+                or nameof(IAtfScenarioCompletionReporter.PassTest));
+
+        Assert.True(typeof(IAtfReporter).IsAssignableTo(typeof(IAtfValidationReporter)));
+        Assert.True(typeof(IAtfReporter).IsAssignableTo(typeof(IAtfCleanupReporter)));
+    }
+
     [Fact(DisplayName = "ATF reporting contracts use runner-neutral status values")]
     public void ReportingContractsDoNotExposeExtentStatus()
     {
-        var statusParameter = typeof(IAtfReporter)
-            .GetMethod(nameof(IAtfReporter.CompleteStep))!
+        var statusParameter = typeof(IAtfLifecycleReporter)
+            .GetMethod(nameof(IAtfLifecycleReporter.CompleteStep))!
             .GetParameters()
             .Single()
             .ParameterType;
@@ -152,7 +171,8 @@ public sealed class CoreArchitectureTests
         var response = await transport.SendAsync(
             new ApiRequest(HttpMethod.Post, "/items", "{\"name\":\"demo\"}"),
             "https://example.test/items",
-            "default");
+            "default",
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpMethod.Post, capturedMethod);
         Assert.Equal("Bearer test-token", capturedAuthorization?.ToString());
@@ -209,7 +229,8 @@ public sealed class CoreArchitectureTests
             _ => Task.FromResult(values.Dequeue()),
             value => value == 2,
             timeout: TimeSpan.FromSeconds(1),
-            interval: TimeSpan.Zero);
+            interval: TimeSpan.Zero,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.True(result.Satisfied);
         Assert.Equal(2, result.LastValue);

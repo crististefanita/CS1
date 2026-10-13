@@ -1,9 +1,9 @@
 namespace Atf.Core.Configuration.Security;
 
 /// <summary>
-/// Controls what is masked at the reporting boundary. Secrets are always
-/// opt-in by key; PII keys can be removed by a module when they are needed for
-/// business diagnostics.
+/// Controls what is masked at the reporting boundary. Secret masking is
+/// mandatory and cannot be disabled globally. Enabled only controls optional
+/// local-path and PII transformations for deliberately local diagnostics.
 /// </summary>
 public sealed class RedactionSettings
 {

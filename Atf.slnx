@@ -1,10 +1,10 @@
 <Solution>
-  <Project Path="Atf.Common/Atf.Common.csproj" />
   <Project Path="Atf.Core/Atf.Core.csproj" />
   <Project Path="Atf.Reporting.Extent/Atf.Reporting.Extent.csproj" />
-  <Project Path="Atf.Api.Tests/Atf.Api.Tests.csproj" />
-  <Project Path="Atf.Api.FailureDemos/Atf.Api.FailureDemos.csproj" />
+  <Project Path="Atf.Api.TestHost/Atf.Api.TestHost.csproj" />
   <Folder Name="/Atf.Tests/">
+    <Project Path="Atf.Tests/Atf.Api.Tests/Atf.Api.Tests.csproj" />
+    <Project Path="Atf.Tests/Atf.Api.FailureDemos/Atf.Api.FailureDemos.csproj" />
     <Project Path="Atf.Tests/Atf.Common.Tests/Atf.Common.Tests.csproj" />
     <Project Path="Atf.Tests/Atf.Core.Tests/Atf.Core.Tests.csproj" />
     <Project Path="Atf.Tests/Atf.Reporting.Extent.Tests/Atf.Reporting.Extent.Tests.csproj" />

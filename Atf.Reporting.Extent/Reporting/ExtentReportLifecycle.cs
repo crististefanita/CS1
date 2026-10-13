@@ -14,6 +14,7 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
 {
     private readonly object _sync = new();
     private readonly Lifecycle.IExtentReportPathAllocator _pathAllocator;
+    private readonly Lifecycle.IExtentArtifactPublisher _artifactPublisher;
     private ExtentReports? _reports;
     private ExtentSparkReporter? _reporter;
     private ExtentTestHierarchy? _hierarchy;
@@ -23,16 +24,20 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
     private string? _nativeReportDirectory;
     private Assembly? _testAssembly;
     private SensitiveDataRedactor _redactor = new();
+    private bool _finalizing;
     private bool _finalized;
 
     public ExtentReportLifecycle()
-        : this(new Lifecycle.ExtentReportPathAllocator())
+        : this(new Lifecycle.ExtentReportPathAllocator(), new Lifecycle.ExtentArtifactPublisher())
     {
     }
 
-    internal ExtentReportLifecycle(Lifecycle.IExtentReportPathAllocator pathAllocator)
+    internal ExtentReportLifecycle(
+        Lifecycle.IExtentReportPathAllocator pathAllocator,
+        Lifecycle.IExtentArtifactPublisher? artifactPublisher = null)
     {
         _pathAllocator = pathAllocator ?? throw new ArgumentNullException(nameof(pathAllocator));
+        _artifactPublisher = artifactPublisher ?? new Lifecycle.ExtentArtifactPublisher();
     }
 
     public string ReportPath => _reportPath ?? throw new InvalidOperationException("Extent reporting has not been initialized.");
@@ -101,6 +106,11 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
                 throw new InvalidOperationException("Extent reporting must be initialized before starting a test.");
             }
 
+            if (_finalizing || _finalized)
+            {
+                throw new InvalidOperationException("Extent reporting is finalizing or has already been finalized.");
+            }
+
             return _hierarchy.Start(
                 _reports,
                 testClassName,
@@ -116,34 +126,73 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
     {
         lock (_sync)
         {
+            if (_finalizing || _finalized)
+            {
+                return;
+            }
+
             _reports?.Flush();
         }
     }
 
     public void FinalizeReport()
     {
+        Lifecycle.ExtentReportPaths? paths = null;
+        ReportingSettings? settings = null;
+
         lock (_sync)
         {
-            if (_finalized)
+            if (_finalized || _finalizing)
             {
                 return;
             }
 
-            _reports?.Flush();
-            if (_reportPath is not null && _nativeReportPath is not null && _settings is not null)
+            _finalizing = true;
+            try
             {
-                // The overview is a run report, not an assembly-discovery report.
-                // Its totals are derived in the browser from the scenario cards
-                // emitted by this execution, including skipped outcomes.
-                Lifecycle.ExtentReportDocumentComposer.Compose(_nativeReportPath, _settings);
-                File.Move(_nativeReportPath, _reportPath);
-                if (_nativeReportDirectory is not null && Directory.Exists(_nativeReportDirectory))
+                // Extent's in-memory tree is protected by the lifecycle gate;
+                // the filesystem publication below is deliberately outside it.
+                _reports?.Flush();
+                if (_reportPath is not null && _nativeReportPath is not null && _settings is not null)
                 {
-                    ReportAssetCleaner.CleanDirectory(_nativeReportDirectory);
+                    paths = new Lifecycle.ExtentReportPaths(
+                        _reportPath,
+                        _nativeReportPath,
+                        _nativeReportDirectory ?? Path.GetDirectoryName(_nativeReportPath)!);
+                    settings = _settings;
+                }
+                else
+                {
+                    _finalized = true;
+                    _finalizing = false;
                 }
             }
+            catch
+            {
+                _finalizing = false;
+                throw;
+            }
+        }
 
-            _finalized = true;
+        if (paths is null || settings is null)
+        {
+            return;
+        }
+
+        var published = false;
+        try
+        {
+            _artifactPublisher.Publish(paths, settings);
+            published = true;
+        }
+        finally
+        {
+            _pathAllocator.Release(paths);
+            lock (_sync)
+            {
+                _finalized = published;
+                _finalizing = false;
+            }
         }
     }
 

@@ -14,10 +14,10 @@ namespace Atf.Core.Http.Execution;
 /// </summary>
 internal sealed class ApiExecutionReporter
 {
-    private readonly IAtfReporter _reporter;
+    private readonly IAtfValidationReporter _reporter;
     private readonly SensitiveDataRedactor _redactor;
 
-    public ApiExecutionReporter(IAtfReporter reporter, SensitiveDataRedactor? redactor = null)
+    public ApiExecutionReporter(IAtfValidationReporter reporter, SensitiveDataRedactor? redactor = null)
     {
         _reporter = reporter ?? throw new ArgumentNullException(nameof(reporter));
         _redactor = redactor ?? new SensitiveDataRedactor();

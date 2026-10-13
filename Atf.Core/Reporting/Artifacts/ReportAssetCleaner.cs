@@ -7,14 +7,8 @@ namespace Atf.Core.Reporting.Artifacts;
 /// </summary>
 public sealed class ReportAssetCleaner
 {
-    private static readonly TimeSpan[] RetryDelays =
-    [
-        TimeSpan.Zero,
-        TimeSpan.FromMilliseconds(40),
-        TimeSpan.FromMilliseconds(80),
-        TimeSpan.FromMilliseconds(160),
-        TimeSpan.FromMilliseconds(320)
-    ];
+    private static readonly ReportAssetCleanupCoordinator DefaultCoordinator =
+        ReportAssetCleanupCoordinator.CreateDefault();
 
     public static void Clean(string reportPath)
     {
@@ -27,7 +21,7 @@ public sealed class ReportAssetCleaner
         }
 
         var assetDirectory = Path.Combine(reportDirectory, "extent");
-        TryDeleteDirectory(assetDirectory);
+        DefaultCoordinator.CleanDirectory(assetDirectory);
     }
 
     /// <summary>
@@ -39,39 +33,6 @@ public sealed class ReportAssetCleaner
     public static void CleanDirectory(string directoryPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(directoryPath);
-        TryDeleteDirectory(Path.GetFullPath(directoryPath));
-    }
-
-    private static void TryDeleteDirectory(string directoryPath)
-    {
-        for (var attempt = 0; attempt < RetryDelays.Length; attempt++)
-        {
-            if (!Directory.Exists(directoryPath))
-            {
-                return;
-            }
-
-            try
-            {
-                Directory.Delete(directoryPath, recursive: true);
-                return;
-            }
-            catch (IOException) when (attempt < RetryDelays.Length - 1)
-            {
-                Thread.Sleep(RetryDelays[attempt + 1]);
-            }
-            catch (UnauthorizedAccessException) when (attempt < RetryDelays.Length - 1)
-            {
-                Thread.Sleep(RetryDelays[attempt + 1]);
-            }
-            catch (IOException)
-            {
-                return;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return;
-            }
-        }
+        DefaultCoordinator.CleanDirectory(Path.GetFullPath(directoryPath));
     }
 }

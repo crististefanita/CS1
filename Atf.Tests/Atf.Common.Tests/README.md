@@ -1,17 +1,35 @@
-# Atf.Common.Tests — module component tests
+# Atf.Common.Tests — API module component tests
+
+The project name is retained for compatibility, but its physical location is
+now `Atf.Tests/Atf.Common.Tests`. It protects the former `Atf.Common` module
+that is now owned by `Atf.Api/Module`; there is no separate `Atf.Common`
+production project and no pending move to `Atf.Tests/Api`.
+
+Keep new tests here only when they verify API-module composition, routes,
+services, validation, lifecycle, fixtures or cleanup. Framework-neutral rules
+belong in `Atf.Core.Tests`; Extent artifact rules belong in
+`Atf.Reporting.Extent.Tests`.
 
 The module boundaries and evidence flow are described in the
 [architecture and reporting guide](../../docs/ATF_Architecture.md).
 
-This is the fast, offline quality gate for the API-module layer. It verifies route semantics, service serialization, semantic steps, validation aggregation, fixtures/data and cleanup without contacting a live API.
+This is the fast, offline quality gate for the API-module layer. It verifies route semantics, service serialization, justified semantic actions, validation aggregation, fixtures/data and cleanup without contacting a live API.
+
+## Audit alignment — 2026-10-13
+
+Acoperirea modulului este bună. Riscul structural rămas este densitatea
+compoziției și compatibilitatea unor API-uri
+de validare; publicarea raportului este acum izolată prin publisher-ul
+best-effort, iar pașii forwarding-only nu mai sunt păstrați. Testele de aici trebuie să țină
+modulul renderer-neutral și să păstreze autoritatea rezultatului funcțional.
 
 ## Component flow
 
 ```mermaid
 flowchart LR
     Test[Test] --> Module[ApiModule]
-    Module --> Steps[Semantic steps]
-    Steps --> Services[Typed services]
+    Module --> Actions[Services / semantic actions]
+    Actions --> Services[Typed services]
     Services --> Routes[ApiRoutes]
     Routes --> Request[ApiRequest]
     Request --> FakeExecutor[Recording executor]
@@ -28,13 +46,16 @@ flowchart LR
 | `RoutingServicesAndDataTests` | token encoding, route metadata, service bodies, module composition, data uniqueness and fixture errors |
 | `ValidationComponentTests` | status, allowed status, headers, body, JSONPath, relationships and JSON Schema |
 | `ValidationAndLifecycleTests` | one-table aggregation, Pass/Fail step closure, reverse cleanup and best-effort failures |
+| ValidationTableContractTests | hard failure versus warning-only soft assertion semantics |
 
 ## What these tests prove
 
 - route templates are encoded safely and remain configurable;
 - services preserve route metadata, auth profile and typed JSON payload;
-- `ApiModule` exposes steps while hiding executor wiring;
+- `ApiModule` exposes typed services while hiding executor wiring; semantic steps
+  are introduced only when they add orchestration or domain language;
 - validators publish all rows and raise `ApiValidationException` only after evidence;
+- ApiAssertions.SoftContract keeps failed rows visible, emits Warning and does not throw;
 - every response contract opens and closes exactly one aggregate reporter step, including unexpected exceptions;
 - consecutive response contracts remain isolated under their own request and never combine rows;
 - assertion `ACTUAL` values use the reporter's configured maximum length, so the
@@ -42,6 +63,15 @@ flowchart LR
 - malformed response shapes are contract failures;
 - resources are cleaned in reverse order even when one action fails;
 - a fake executor is enough, so no test depends on a token or network.
+
+Sunt protejate prin teste și trebuie păstrate ca regresii următoarele cazuri:
+
+- reporter care aruncă în fiecare hook de publicare, fără mascarea failure-ului
+  de contract;
+- toate entry-point-urile publice de validation comparate pe aceeași response;
+- reguli cu label vizual identic, dar identitate semantică diferită;
+- JSON invalid, schema invalidă și colecție goală cu politică explicită;
+- test care eșuează dacă un step nou este doar forwarding fără semantică.
 
 ## Extension recipe
 

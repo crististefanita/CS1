@@ -9,29 +9,30 @@ internal static class ApiConfigurationValidator
     {
         if (string.IsNullOrWhiteSpace(api.BaseUrl))
         {
-            throw new InvalidOperationException("Modules:Api:Api:BaseUrl is required.");
+            ConfigurationRuleViolation.Throw("ATF-API-001", "Modules:Api:Api:BaseUrl", "BaseUrl is required.");
         }
 
         if (!Uri.TryCreate(api.BaseUrl, UriKind.Absolute, out _))
         {
-            throw new InvalidOperationException($"Modules:Api:Api:BaseUrl is not a valid absolute URI: '{api.BaseUrl}'.");
+            ConfigurationRuleViolation.Throw("ATF-API-002", "Modules:Api:Api:BaseUrl", $"BaseUrl is not a valid absolute URI: '{api.BaseUrl}'.");
         }
 
         if (api.TimeoutSeconds <= 0 || api.Polling.TimeoutSeconds <= 0 || api.Polling.IntervalMilliseconds <= 0)
         {
-            throw new InvalidOperationException("API timeouts and polling interval must be positive.");
+            ConfigurationRuleViolation.Throw("ATF-API-003", "Modules:Api:Api:TimeoutSeconds", "API timeouts and polling interval must be positive.");
         }
 
         if (api.RateLimit.MaxRetries < 0 || api.RateLimit.DefaultDelaySeconds <= 0 || api.RateLimit.MaxDelaySeconds <= 0 ||
             api.RateLimit.MaxDelaySeconds < api.RateLimit.DefaultDelaySeconds)
         {
-            throw new InvalidOperationException("Rate-limit configuration is invalid: MaxDelaySeconds must be greater than or equal to DefaultDelaySeconds.");
+            ConfigurationRuleViolation.Throw("ATF-API-004", "Modules:Api:Api:RateLimit", "Rate-limit configuration is invalid: MaxDelaySeconds must be greater than or equal to DefaultDelaySeconds.");
         }
 
         if (string.IsNullOrWhiteSpace(api.DefaultAuthProfile) || !api.AuthProfiles.ContainsKey(api.DefaultAuthProfile))
         {
-            throw new InvalidOperationException(
-                $"Modules:Api:Api:DefaultAuthProfile '{api.DefaultAuthProfile}' must reference a configured auth profile.");
+            ConfigurationRuleViolation.Throw(
+                "ATF-AUTH-001", "Modules:Api:Api:DefaultAuthProfile",
+                $"DefaultAuthProfile '{api.DefaultAuthProfile}' must reference a configured auth profile.");
         }
     }
 }

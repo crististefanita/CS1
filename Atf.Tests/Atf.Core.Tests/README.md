@@ -1,9 +1,25 @@
 # Atf.Core.Tests — kernel and artifact contract tests
 
+This is the test project for `Atf.Core`, physically grouped under
+`Atf.Tests/Atf.Core.Tests`. It is renderer-neutral and must not import Extent
+implementation details.
+
 The complete test-to-artifact strategy is in the
 [architecture and reporting guide](../../docs/ATF_Architecture.md).
 
 This is the fast, offline quality gate for `Atf.Core`. It does not start a service, open a socket or require a token. Network and reporting boundaries are replaced with deterministic fakes or temporary files.
+
+## Audit alignment — 2026-10-13
+
+Testele trebuie să apere direcția de dependență și autoritatea rezultatului, nu
+să repete testele adaptorului Extent.
+Un reporter care aruncă este un failure de infrastructură diagnostică; nu are voie
+să schimbe `ApiExecutionResult`, cauza originală sau verdictul funcțional.
+
+Găzduiți aici doar politici renderer-neutral: timeout, cancellation, retry history,
+auth state, URL/query encoding, configuration snapshot, redaction și reporting
+ports. Testele pentru CSS, DOM, Extent selectors sau computed styles aparțin
+adaptorului și browser contractului.
 
 ## Protected contracts
 
@@ -25,7 +41,6 @@ flowchart LR
 | `ApiExecutorCompositionTests` | injected ports and exception preservation |
 | `ReportingComponentTests` | class status precedence and evidence classification |
 | `ReportingStructureTests` | phase-owned request + validation-sibling hierarchy, aggregate validation, active-step evidence and suppression of generic phase summaries |
-| `ReportArtifactInspectorTests` | self-contained HTML, dark token, collapsed evidence and table contracts |
 | `ReportingLifecycleComponentTests` | fixture composition, identity forwarding and idempotent finalization |
 
 ## Testing rule
@@ -48,18 +63,18 @@ identify ATF tests; annotations are retained only when they change filtering,
 execution policy or report navigation. `AnnotationPolicyTests` protects the
 scenario source and configured tag order from regression.
 
-## Artifact testing
+## Renderer boundary
 
-ReportArtifactInspector checks the file a developer opens: custom theme,
-shared dark token, embedded assets, absent extent folder, collapsed details,
-scrollable JSON, assertion table, technical trace, hidden timestamp column and
-phase-owned request + validation-sibling hierarchy. Extent-specific structural tests live in
-Atf.Tests/Atf.Reporting.Extent.Tests; Core tests stay renderer-neutral.
+Core tests stay renderer-neutral. `AtfAssertion` is the semantic row contract;
+HTML formatting, Extent selectors, dark theme tokens, collapse rules and final
+artifact inspection are tested in `Atf.Tests/Atf.Reporting.Extent.Tests`.
 
 ```mermaid
 flowchart LR
     Model[In-memory Extent tree] --> Structure[phase/request/validation ownership]
-    Html[Generated single HTML] --> Artifact[embedded assets + dark CSS]
+    Model[Assertion/evidence model] --> Port[reporting port]
+    Extent[Extent adapter] --> Html[Generated single HTML]
+    Html --> Artifact[embedded assets + dark CSS]
     Browser[Browser MCP render] --> UX[collapsed state + zero horizontal overflow]
     Structure --> Acceptance[reporting acceptance]
     Artifact --> Acceptance
@@ -68,6 +83,10 @@ flowchart LR
 
 A green unit test is not sufficient for the final browser contract: the HTML
 artifact must still be opened and checked after the live API run.
+
+`ReportArtifactInspector` este dovadă pentru artifactul static; nu îl redenumiți
+și nu îl tratați ca test browser. Pentru click, disclosure, scroll și fonturi
+calculate este necesar un seam DOM separat.
 
 This is stronger than testing a CSS string in isolation.
 

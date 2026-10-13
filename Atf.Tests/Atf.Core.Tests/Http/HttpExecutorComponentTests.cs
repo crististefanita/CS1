@@ -24,7 +24,9 @@ public sealed class HttpExecutorComponentTests
             DelayHeaders = ["Retry-After"]
         });
 
-        var result = await executor.ExecuteAsync(new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous"));
+        var result = await executor.ExecuteAsync(
+            new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous"),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, result.Response.StatusCode);
         Assert.Equal(2, result.Attempts);
@@ -46,7 +48,9 @@ public sealed class HttpExecutorComponentTests
         var transport = new SequenceTransport(Response(HttpStatusCode.BadRequest, "{\"error\":\"invalid\"}"));
         var executor = CreateExecutor(new RecordingReporter(), transport, new RateLimitSettings { MaxRetries = 5 });
 
-        var result = await executor.ExecuteAsync(new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous"));
+        var result = await executor.ExecuteAsync(
+            new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous"),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.BadRequest, result.Response.StatusCode);
         Assert.Equal(1, result.Attempts);
@@ -115,7 +119,8 @@ public sealed class HttpExecutorComponentTests
         var executor = CreateExecutor(new RecordingReporter(), new ThrowingTransport(expected), new RateLimitSettings());
 
         var actual = await Assert.ThrowsAsync<TimeoutException>(() => executor.ExecuteAsync(
-            new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous")));
+            new ApiRequest(HttpMethod.Get, "/items", AuthProfile: "anonymous"),
+            TestContext.Current.CancellationToken));
 
         Assert.Same(expected, actual);
     }
@@ -135,7 +140,8 @@ public sealed class HttpExecutorComponentTests
 
         await executor.ExecuteAsync(route.CreateRequest(
             bodyJson: "{\"name\":\"demo\"}",
-            values: []));
+            values: []),
+            TestContext.Current.CancellationToken);
 
         Assert.Equal("items.create", reporter.Details["route.name"]);
         Assert.Equal("bearer", reporter.Details["route.auth.type"]);
@@ -258,7 +264,8 @@ public sealed class HttpExecutorComponentTests
         var executor = CreateExecutor(new RecordingReporter(), transport, new RateLimitSettings(), timeoutSeconds: 1);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => executor.ExecuteAsync(
-            new ApiRequest(HttpMethod.Get, "/slow", AuthProfile: "anonymous")));
+            new ApiRequest(HttpMethod.Get, "/slow", AuthProfile: "anonymous"),
+            TestContext.Current.CancellationToken));
 
         Assert.Equal(1, transport.Calls);
         Assert.True(transport.CancellationObserved);

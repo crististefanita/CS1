@@ -7,6 +7,8 @@ global using Atf.Core.Http.Execution;
 global using Atf.Core.Http.Routing;
 global using Atf.Core.Http.Transport;
 global using Atf.Core.Reporting;
+global using Atf.Core.Reporting.Lifecycle;
+global using Atf.Core.Reporting.Ports;
 global using Atf.Core.Reporting.Artifacts;
 global using Atf.Core.Reporting.Evidence;
 global using Atf.Core.Reporting.Inventory;

@@ -1,4 +1,5 @@
 using Atf.Api.Infrastructure;
+using Atf.Api.TestHost;
 using Atf.Common.Validation;
 using System.Net;
 using Xunit;
@@ -11,7 +12,7 @@ namespace Atf.Api;
 /// They are skipped by default so a normal API run remains a trustworthy signal.
 /// </summary>
 [Collection("API ATF")]
-public sealed class FailApiTests(ITestOutputHelper output, Atf.Reporting.Extent.ExtentCollectionFixture fixture)
+public sealed class FailApiTests(ITestOutputHelper output, ApiTestFixture fixture)
     : ApiTestBase(output, fixture)
 {
     [Fact(DisplayName = "Failure demo: setup exception")]

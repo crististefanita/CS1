@@ -8,15 +8,15 @@ namespace Atf.Core.Http.Execution;
 
 public sealed class ApiExecutor : IApiExecutor
 {
-    private readonly ApiSettings _settings;
-    private readonly IAtfReporter _reporter;
+    private readonly ApiSettingsSnapshot _settings;
+    private readonly IAtfValidationReporter _reporter;
     private readonly RateLimitRetryPolicy _retryPolicy;
     private readonly IApiTransport _transport;
     private readonly IApiAuthenticator _authenticator;
     private readonly IApiUrlBuilder _urlBuilder;
     private readonly TimeSpan _timeout;
 
-    public ApiExecutor(HttpClient client, ApiSettings settings, IAtfReporter reporter)
+    public ApiExecutor(HttpClient client, ApiSettings settings, IAtfValidationReporter reporter)
         : this(
             client,
             settings,
@@ -30,13 +30,13 @@ public sealed class ApiExecutor : IApiExecutor
     public ApiExecutor(
         HttpClient client,
         ApiSettings settings,
-        IAtfReporter reporter,
+        IAtfValidationReporter reporter,
         IApiAuthenticator? authenticator,
         IApiTransport? transport = null,
         IApiUrlBuilder? urlBuilder = null)
     {
         ArgumentNullException.ThrowIfNull(client);
-        var snapshot = settings?.Snapshot() ?? throw new ArgumentNullException(nameof(settings));
+        var snapshot = settings?.ToRuntimeSnapshot() ?? throw new ArgumentNullException(nameof(settings));
         _settings = snapshot;
         _reporter = reporter ?? throw new ArgumentNullException(nameof(reporter));
         _authenticator = authenticator ?? new ConfiguredApiAuthenticator(snapshot);

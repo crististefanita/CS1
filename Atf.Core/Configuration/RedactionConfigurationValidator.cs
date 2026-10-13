@@ -9,13 +9,14 @@ internal static class RedactionConfigurationValidator
     {
         if (string.IsNullOrWhiteSpace(redaction.Replacement))
         {
-            throw new InvalidOperationException("Modules:Api:Api:Redaction:Replacement is required.");
+            ConfigurationRuleViolation.Throw("ATF-REDACT-001", "Modules:Api:Api:Redaction:Replacement", "Replacement is required.");
         }
 
         if (redaction.RedactLocalPaths && string.IsNullOrWhiteSpace(redaction.LocalPathReplacement))
         {
-            throw new InvalidOperationException(
-                "Modules:Api:Api:Redaction:LocalPathReplacement is required when RedactLocalPaths is enabled.");
+            ConfigurationRuleViolation.Throw(
+                "ATF-REDACT-002", "Modules:Api:Api:Redaction:LocalPathReplacement",
+                "LocalPathReplacement is required when RedactLocalPaths is enabled.");
         }
     }
 }

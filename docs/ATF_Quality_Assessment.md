@@ -15,6 +15,14 @@ scorul agresiv OOP din auditul curent. Pentru nota actualizată și măsurători
 din codul live (`ExtentTestScope`, `ApiTestBase`, tema CSS și client behaviour),
 folosiți documentul de refactorizare indicat mai sus.
 
+## Sincronizare cu codul live — 2026-10-13
+
+Registrul curent acordă ATF-ului **84/100**. Suitele offline executate fără
+serviciu au trecut cu **320/320**: Core 83, Common 67, Extent 118 și API 52.
+Boundary-ul OOP și backlog-ul detaliat se citesc din feedback-ul live; tabelul
+de mai jos rămâne baseline operațional pentru comparație, nu o a doua notă
+curentă.
+
 ## Executive verdict
 
 | Area | Score | Direct feedback |
@@ -28,7 +36,7 @@ folosiți documentul de refactorizare indicat mai sus.
 | Testability | 81 | Offline tests cover core seams and structure. Missing matrices remain around cancellation, masking, empty collections and cleanup isolation. |
 | Documentation and onboarding | 84 | README files now describe contracts and diagrams. The next improvement is executable examples and a single “first change” path. |
 | Security and diagnostic hygiene | 74 | Token descriptions are safe and the report is self-contained. Add systematic secret masking and tests for headers/query/body values. |
-| Local quality gates | 70 | Build and test commands are documented locally; no remote CI workflow is part of this repository contract. |
+| Local quality gates | 78 | Build/test commands and artifact inspection are documented locally; browser DOM remains a separate gate. |
 | **Overall** | **76** | A solid framework foundation; the remaining risk is concentrated in oversized presentation/lifecycle modules, diagnostic data policy and unautomated quality gates. |
 
 The blunt conclusion: the framework is no longer a collection of test helpers,
@@ -39,8 +47,8 @@ contracts executable, not from adding more endpoint wrappers.
 
 ```mermaid
 flowchart LR
-    Scenario[Scenario intent] --> Steps[Domain steps]
-    Steps --> Services[Typed services]
+    Scenario[Scenario intent] --> Actions[Services / semantic actions]
+    Actions --> Services[Typed services]
     Services --> Routes[Route catalog]
     Routes --> Request[ApiRequest + ApiRoute]
     Request --> Executor[ApiExecutor]
@@ -114,9 +122,10 @@ dotnet test Atf.slnx --configuration Release --no-build --no-restore
 1. **Make one contract equal one table by default.** Keep `ContractValidators`
    as the preferred public facade. Add a test for every composite contract that
    asserts exactly one reporter table and the expected row count.
-2. **Add the missing diagnostic-data policy.** Define a masking pipeline for
-   bearer tokens, cookies, authorization headers, API keys and configurable
-   sensitive JSON fields. Test the policy before testing the HTML.
+2. **Keep the diagnostic-data policy closed.** The redaction pipeline now covers
+   bearer tokens, cookies, authorization headers, API keys, paths and configured
+   JSON/PII fields. Add regression cases for new evidence surfaces before
+   changing the policy.
 3. **Add cancellation/timeout matrices.** Prove that cancellation is propagated,
    no retry happens after cancellation, and an `HttpClient` timeout is reported
    as the original exception while the report is best-effort.
@@ -126,12 +135,12 @@ dotnet test Atf.slnx --configuration Release --no-build --no-restore
 
 ### P1 — improve maintainability and OOP
 
-1. Split `ExtentReportClientBehaviour` into named builders: navigation,
-   hierarchy, disclosure and layout. Keep the public `Build()` facade so the
-   generated HTML contract does not change.
-2. Split `AtfReportTheme` into token, overview, execution-tree, evidence and
-   responsive sections. The current single large CSS source is the largest
-   presentation-maintenance risk.
+1. Continue splitting `ExtentReportClientBehaviour` into named controllers:
+   navigation, hierarchy, disclosure and layout. Keep the public `Build()` facade
+   so the generated HTML contract does not change.
+2. Continue splitting `AtfReportTheme` by semantic ownership: token, overview,
+   execution-tree, evidence and responsive sections. Fragments exist, but the
+   517-line facade and 446-line overview fragment remain review hotspots.
 3. Introduce typed report property names for method/path/auth/status/duration
    instead of spreading string keys through execution code. Keep the serialized
    labels stable for backward-compatible reports.
@@ -156,7 +165,7 @@ dotnet test Atf.slnx --configuration Release --no-build --no-restore
 
 | Component | Test to add | Why it matters |
 |---|---|---|
-| `ApiExecutionReporter` | start/detail/json failure is non-fatal | protects execution from presentation defects |
+| `ApiExecutionReporter` | preserve non-fatal behavior for new evidence hooks | protects execution from presentation defects |
 | `ApiExecutor` | cancellation during retry delay | prevents hidden extra calls and misleading retries |
 | `ApiExecutor` | timeout preserves original exception | protects triage under real network failure |
 | `RateLimitRetryPolicy` | HTTP-date `Retry-After` and malformed date | covers production header variants |

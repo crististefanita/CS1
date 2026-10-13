@@ -150,6 +150,25 @@ public sealed class ValidationAndLifecycleTests
         Assert.True(second.HasPending);
     }
 
+    [Fact(DisplayName = "Cleanup registry runs actions when every reporting hook fails")]
+    public async Task CleanupActionsDoNotDependOnReporterHealth()
+    {
+        var reporter = new ThrowingReporter();
+        var registry = new CleanupRegistry(reporter);
+        var order = new List<string>();
+        registry.Own("user", "1", () => { order.Add("user"); return Task.CompletedTask; });
+        registry.Own("post", "2", () =>
+        {
+            order.Add("post");
+            throw new InvalidOperationException("resource delete failed");
+        });
+
+        await registry.RunAsync();
+
+        Assert.Equal(["post", "user"], order);
+        Assert.False(registry.HasPending);
+    }
+
     private sealed class RecordingReporter : IAtfReporter
     {
         public List<IReadOnlyCollection<AtfAssertion>> Tables { get; } = [];
@@ -167,6 +186,20 @@ public sealed class ValidationAndLifecycleTests
         public void Pass(string message) => Passes.Add(message);
         public void Fail(string message, Exception? exception = null) => Failures.Add(message);
         public void Warning(string message) => Warnings.Add(message);
+        public void Skip(string reason) { }
+    }
+
+    private sealed class ThrowingReporter : IAtfReporter
+    {
+        public void StartStep(string title) => throw new InvalidOperationException("start reporting failed");
+        public void CompleteStep(AtfReportStatus status) => throw new InvalidOperationException("complete reporting failed");
+        public void Detail(string key, string value) { }
+        public void Json(string label, string json) { }
+        public void AssertionTable(IReadOnlyCollection<AtfAssertion> assertions) { }
+        public void Info(string message) { }
+        public void Pass(string message) => throw new InvalidOperationException("pass reporting failed");
+        public void Fail(string message, Exception? exception = null) { }
+        public void Warning(string message) => throw new InvalidOperationException("warning reporting failed");
         public void Skip(string reason) { }
     }
 }

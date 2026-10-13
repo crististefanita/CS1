@@ -3,9 +3,20 @@
 Acest proiect testează adaptorul Extent și artifactul HTML consumat de om.
 Nu testează transportul HTTP și nu este o suită live.
 
+Este proiectul pentru boundary-ul Extent, grupat fizic în
+`Atf.Tests/Atf.Reporting.Extent.Tests`; testele DOM/browser rămân distincte de
+inspecția statică a artifactului.
+
+## Audit alignment — 2026-10-13
+
+Testele de aici trebuie să protejeze tree, status, evidence și artifactul HTML,
+dar nu trebuie să pretindă că un regex asupra
+sursei HTML dovedește randarea în browser.
+
 ```mermaid
 flowchart LR
     Scope[ExtentTestScope] --> Tree[phase -> request + validation sibling tree]
+    Scope --> Status[ExtentScopeStatusPolicy]
     Renderer[Evidence renderer] --> Envelope[collapsed HTML envelope]
     Theme[Theme + client behaviour] --> Layout[CSS/JS contract]
     Tree --> Artifact[final HTML artifact]
@@ -21,6 +32,8 @@ flowchart LR
 | ownership | Core nu referă Extent; adapterul deține implementarea concretă |
 | hierarchy | validation este următorul frate direct al requestului care a produs response-ul |
 | aggregation | un response produce o singură tabelă agregată de assertions |
+| warning | soft assertion-ul păstrează rândurile Fail, le afișează cu `⚠️`, promovează scenariul la Warning și apare în Overview `WARNING` |
+| status policy | warning-ul este scoped pe phase, consumat la completion și păstrat la scenario completion |
 | evidence | trace-ul este `TECHNICAL TRACE`, iar transportul rămâne `Info` |
 | disclosure | fazele, pașii și evidence-ul pornesc collapsed |
 | readability | titlurile lungi au ellipsis, iar textul complet rămâne accesibil prin `title`/`aria-label` |
@@ -70,6 +83,21 @@ Un test nou pentru raport trebuie să treacă prin `ExtentReportLifecycle`, să
 scrie un artifact temporar și să-l inspecteze cu `ReportArtifactInspector`.
 Testarea exclusivă a unui string din CSS nu este suficientă; trebuie verificată
 și tranziția `tree → HTML → DOM`.
+
+### Cazuri protejate și următoarea rundă
+
+| Caz | Nivel | Acceptare |
+|---|---|---|
+| reporter failure nu schimbă verdictul | component — protejat | failure-ul funcțional rămâne autoritar |
+| Warning/Other reconciliation | artifact + browser | card, chart, tags și metadata au aceeași populație |
+| request/validation ownership | tree + DOM | validation este sibling direct și tabelul este unic |
+| collapsed state | DOM | phase, request, validation și evidence pornesc închise |
+| response JSON | DOM | code block scrollabil fără overflow de pagină |
+| overview typography/colors | DOM | titlurile, fonturile și tokenii calculați corespund contractului |
+| parallel sessions | component | artifactele și nodurile nu se amestecă |
+
+Reporter isolation este închis la nivel de componentă; următorul test cu valoare
+este DOM-ul final pentru reconcilierea Warning/Other, collapse și computed styles.
 
 ## Metadata de raportare
 

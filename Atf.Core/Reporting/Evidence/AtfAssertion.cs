@@ -9,4 +9,5 @@ public sealed record AtfAssertion(
     string Name,
     string Expected,
     string Actual,
-    bool Passed);
+    bool Passed,
+    AtfReportStatus? ResultStatus = null);

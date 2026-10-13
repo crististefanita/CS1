@@ -3,7 +3,7 @@ using System.Reflection;
 
 namespace Atf.Reporting.Extent;
 
-public sealed class ExtentCollectionFixture : IDisposable
+public sealed class ExtentCollectionFixture : IAtfApiReportSession, IDisposable
 {
     private readonly IAtfReportSession _reportSession;
     private int _disposed;
@@ -25,6 +25,8 @@ public sealed class ExtentCollectionFixture : IDisposable
 
     public AtfConfiguration Configuration { get; }
 
+    public string ReportPath => _reportSession.ReportPath;
+
     public IAtfScenarioScope StartTest(
         string testClassName,
         string scenarioName,
@@ -34,6 +36,13 @@ public sealed class ExtentCollectionFixture : IDisposable
 
     public void RegisterTestAssembly(Assembly testAssembly) =>
         _reportSession.RegisterTestAssembly(testAssembly);
+
+    public void Initialize(ReportingSettings settings, ApiSettings? api = null) =>
+        _reportSession.Initialize(settings, api);
+
+    public void Flush() => _reportSession.Flush();
+
+    public void FinalizeReport() => _reportSession.FinalizeReport();
 
     public void Dispose()
     {

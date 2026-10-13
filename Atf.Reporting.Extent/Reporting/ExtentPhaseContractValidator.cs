@@ -1,5 +1,3 @@
-using AventStack.ExtentReports;
-
 namespace Atf.Reporting.Extent;
 
 /// <summary>
@@ -13,7 +11,7 @@ internal static class ExtentPhaseContractValidator
     {
         ArgumentNullException.ThrowIfNull(phase);
 
-        var children = phase.Node.Model.Children.ToArray();
+        var children = phase.Adapter.Children.ToArray();
         for (var index = 0; index < children.Length; index++)
         {
             var request = children[index];
@@ -37,8 +35,8 @@ internal static class ExtentPhaseContractValidator
             }
 
             var validation = children[index + 1];
-            var assertionEvidenceCount = validation.Logs.Count(log =>
-                log.Details.Contains("assertion-evidence", StringComparison.Ordinal));
+            var assertionEvidenceCount = validation.LogDetails.Count(details =>
+                details.Contains("assertion-evidence", StringComparison.Ordinal));
             if (assertionEvidenceCount != 1)
             {
                 throw new InvalidOperationException(

@@ -3,7 +3,6 @@ using Atf.Common.Models;
 using Atf.Common.Modules;
 using Atf.Common.Routing;
 using Atf.Common.Services;
-using Atf.Common.Steps;
 using Atf.Core.Configuration;
 using Atf.Core.Http;
 using Atf.Core.Reporting;
@@ -83,7 +82,7 @@ public sealed class RoutingServicesAndDataTests
         var service = new UsersService(executor, routes);
         var request = new UserRequest("Ada", "ada@example.com", "female", "active");
 
-        await service.CreateAsync(request, "write");
+        await service.CreateAsync(request, "write", TestContext.Current.CancellationToken);
 
         Assert.Equal(ApiRequestConstants.Post, executor.Request!.Method);
         Assert.Equal(RouteSettings.DefaultUsersPath, executor.Request.Path);
@@ -99,7 +98,10 @@ public sealed class RoutingServicesAndDataTests
         var executor = new RecordingExecutor();
         var routes = new ApiRoutes(new RouteSettings());
 
-        await new PostsService(executor, routes).ListForUserAsync(42, authProfile: "anonymous");
+        await new PostsService(executor, routes).ListForUserAsync(
+            42,
+            authProfile: "anonymous",
+            ct: TestContext.Current.CancellationToken);
 
         Assert.Equal(ApiRequestConstants.Get, executor.Request!.Method);
         Assert.Equal($"{RouteSettings.DefaultUsersPath}/42/posts", executor.Request.Path);
@@ -113,7 +115,7 @@ public sealed class RoutingServicesAndDataTests
         var executor = new RecordingExecutor();
         var module = new ApiModule(executor, new ApiRoutes(new RouteSettings()));
 
-        await module.Users.GetAsync(7, "anonymous");
+        await module.Users.GetAsync(7, "anonymous", TestContext.Current.CancellationToken);
 
         Assert.Equal("/public/v2/users/7", executor.Request!.Path);
         Assert.Equal("users.item", executor.Request.Route!.Name);

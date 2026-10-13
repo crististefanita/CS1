@@ -1,279 +1,292 @@
 # Configurable API ATF
 
-This repository is a reusable, configuration-driven API automation framework for .NET 9. It is intentionally product-neutral: the framework executes HTTP exchanges, applies authentication and resilience policies, validates contracts, owns test data cleanup and publishes a self-contained Extent HTML report. A product-specific module contributes routes, models, fixtures, validators and scenarios.
+ATF este un framework .NET 9 pentru testarea API-urilor prin configurație,
+contracte de transport, validări agregate și raportare HTML Extent.
 
-The implementation is the executable companion to the [ATF requirements](docs/ATF_Requirements.html). The normative reporting contract is maintained in [docs/ATF_Reporting_Contract.md](docs/ATF_Reporting_Contract.md); it resolves historical examples and is verified by code and the final HTML artifact.
-
-For the current read-only code audit, aggressive scores and the surgical OOP
-roadmap, see [ATF refactoring assessment](docs/ATF_Refactoring_Assessment.md).
-That document is intentionally separate from the normative contracts: it records
-what should be refactored next, while this README and the reporting contract
-describe the behavior that must not regress.
-
-## What this framework is responsible for
-
-The ATF separates five concerns that are often accidentally mixed in API test suites:
-
-1. **Configuration** — module-owned settings, environment overrides, route templates, auth profiles and reporting policy.
-2. **Execution** — URL construction, authentication, transport, bounded retry and polling.
-3. **Domain API language** — routes, typed services and semantic steps used by test scenarios.
-4. **Contract evidence** — aggregated assertions, request/response details and lifecycle ownership.
-5. **Report delivery** — Extent adapter, embedded assets and a final HTML artifact that is independently inspected.
-
-The framework contains no UI automation, browser driver, database integration, cloud-provider SDK or NorthStandard-specific business logic.
-
-## Architecture at a glance
-
-The dependency rule is deliberately one-way:
+Scopul lui este să ofere o limbă clară pentru scenarii API:
 
 ```text
-Atf.Api  (live xUnit scenarios)
-   |
-   v
-Atf.Common  (module composition, routes, services, steps, validation, cleanup)
-   |
-   v
-Atf.Core  (configuration, HTTP, resilience and renderer-neutral reporting ports)
+scenario -> semantic step -> service -> route -> executor -> transport
+                                             |
+                                             +-> renderer-neutral evidence
+
+response -> validation group -> one assertion table -> scenario verdict
+resource -> cleanup registry -> reverse-order teardown
 ```
 
-No lower layer references an upper layer. In particular:
+ATF nu este UI automation, nu este un client de business și nu trebuie să
+conțină logică specifică unui produs în kernelul reutilizabil.
 
-- `Atf.Core` does not know a product route, schema or scenario.
-- `Atf.Common` does not own xUnit orchestration or Extent markup.
-- `Atf.Api` does not build `HttpClient`, duplicate endpoint strings or manipulate report nodes.
-- Tests replace boundaries with fakes instead of starting a service or requiring a token.
+## Starea actuală
 
-### Runtime sequence
+Starea codului se verifică live, nu se îngheață într-o notă în README. Numărul
+testelor, verdicturile și layout-ul final trebuie confirmate prin build, teste și
+artefactul HTML generat. Direcția curentă este urmărită prin findings active,
+ownership, dovezi și criterii de acceptare.
+
+## Gard de siguranță pentru refactorizare
+
+În această etapă formatul raportului este tratat ca un contract existent. Nu
+redesenăm layout-ul, nu schimbăm paleta, fonturile, textele, ordinea nodurilor
+sau interacțiunile raportului. Documentul
+`docs/feedback/ATF_LIFECYCLE_COMBINATION_ANALYSIS_2026-10-13.md` rămâne
+referința externă pentru acel format și este exclus din refactorizarea curentă.
+
+```mermaid
+flowchart LR
+    Contract[Report contract unchanged] --> Ports[Internal ports and policies]
+    Ports --> Cohesion[Smaller cohesive classes]
+    Cohesion --> Tests[Unit and component tests]
+    Tests --> Proof[Same observable artifact]
+```
+
+Orice schimbare care modifică artifactul observabil este regresie, nu refactorizare.
+Schimbările acceptate sunt limitate la ownership intern, dependențe, lifecycle,
+concurență, testabilitate și documentația acestor seam-uri.
+
+### Probleme deschise prioritare
+
+1. `ExtentTestScope` păstrează sincronizare, tree transitions, status policy și evidence delegation; următorul split trebuie făcut doar prin seam-uri testabile.
+2. `ExtentReportLifecycle` și theme/composer leagă încă session state, filesystem și template composition.
+3. `ReportArtifactInspector` verifică în principal sursa statică, nu DOM-ul hidratat.
+4. Testele de reporting verifică în principal HTML/CSS/JS static; lipsesc
+   verificări reale de browser pentru click, collapse, scroll și computed styles.
+5. Clasele de test foarte mari trebuie împărțite după contract, nu după numărul de metode;
+   `ReportingComponentTests` are peste 800 de linii și trebuie redus ca suprafață de review.
+6. Suitele de teste folosesc încă două generații xUnit: v3 în proiectele API și
+   v2 în proiectele interne. Migrarea trebuie făcută controlat înainte de
+   consolidarea în `Atf.Tests`.
+
+### Interpretarea statusurilor
+
+Feedback-ul folosește două niveluri care nu trebuie confundate:
+
+| Nivel | Ce este deja protejat | Ce rămâne deschis |
+|---|---|---|
+| semantic | verdictul funcțional, precedence-ul Fail/Skip, tabelul agregat și izolarea reporterului | outcome model mai strict și eliminarea API-urilor de validare compatibile în paralel |
+| artifact | HTML autonom, roluri semantice și markup-ul expected | DOM hidratat, computed styles, click, scroll și overflow real |
+| soft assertion | rândul `Fail` rămâne vizibil, xUnit nu eșuează, iar scenariul devine `Warning` | reconcilierea DOM/computed-style în toate suprafețele Overview/Tags/metadata |
+| security | redactor central și strategii separate | matrice de redaction executată pentru fiecare suprafață de evidence |
+
+Prin urmare, `Warning/Other` este **mitigat semantic**, nu închis end-to-end,
+iar `ReportArtifactInspector` dovedește contractul static, nu comportamentul
+browserului. Acest vocabular este obligatoriu în README-urile modulelor.
+
+Detaliile findings-urilor active, backlog-ul și metodologia auditului live sunt în
+[feedback-ul live compilat](docs/feedback/ATF_LIVE_CODE_FEEDBACK_2026-10-13.md)
+și în [evaluarea de refactorizare](docs/ATF_Refactoring_Assessment.md).
+
+## Arhitectura reală a proiectului
+
+Direcția de runtime este:
+
+```mermaid
+flowchart LR
+    Api["Atf.Api\nmodule + live xUnit scenarios"] --> Core["Atf.Core\nconfiguration HTTP resilience ports"]
+    Api --> Host["Atf.Api.TestHost\nfixture composition"]
+    Host --> Extent["Atf.Reporting.Extent\nExtent HTML adapter"]
+    Extent --> Core
+    Internal["Atf.Tests\ncomponent and contract tests"] -. protects .-> Core
+    Internal -. protects .-> Api
+    Internal -. protects .-> Extent
+```
+
+### Responsabilitatea proiectelor
+
+| Proiect | Deține | Nu trebuie să dețină |
+|---|---|---|
+| `Atf.Core` | configurație, transport, auth, URL, retry, polling, evidence ports | Extent, xUnit, rute de produs, decizii de scenariu |
+| `Atf.Api/Module` | module composition, routes, models, typed services, justified semantic actions, validators, cleanup | lifecycle xUnit și markup Extent |
+| `Atf.Api` | scenarii live și orchestrarea xUnit | construire manuală de `HttpClient`, route strings duplicate, HTML |
+| `Atf.Api.TestHost` | fixture-ul live și bridge-ul către renderer-ul actual | scenarii, validări business, transport policy |
+| `Atf.Reporting.Extent` | Extent tree, HTML, CSS, JavaScript, assets și session lifecycle | HTTP, validări business, decizii de scenariu |
+| `Atf.Tests/Atf.Core.Tests` | contractele kernelului | live API behavior |
+| `Atf.Tests/Atf.Common.Tests` | contractele modulului API din `Atf.Api/Module` | sockets și live API |
+| `Atf.Tests/Atf.Api.Tests` | boundary API, lifecycle și phase layout | apeluri la servicii externe |
+| `Atf.Tests/Atf.Api.FailureDemos` | demonstrații failure opt-in | rularea implicită a suitei |
+| `Atf.Tests/Atf.Reporting.Extent.Tests` | adapterul Extent și artifact contract | transport și business validation |
+
+Regula de dependențe este simplă: Core nu poate cunoaște Extent. Extent poate
+implementa porturile Core, iar `Atf.Api.TestHost` este locul explicit în care
+este ales renderer-ul curent.
+
+### Ținta de simplificare a soluției
+
+Structura minimă este acum aplicată: modulul API și conținutul fostului
+`Atf.Common` sunt în `Atf.Api/Module`, iar testele API și failure demos sunt
+sub `Atf.Tests`. Păstrăm separat `Atf.Core`, `Atf.Api.TestHost` și
+`Atf.Reporting.Extent`, deoarece acestea protejează kernelul, composition
+root-ul și vendor boundary-ul.
+
+Ținta minimă arhitecturală este:
+
+```text
+Atf/
+├── Atf.Core/                 # kernel tehnic, renderer-neutral
+├── Atf.Api/                  # modul API + scenarii live
+├── Atf.Api.TestHost/         # composition root; alege renderer-ul
+├── Atf.Reporting.Extent/     # adaptorul concret Extent/HTML
+├── Atf.Tests/                # toate testele ATF, pe foldere
+├── docs/                     # contracte, README-uri și feedback
+└── artifacts/                # output generat, niciodată input de runtime
+```
+
+Acesta este numărul minim de directoare de bază care păstrează boundary-urile:
+`Atf.Api/Module` concentrează vocabularul modulului, iar toate proiectele de
+teste sunt sub `Atf.Tests`. `Atf.Api.TestHost` rămâne separat: dacă este absorbit
+în `Atf.Api`, acel proiect trebuie să refere direct `Atf.Reporting.Extent` și
+scenariile nu mai sunt independente de vendor.
+
+Nu introducem `Atf.Shared`, `Atf.Contracts`, `Atf.Framework` sau directoare
+`Common`/`Utils` fără un boundary consumat de cel puțin două module reale.
+Reducem numărul de directoare, nu responsabilitățile și nu testele.
+
+## Runtime pipeline
 
 ```mermaid
 sequenceDiagram
-    participant T as xUnit scenario
+    participant T as Scenario
     participant B as ApiTestBase
     participant M as ApiModule
-    participant S as Semantic steps
-    participant V as Service
-    participant R as ApiRoutes
+    participant S as Services / semantic actions
+    participant R as Route Catalog
     participant E as ApiExecutor
-    participant A as Authenticator
-    participant H as Transport
-    participant P as Reporter
-    participant C as Validators
-    participant K as CleanupRegistry
+    participant H as Transport/Auth
+    participant P as Reporter Port
+    participant V as Validation Table
+    participant C as Cleanup Registry
 
-    T->>B: RunScenarioAsync(name, categories, setup/body/teardown)
+    T->>B: setup / body / teardown
     B->>M: compose module from Modules:Api:Config
-    B->>M: create ApiScenarioContext
-    B->>S: setup or test action
-    S->>V: domain operation
-    V->>R: create semantic ApiRequest
-    R-->>E: method, path, auth, resource, operation
-    E->>P: start API step + safe route/auth metadata
-    E->>A: apply selected auth profile
-    E->>H: send request
-    H-->>E: response + duration + headers
-    E->>P: response details + JSON evidence
-    E-->>C: ApiExecutionResult
-    C->>P: one aggregated assertion table
-    B->>K: teardown and reverse-order cleanup
-    B->>P: complete scenario status
-```
-
-If a renderer does not support Mermaid, the dependency and sequence diagrams above are still represented by the text flow and the module guides.
-
-### Package-size rule
-
-The source is intentionally split so that one namespace/package contains no more
-than eight direct (top-level) types. This keeps navigation, ownership and
-dependency review practical without creating artificial projects:
-
-| Area | Packages |
-|---|---|
-| Configuration | Atf.Core.Configuration, Atf.Core.Configuration.Models |
-| HTTP | Atf.Core.Http, Atf.Core.Http.Execution, Atf.Core.Http.Routing, Atf.Core.Http.Transport |
-| Reporting | Atf.Core.Reporting, .Artifacts, .Evidence, .Inventory, .Lifecycle, .Phases, .Theme |
-| Internal tests | Atf.Core.Tests.Architecture, .Configuration, .Http, .Reporting |
-
-The root package keeps only the public orchestration contracts; specialized
-concerns live in the corresponding subpackage. Nested private test doubles do
-not count as package members because they are implementation details of their
-own test type.
-
-### Report tree
-
-```mermaid
-flowchart TD
-    A[Extent HTML] --> B[Test class]
-    B --> C[Scenario]
-    C --> D[SETUP]
-    C --> E[TEST BODY]
-    C --> F[TEARDOWN]
-    D --> G[API request step]
-    E --> H[API request step]
-    F --> I[Cleanup / verification]
-    G --> J[Technical trace]
-    G --> K[Request / response JSON]
-    G --> M[Retry / diagnostic evidence]
-    E --> N[Contract validation sibling]
-    N --> O[One aggregate assertion table]
-```
-
-The three lifecycle phases are direct siblings below the scenario. Each HTTP request owns
-its transport/response evidence and is followed by exactly one aggregate validation sibling. The report
-therefore reads as `phase → request + validation sibling → aggregate table`. The
-scenario verdict is carried by its header; composite lifecycle scenarios do not repeat
-it in a redundant parent event table. Phase shells, request/response details, JSON and
-assertion evidence remain collapsed by default so the report is scannable before it
-becomes forensic.
-
-### Evidence lifecycle — invariant discovered in the report review
-
-```mermaid
-sequenceDiagram
-    participant S as Semantic step
-    participant E as ApiExecutor
-    participant R as ExtentTestScope
-    participant V as ValidationTable
-
-    S->>E: ExecuteAsync(request)
-    E->>R: StartStep(METHOD + PATH)
-    E->>R: Detail / JSON / response evidence
-    Note over E,R: request remains open while response evidence is published
+    T->>S: semantic operation
+    S->>R: create ApiRequest
+    R->>E: method, path, auth, operation
+    E->>H: execute exchange with retry budget
+    H-->>E: response, headers, duration
+    E->>P: request/response evidence
     E-->>S: ApiExecutionResult
-    S->>V: Validate(response)
-    V->>R: StartStep(Validate: contract)
-    V->>R: AssertionTable(all rows)
-    V->>R: Pass or Fail
-    V->>R: CompleteStep(Pass or Fail)
+    S->>V: validate one response
+    V->>P: one aggregate assertion table
+    B->>C: reverse-order cleanup
+    B->>P: scenario verdict
 ```
 
-The validation `CompleteStep` boundary is not cosmetic: it closes each validation
-card after its table is published, while the enclosing phase closes the request.
-This guarantees the report shape below and prevents a validator from becoming a child
-of the wrong request or of a previous validator:
+`ApiExecutor` separă transportul reușit de validarea funcțională:
+
+```text
+HTTP exchange completed != contract satisfied != scenario passed
+```
+
+Un răspuns 502 poate fi transportat corect și să eșueze contractul. Raportul
+trebuie să păstreze ambele adevăruri.
+
+## Contractul raportului
+
+Arborele canonic este:
+
+```text
+test class
+└── scenario
+    ├── SETUP
+    │   └── request
+    │       └── validation sibling
+    ├── TEST BODY
+    │   ├── request
+    │   │   └── technical trace + request/response JSON
+    │   └── validation sibling
+    └── TEARDOWN
+        └── cleanup / verification
+```
+
+Reguli obligatorii:
+
+- setup, test body și teardown sunt faze sub același scenario;
+- un request și validarea lui sunt noduri frați sub aceeași fază;
+- un response produce o singură validare agregată;
+- assertions pentru același response apar într-un singur tabel;
+- validation nu devine copilul request-ului și nici copilul validatorului anterior;
+- fazele și evidence blocks sunt collapsed by default;
+- JSON-ul este code block, wrapped și vertical-scrollable;
+- evidence-ul nu produce overflow orizontal la nivelul paginii;
+- verdictul funcțional este Pass/Fail/Skip, iar Info este doar evidence;
+- folderul Extent extern nu este livrat împreună cu HTML-ul final.
+
+### Validation model
 
 ```mermaid
-flowchart TD
-    Phase[SETUP / TEST BODY / TEARDOWN]
-    Phase --> Request[GET / POST request]
-    Phase --> V1[Validate: contract]
-    Request --> Trace[Technical trace + JSON evidence]
-    V1 --> T1[One aggregate assertion table]
+flowchart LR
+    Response["one ApiResponse"] --> Contract["one ResponseContract"]
+    Contract --> Table["one ValidationTable"]
+    Table --> Status["HTTP status"]
+    Table --> Headers["headers/content"]
+    Table --> Json["JSONPath/schema"]
+    Table --> Verdict["one contract verdict"]
 ```
 
-This phase-sibling validation hierarchy is covered offline in `ApiScenarioPhaseLayoutTests` and
-`ReportingStructureTests`; the final HTML is then inspected separately because
-an in-memory Extent tree cannot prove browser hydration, collapsed state or overflow.
-
-## Projects and ownership
-
-`Atf.Tests` este secțiunea de testare internă a ATF-ului. Nu este un alt modul de runtime și nu conține teste ale unui produs extern; este umbrela pentru verificările offline ale componentelor reutilizabile.
-
-| Project | Owns | Must not own |
-|---|---|---|
-| `Atf.Core` | Configuration, HTTP contracts, transport/auth ports, executor, retry/polling and renderer-neutral reporting ports | Product routes, product schemas, domain decisions |
-| `Atf.Common` | Module composition, route catalog, typed models, services, steps, fixtures, validation and cleanup | xUnit lifecycle, raw Extent markup, live environment policy |
-| `Atf.Api` | Live scenarios, xUnit collection fixture and business coverage | `HttpClient` construction, route duplication, report rendering |
-| `Atf.Core.Tests` *(under Atf.Tests)* | Unit/component contract tests for kernel, boundaries and final report artifact | Live service behavior |
-| `Atf.Common.Tests` *(under Atf.Tests)* | Module component tests for composition and domain API language | Core internals, sockets, live service behavior |
-| `Atf.Api.Tests` | Offline API/reporting boundary tests, phase layout and evidence ownership | Live service behavior and product assertions |
-| `Atf.Tests/Atf.Reporting.Extent.Tests` | Extent adapter, HTML envelope, theme and artifact contracts | HTTP execution and business validation |
-
-Detailed guides:
-
-- [Architecture and reporting guide](docs/ATF_Architecture.md)
-- [Constructive quality assessment and refactoring backlog](docs/ATF_Quality_Assessment.md)
-- [Refactoring assessment and OOP roadmap](docs/ATF_Refactoring_Assessment.md)
-- [ATF best practices — OOP, annotations, validation and test lifecycle](docs/README_Atf_BestPractices.md)
-- [Atf.Tests/README.md](Atf.Tests/README.md)
-- [Atf.Core/README.md](Atf.Core/README.md)
-- [Atf.Common/README.md](Atf.Common/README.md)
-- [Atf.Api/README.md](Atf.Api/README.md)
-- [Atf.Api.Tests/README.md](Atf.Api.Tests/README.md)
-- [Atf.Reporting.Extent/README.md](Atf.Reporting.Extent/README.md)
-- [Atf.Tests/Atf.Reporting.Extent.Tests/README.md](Atf.Tests/Atf.Reporting.Extent.Tests/README.md)
-- [Atf.Tests/Atf.Core.Tests/README.md](Atf.Tests/Atf.Core.Tests/README.md)
-- [Atf.Tests/Atf.Common.Tests/README.md](Atf.Tests/Atf.Common.Tests/README.md)
-
-## Design patterns used deliberately
-
-These are not labels added after the fact; each pattern corresponds to a concrete responsibility in the source.
-
-| Pattern | Concrete implementation | Why it exists |
-|---|---|---|
-| Layered architecture | Core → Common → Api | Prevents product code from leaking into the reusable kernel |
-| Ports and adapters | `IApiTransport`, `IApiAuthenticator`, `IApiUrlBuilder`, `IAtfReporter`, `IAtfReportSession` | Replaces sockets, secrets and Extent lifecycle state with deterministic test doubles |
-| Composition root | `ApiModule`, `ExtentCollectionFixture` | Keeps object graph construction in one place |
-| Strategy | `RateLimitRetryPolicy`, auth profiles, configured route policy | Changes policy without changing orchestration |
-| Pipeline/orchestrator | `ApiExecutor` | Runs one HTTP exchange in a stable order and emits evidence at the boundary |
-| Facade | `UsersSteps`, `PostsSteps` | Gives scenarios a readable domain vocabulary |
-| Catalog / builder | `ApiRoutes`, `ApiRoute.CreateRequest`, `ApiUrlBuilder` | Centralizes endpoint semantics and safe token/query encoding |
-| Aggregator | `ValidationTable`, `ReportStatusAggregator` | Publishes one contract outcome from many observations |
-| Ownership / unit of work | `CleanupRegistry`, `ApiScenarioContext` | Makes created resources explicit and teardown deterministic |
-| Adapter (`Atf.Reporting.Extent`) | `ExtentReportLifecycle`, `ExtentTestScope` | Isolates one Extent report session from scenario/domain code |
-| Presentation (`Atf.Reporting.Extent`) | `ExtentEvidenceRenderer`, `AtfReportTheme` | Keeps evidence HTML and palette decisions out of lifecycle orchestration |
-| Artifact adapter (`Atf.Reporting.Extent`) | `ExtentAssetInliner`, `ReportAssetCleaner` | Produces one portable HTML file without an external `extent` folder |
-| Artifact contract | `ReportArtifactInspector` | Verifies the HTML users open, not only in-memory Extent nodes |
-
-### Responsibility boundaries
+Forma tabelului este:
 
 ```text
-Scenario         expresses intent and chooses validators
-Steps            exposes semantic test actions
-Services         serializes typed requests and selects routes
-Routes           defines method/path/auth/resource/operation metadata
-Executor         performs one exchange and emits diagnostic evidence
-Validators       decides contract pass/fail
-Cleanup          owns resources and performs best-effort teardown
-Reporter         renders evidence; never decides business validity
+ASSERTION | EXPECTED | ACTUAL | RESULT
 ```
 
-A common mistake is to let a scenario call `HttpClient` directly, assert a status inline, and write a report node for every field. That bypasses the route contract, makes authentication invisible and produces noisy reports. The intended flow is:
+Nu se creează câte un nod pentru fiecare assertion. Agregarea păstrează
+diagnosticul complet și face diferența dintre request evidence și verdictul
+contractului.
+
+### Lifecycle și cleanup
+
+Cleanup-ul este înregistrat imediat după dobândirea unei resurse, se execută în
+ordine inversă și nu trebuie să înlocuiască failure-ul primar.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Setup
+    Setup --> TestBody: setup passed
+    Setup --> Teardown: setup failed/skipped and cleanup exists
+    TestBody --> Teardown: body completed or resource exists
+    TestBody --> Teardown: body failed/skipped and cleanup exists
+    Teardown --> [*]: best effort cleanup
+```
+
+Contractul dorit este:
 
 ```text
-scenario -> step -> service -> route -> executor -> transport
-                                      \\-> reporter
-response -> validation table -> reporter
-created resource -> cleanup registry -> teardown
+primary failure > teardown failure > skip > pass
 ```
 
-## Configuration contract
+**P0 închis:** custom teardown-ul și `Cleanup.RunAsync()` sunt protejate printr-un
+`finally` interior, iar testele confirmă cleanup după failure de teardown,
+`StartStep` și callback de diagnostic. Reporter failure nu mai trebuie să oprească
+resource cleanup; această regulă este acum contract protejat prin teste.
 
-Configuration is owned by the module under `Modules:Api:Config`. This is important: reporting belongs to the module configuration boundary, not to a global root section, so a future ATF can host multiple API modules without creating unrelated global settings.
+## Configuration
 
-```text
-appsettings.json
-       +
-appsettings.{ATF_ENV}.json
-       +
-ATF_ environment hierarchy
-       |
-       v
-AtfConfigurationLoader
-       |
-       v
-AtfConfiguration.Modules["Api"].Config
-       |------------------|
-       v                  v
-ApiSettings             ReportingSettings
-```
-
-Shape:
+Configurația este module-owned:
 
 ```text
 Modules
-  Api
-    Config
-      Api:
-        BaseUrl, TimeoutSeconds, WriteTestsEnabled
-        TokenEnvironmentVariable, DefaultAuthProfile
-        RateLimit, Polling, AuthProfiles, Routes
-      Reporting:
-        Engine, ReportPath, TimestampEnabled
-        TimestampFormat, DocumentTitle, ReportName
-        AssertionMaxDisplayCharacters
+└── Api
+    └── Config
+        ├── Api
+        │   ├── BaseUrl
+        │   ├── TimeoutSeconds
+        │   ├── AuthProfiles
+        │   ├── Routes
+        │   ├── RateLimit
+        │   └── Polling
+        └── Reporting
+            ├── Engine
+            ├── ReportPath
+            ├── ReportName
+            ├── TimestampEnabled
+            └── AssertionMaxDisplayCharacters
 ```
 
-Environment examples:
+Modelele sunt separate în `Atf.Core/Configuration`. Configurația este validată
+înainte de execuție, iar executorul folosește un snapshot runtime pentru a evita
+modificarea unei configurații partajate în timpul rulărilor paralele.
+
+Exemple de override:
 
 ```text
 ATF_ENV=local
@@ -281,330 +294,153 @@ ATF_Modules__Api__Config__Api__BaseUrl=https://api.example.test
 ATF_Modules__Api__Config__Api__TimeoutSeconds=30
 ATF_Modules__Api__Config__Reporting__ReportPath=artifacts/reports/api.html
 ATF_Modules__Api__Config__Reporting__AssertionMaxDisplayCharacters=240
-ATF_API_TOKEN=<injected secret>
+ATF_API_TOKEN=<secret injectat la runtime>
 ```
 
-Secrets are read at runtime and are never committed, placed in fixtures or rendered into HTML. The report may show `auth.profile`, `auth.mode` and token availability state, but never the token value.
+Tokenurile nu se commit-uiesc și nu apar în logs sau HTML. Redaction-ul acoperă
+headers, query strings, JSON, paths locale și exception text.
 
-### Authentication semantics
+## Route, service și step layers
 
-Authentication is explicit in the route catalog:
-
-- public read routes use an anonymous profile;
-- write routes use the configured bearer profile;
-- a missing bearer token causes a write scenario to be skipped by the scenario policy, not silently authenticated;
-- `ConfiguredApiAuthenticator` owns header application and safe token-state description;
-- `ApiRouteAuthentication` owns route intent as typed data, not as a free-form policy string;
-- the executor reports both the declared route contract (`route.auth.*`) and the effective runtime profile (`auth.*`), so the report explains why a request was anonymous or authenticated.
-
-## HTTP execution contract
-
-`ApiExecutor` is the only orchestration boundary for one HTTP exchange:
-
-1. build the absolute URL from the configured base and relative path;
-2. start an API step using method and relative path;
-3. publish route and safe auth metadata;
-4. render request JSON when a body exists;
-5. delegate network I/O to `IApiTransport`;
-6. publish status, content type, response JSON and duration;
-7. ask `RateLimitRetryPolicy` whether a configured status is retryable;
-8. return `ApiExecutionResult` with attempts and retry events;
-9. leave functional contract validation to `Atf.Common`.
-
-A completed HTTP exchange is not automatically a functional pass. A 502 can be successfully transported and still fail the contract table. This distinction is essential for truthful reporting:
+O route nu este doar un string. Ea descrie method, path template, resource,
+operation și auth metadata.
 
 ```text
-transport completed  !=  contract satisfied  !=  scenario passed
+UsersService.GetAsync(id)
+    -> ApiRoutes.UserItem
+    -> GET /public/v2/users/{id}
+    -> ApiExecutor
 ```
 
-## Routes, services and steps
+Reguli:
 
-A route is executable metadata, not just a string. It contains:
-
-- stable route name;
-- HTTP method;
-- configurable path template;
-- resource and operation;
-- typed authentication metadata: mechanism (`ApiAuthType`), access requirement
-  (`ApiAuthRequirement`) and configurable profile;
-- a derived human-readable auth policy for the report.
-
-Example:
-
-```text
-UsersSteps.GetAsync(7)
-  -> UsersService.GetAsync(7)
-  -> ApiRoutes.UserItem
-  -> GET /public/v2/users/{id}
-  -> auth contract: none / optional / anonymous profile
-  -> ApiExecutor
-```
-
-Do not put literal endpoint strings in scenario classes. To add an operation:
-
-1. add route metadata;
-2. add a typed model if the payload needs one;
-3. add a service method;
-4. add a semantic step only if it improves scenario vocabulary;
-5. add validators and deterministic component tests;
-6. add a live scenario only after the offline contract is green.
-
-## Validation and evidence model
-
-All assertions for one contract are accumulated in one `ValidationTable`. Each row has:
-
-```text
-ASSERTION | EXPECTED | ACTUAL | RESULT
-```
-
-The table is emitted once, after all rows have been evaluated. This gives the reader the complete failure picture without reconstructing it from many nodes. Status, headers, content, JSONPath, relationship and schema checks use the same aggregation model.
-
-For a response with several checks, use the fluent response group so the report
-contains one validation node and one table:
-
-```csharp
-ApiAssertions.Contract(reporter, response, "Validate: user item contract", contract => contract
-    .Status(HttpStatusCode.OK)
-    .ContentTypeContains("application/json")
-    .JsonSchema("Schemas/user.schema.json")
-    .JsonPathExists("$.id"));
-```
-
-The boundary is deliberately one `ApiResponse`: aggregate status, headers and
-JSON evidence from that response, but keep validations for later HTTP exchanges
-as phase-sibling validation nodes. This preserves diagnostic order and prevents a table
-from implying that two different exchanges were one assertion subject.
-
-```mermaid
-flowchart LR
-    R[one HTTP response] --> G[ResponseValidationGroup]
-    G --> T[one ValidationTable]
-    T --> S[status]
-    T --> H[headers/content]
-    T --> J[JSONPath/schema]
-    T --> V[one contract verdict]
-```
-
-Evidence ownership:
-
-| Evidence | Owner | Display policy |
-|---|---|---|
-| Route/method/auth/path | `ApiExecutor` | one compact technical trace |
-| Request JSON | `ApiExecutor` + reporter adapter | collapsed, dark, vertically scrollable, wrapped |
-| Response JSON | `ApiExecutor` + reporter adapter | collapsed, dark, vertically scrollable, wrapped |
-| Assertion rows | `ValidationTable` | one table, collapsed by default |
-| Fixture/setup metadata | scenario/module | not rendered as a generic phase summary; useful evidence belongs to the API step or explicit scenario metadata |
-| Cleanup actions | `CleanupRegistry` | under TEARDOWN, never detached from scenario |
-
-## Lifecycle and failure semantics
-
-```mermaid
-stateDiagram-v2
-    [*] --> Setup
-    Setup --> TestBody: setup passes
-    Setup --> Teardown: setup skips/fails and cleanup exists
-    TestBody --> Teardown: body completes or registers resources
-    TestBody --> Teardown: body skips/fails and cleanup exists
-    Setup --> [*]: no teardown and no cleanup
-    TestBody --> [*]: no teardown and no cleanup
-    Teardown --> [*]: best-effort cleanup
-```
-
-Rules:
-
-- setup, test body and teardown are siblings under one scenario;
-- an empty phase is not created;
-- cleanup runs in reverse registration order;
-- a cleanup failure is recorded as warning while other cleanup continues;
-- a primary test failure is not replaced by a teardown failure;
-- a skipped write test is visible as skipped and never counted as a pass;
-- class status aggregation is `Fail > Skip > Pass`.
-
-## Extent artifact contract
-
-Extent is the only reporting engine. The final HTML is self-contained:
-
-- Extent CSS, JavaScript and fonts are embedded;
-- no `artifacts/reports/extent` folder is part of the delivered report;
-- reports are timestamped under `artifacts/reports/` by default;
-- the left navigation groups scenarios under their actual xUnit class;
-- phase nodes are siblings below the scenario, and request/validation nodes are direct siblings under their phase;
-- validation is the single direct sibling after the HTTP request that produced the response;
-- expanding a scenario shows its header verdict, then compact lifecycle phase shells; composite scenarios do not repeat a generic `Scenario passed` table;
-- an HTTP request contains its transport evidence and is followed by one contract-validation sibling under `SETUP`, `TEST BODY` or `TEARDOWN`; assertions for the same response are rows in one aggregate table;
-- request/response evidence and assertion tables never become children of the wrong API step;
-- request/response details, JSON and assertion evidence are collapsed by default;
-- JSON is a dark wrapped code block with vertical scrolling and no page-level horizontal overflow;
-- dashboard, tests, tags and environment tables share one dark surface token;
-- `ReportArtifactInspector` verifies the generated file after Extent flushes.
-
-The contract is intentionally consumer-facing. It checks the artifact a developer opens in a browser, not merely the Extent object graph in memory.
+- scenariile nu construiesc URL-uri manual;
+- services serializează modele și aleg route-ul;
+- un step este permis doar dacă adaugă semantică, nu forwarding fără valoare;
+- validators evaluează response-ul, nu creează route-uri;
+- reporter-ul publică evidence, dar nu decide validitatea business.
 
 ## Test strategy
 
 ```text
-fast unit tests
-  configuration, URL/auth, retry/polling, JSON formatting
+unit tests
+    configuration, URL/auth, retry, polling, redaction
         |
 component tests
-  executor composition, module wiring, routes, services, validators, cleanup
+    module wiring, services, validators, lifecycle, cleanup
         |
 artifact contract tests
-  HTML self-contained, dark token, collapsed nodes, JSON scroll, assertion table
+    HTML autonom, CSS tokens, collapsed nodes, JSON blocks, assertion table
+        |
+browser smoke
+    DOM, click, collapse, scroll, computed styles, overflow
         |
 live API tests
-  real endpoints, auth availability, lifecycle and business contracts
+    contracte reale, auth, lifecycle și business coverage
 ```
 
-The offline gates are:
+Comenzi uzuale:
 
 ```powershell
-dotnet test .\Atf.Tests\Atf.Core.Tests\Atf.Core.Tests.csproj --no-restore --logger "console;verbosity=normal"
-dotnet test .\Atf.Tests\Atf.Common.Tests\Atf.Common.Tests.csproj --no-restore --logger "console;verbosity=normal"
+dotnet build .\Atf.slnx --no-restore
+
+dotnet test .\Atf.Tests\Atf.Core.Tests\Atf.Core.Tests.csproj --no-restore
+dotnet test .\Atf.Tests\Atf.Common.Tests\Atf.Common.Tests.csproj --no-restore
+dotnet test .\Atf.Tests\Atf.Reporting.Extent.Tests\Atf.Reporting.Extent.Tests.csproj --no-restore
+dotnet test .\Atf.Tests\Atf.Api.Tests\Atf.Api.Tests.csproj --no-restore
+dotnet test .\Atf.Tests\Atf.Api.FailureDemos\Atf.Api.FailureDemos.csproj --no-restore
 ```
 
-The live suite:
+Suite-ul live este separat și poate necesita tokenuri și acces la endpoint:
 
 ```powershell
-dotnet test .\Atf.Api\Atf.Api.csproj --no-restore --logger "console;verbosity=normal"
+dotnet test .\Atf.Api\Atf.Api.csproj --no-restore
 ```
 
-Useful slices:
+O schimbare de reporting trebuie protejată printr-un test structural și un test
+pe artifactul HTML final. Un test string-based nu înlocuiește un browser smoke
+test.
 
-```powershell
-dotnet test .\Atf.Api\Atf.Api.csproj --filter "Category=smoke"
-dotnet test .\Atf.Api\Atf.Api.csproj --filter "Category=lifecycle"
-dotnet test .\Atf.Api\Atf.Api.csproj --filter "Category=combination"
-```
+## Quality gates
 
-Every new public behavior needs a deterministic test. Every report-rendering change needs both a structural Extent test and a final-HTML artifact test. The minimum reporting regression set includes: phase-sibling aggregate validation, phase-shell visibility after scenario expansion, collapsed evidence, dark theme and zero horizontal overflow. Live tests may be skipped for an explicit environment reason; they must not be made “green” by hiding a missing token or a broken contract.
+O schimbare este completă numai când:
 
-## How to recreate this ATF in another language
+- build-ul nu introduce warnings noi;
+- Core, Common, Extent și API component tests trec;
+- live tests sunt verzi sau skipped cu motiv explicit;
+- nu apare niciun secret în source, logs sau HTML;
+- un response păstrează o singură validation table agregată;
+- request și validation rămân frați în raport;
+- raportul este un singur HTML autonom;
+- folderul `artifacts/reports/extent` nu este livrat;
+- JSON-ul este collapsed, code-formatted și scrollable;
+- raportul generat este deschis și parcurs în browser;
+- verificarea browserului confirmă layout-ul, click-urile și stilurile reale.
 
-Preserve contracts, not C# syntax:
+## Refactoring roadmap
 
-1. a module-owned configuration object with environment overlays;
-2. a route catalog carrying method/path/auth/resource/operation;
-3. a transport/auth/url boundary that can be replaced in tests;
-4. one executor pipeline for request, response and retry evidence;
-5. semantic services and steps above the executor;
-6. an aggregated validation-table model;
-7. explicit setup/body/teardown ownership and reverse cleanup;
-8. one reporting adapter that renders the same consumer-facing tree;
-9. a final artifact inspector that verifies the HTML itself.
+### P0 închis
 
-The target language may use different dependency injection, test runner or HTTP client libraries. The observable behavior and responsibilities should remain stable.
+- cleanup garantat după custom teardown failure;
+- teste pentru failure/skip/teardown/cleanup precedence;
+- păstrarea cauzei primare când diagnosticul secundar eșuează.
 
-## Live audit snapshot and improvement backlog
+### P1
 
-The repository currently has a sound execution path, but the following boundaries are intentionally visible so they do not get mistaken for completed configurability:
+- cleanup independent de reporter failure;
+- Core renderer-neutral fără markup HTML Extent;
+- `ValidationTableRunner` cu rezultat funcțional autoritar și publisher best-effort;
+- un singur protocol public pentru validarea unui response;
+- politici separate pentru `ExtentTestScope`;
+- separarea phase/teardown/outcome din `ApiScenarioLifecycleRunner` prin seam-uri testabile;
+- duplicate-key policy pentru technical trace;
+- browser smoke tests pe artifactul final;
+- alinierea versiunilor xUnit și a politicilor de parallelization între proiectele de test;
+- boundary tests pentru `Atf.Api.TestHost` și renderer;
+- eliminarea afirmațiilor istorice din evaluările active.
 
-### Baseline și sursa metricilor
+### P2
 
-Numărul de teste și verdicturile nu sunt contracte statice și nu trebuie
-hardcodate în README. Ele se citesc din ultima rulare izolată și din raportul
-HTML generat. Contractele stabile care trebuie păstrate sunt:
+- cleanup coordinator async cu ownership controlat al lock-urilor;
+- înlocuirea `Thread.Sleep` din retry-ul de cleanup cu o politică injectabilă și anulabilă;
+- wrapper-ele `Steps` forwarding-only au fost eliminate; reintroducerea cere semantică reală;
+- matrice completă de redaction și audit pentru exception text/snapshot;
+- `ApiAttemptRunner` numai dacă testele justifică seam-ul;
+- declarative operation registry după stabilizarea contractelor;
+- al doilea renderer doar prin aceleași reporting ports.
 
-```text
-build solution                         fără warnings noi
-offline test projects                  Core + Common trec
-live API scenarios                     vizibile ca scenarii directe în Extent
-report artifact                        self-contained HTML
-report sibling extent folder           absent
-assertion display limit                configurabil
-```
+## Documentație și surse normative
 
-The live artifact is inspected as a user would inspect it: class → scenario →
-phase → API step, request/response nodes collapsed initially, JSON in scrollable
-code blocks and all assertions grouped in one table. This is a release gate, not
-just a developer convenience.
+README-urile descriu ownership-ul local și trebuie să rămână sincronizate cu
+codul și artifactul generat.
 
-| Observation | Current state | Recommended next step |
-|---|---|---|
-| configuration | module-owned JSON is validated at startup | add schema validation and an environment/profile snapshot without secrets |
-| auth | `none` and `bearer` are implemented | add strategy contracts for basic/api-key/custom headers only when a target API requires them |
-| reporting | embedded Extent adapter behind `IAtfReportSession` / `IAtfScenarioScope`, dark and artifact-inspected | add a second renderer only behind the same ports |
-| native overview totals | Extent's native parent counters count class-root containers, not API scenarios | reconcile the visible overview and parent chart from direct API scenario cards; keep unit/component runner cases outside the API evidence total |
-| evidence security | central redaction seam exists; coverage must include headers, URLs, JSON and exceptions | complete the masking matrix and prove invalid JSON/exception paths |
-| declarative execution | routes and scenarios are still C# | add an operation registry/DSL after the runtime contracts stabilize |
-| resilience | bounded 429 retry and polling exist | model cancellation, transport failure and correlation id explicitly |
-| test inventory | facts and inline theory rows are counted | support custom data providers and compare inventory with runner totals |
-| skip semantics | fixed with xUnit v3 dynamic skip | keep a runner contract test so future runner changes cannot reintroduce false-green skips |
+- [Architecture și reporting guide](docs/ATF_Architecture.md)
+- [Reporting contract](docs/ATF_Reporting_Contract.md)
+- [Refactoring assessment](docs/ATF_Refactoring_Assessment.md)
+- [Feedback live compilat](docs/feedback/ATF_LIVE_CODE_FEEDBACK_2026-10-13.md)
+- [Best practices](docs/README_Atf_BestPractices.md)
+- [Atf.Core README](Atf.Core/README.md)
+- [Atf.Api module README](Atf.Api/Module/README.md)
+- [Atf.Api README](Atf.Api/README.md)
+- [Atf.Api.Tests README](Atf.Tests/Atf.Api.Tests/README.md)
+- [Atf.Reporting.Extent README](Atf.Reporting.Extent/README.md)
+- [Atf.Tests README](Atf.Tests/README.md)
 
-```mermaid
-flowchart LR
-    Now[Current ATF\nCore + Common + Api] --> P0[P0\nsecurity + outcome state]
-    P0 --> P1[P1\ncontract matrix + auth/resilience]
-    P1 --> P2[P2\ndeclarative runner + parallel hardening]
-    P2 --> Portable[recreatable ATF\nfor another language]
-```
+Regula „maximum opt clase într-un pachet” este un semnal de review, nu o lege.
+Criteriul principal rămâne un singur motiv dominant de schimbare, dependențe
+clare și teste care protejează contractul.
 
-The order matters: declarative YAML or additional endpoint generators should not be built on an ambiguous execution outcome or unsafe evidence pipeline.
+## Adding a new API operation
 
-### Suggested implementation sequence
+1. Define route metadata in `Atf.Api/Module`.
+2. Add a typed model only when the payload needs one.
+3. Add a service method for serialization and route selection.
+4. Add a semantic step only when it improves the scenario language; do not add a forwarding wrapper.
+5. Add validators that aggregate checks for one response.
+6. Register created resources immediately in `CleanupRegistry`.
+7. Add offline component tests before a live scenario.
+8. Add the live scenario only when it contributes business coverage.
+9. Generate the final HTML and inspect it in a browser.
 
-```mermaid
-flowchart LR
-    A[redaction + explicit outcome state] --> B[semantic DOM artifact checks]
-    B --> C[error/pagination/schema contract matrix]
-    C --> D[parallel-safe report run context]
-    D --> E[declarative operation/scenario registry]
-```
-
-This sequence reduces risk: it hardens truthfulness and evidence safety before
-adding more configuration surface or generating tests from YAML.
-
-## Quality checklist
-
-A change is complete only when:
-
-- solution build succeeds with no warnings introduced;
-- Core and Common offline tests pass;
-- live tests pass or are explicitly skipped for a documented environment reason;
-- no secret appears in source, logs or HTML;
-- route strings are not duplicated in scenarios;
-- new public behavior has unit/component coverage;
-- phase hierarchy remains class → scenario → setup/body/teardown → API step;
-- all assertions for one contract remain in one table;
-- report HTML is self-contained and has no delivered `extent` folder;
-- generated HTML preserves the shared dark theme, compact trace and collapsed forensic evidence.
-
-## README and diagram maintenance contract
-
-README-urile sunt documentație de design executabilă. Ele trebuie să descrie
-același contract observabil ca implementarea și raportul generat; nu trebuie să
-introducă o ierarhie alternativă doar pentru lizibilitate.
-
-| Regulă | Practică obligatorie |
-|---|---|
-| sursă normativă | `docs/README_Atf_BestPractices.md` definește regulile de design/review; README-urile locale explică doar ownership-ul local |
-| sursă arhitecturală | `docs/ATF_Architecture.md` definește direcția dependențelor și limitele obiectelor |
-| sursă de audit | `docs/ATF_Quality_Assessment.md` păstrează constatările și backlog-ul, fără să redefinească runtime-ul |
-| ownership diagramă | fiecare diagramă are un scop, numește componente reale și folosește aceeași terminologie phase/request/validation |
-| siguranță Mermaid | label-urile nu folosesc `|` ca text liber; label-urile cu punctuație sunt quotate și au fallback textual |
-| sincronizare | orice refactor de lifecycle, reporting sau validation actualizează README-ul, diagrama și checklist-ul în aceeași schimbare |
-| metrici | numărul testelor și verdicturile vin din rularea/raportul generat; README-urile documentează comenzi și invariants, nu totaluri vechi |
-
-Arborele canonic al raportului:
-
-```text
-scenario
-└── SETUP / TEST BODY / TEARDOWN
-    ├── HTTP request
-    │   └── TECHNICAL TRACE + JSON evidence
-    └── Validate: contract
-        └── one aggregate assertion table
-```
-
-Înainte de merge, se verifică faptul că blocurile Mermaid parsează, fiecare
-diagramă are un echivalent textual, iar termenii depășiți precum
-`phase-owned validation` sau totaluri vechi nu mai apar
-în contractele active.
-
-Canonical report directory:
-
-```text
-artifacts/reports/
-```
-
-
+The safest extension is the one that adds domain vocabulary without moving
+transport, lifecycle or renderer policy into the scenario.

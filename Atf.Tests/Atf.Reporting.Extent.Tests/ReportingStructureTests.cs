@@ -149,6 +149,78 @@ public sealed class ReportingStructureTests
         Assert.Contains(validation.Logs, log => log.Details.Contains("assertion-evidence", StringComparison.Ordinal));
     }
 
+    [Fact(DisplayName = "Soft assertion warning promotes the scenario and remains an Overview Warning")]
+    public void SoftAssertionWarningPromotesScenarioStatus()
+    {
+        var reports = new ExtentReports();
+        var scenario = reports.CreateTest("UsersApiTests").CreateNode("GET users — soft warning");
+        AtfReportStatus? recordedStatus = null;
+        using var scope = new AtfExtentTestScope(
+            scenario,
+            "UsersApiTests",
+            (_, status) => recordedStatus = status);
+
+        scope.StartStep(ApiScenarioPhaseLayout.TestBody);
+        scope.StartStep("GET /public/v2/users");
+        scope.Info("HTTP exchange completed; soft contract validation follows.");
+        scope.StartStep("Validate: soft contract warning");
+        scope.AssertionTable([new AtfAssertion("HTTP status", "201 Created", "200 OK", false)]);
+        scope.Warning("Soft validation warning: one or more assertions failed.");
+        scope.CompleteStep(AtfReportStatus.Warning);
+        scope.CompletePhase(ApiScenarioPhaseLayout.TestBody, AtfReportStatus.Pass);
+        scope.CompleteScenario(AtfReportStatus.Pass);
+
+        Assert.Equal(AventStack.ExtentReports.Status.Warning, scenario.Model.Status);
+        Assert.Equal(AtfReportStatus.Warning, recordedStatus);
+        var phase = Assert.Single(scenario.Model.Children);
+        Assert.Equal(AventStack.ExtentReports.Status.Warning, phase.Status);
+        Assert.Equal(
+            ["GET /public/v2/users", "Validate: soft contract warning"],
+            phase.Children.Select(child => child.Name).ToArray());
+        Assert.Contains(
+            phase.Children[1].Logs,
+            log => log.Details.Contains("Soft validation warning", StringComparison.Ordinal));
+    }
+
+    [Fact(DisplayName = "Lifecycle phases preserve warning, failure and pass independently")]
+    public void LifecyclePhaseStatusesPreserveIndependentVerdicts()
+    {
+        var reports = new ExtentReports();
+        var scenario = reports.CreateTest("ApiLifecycleAndCombinationsTests")
+            .CreateNode("warning → fail → pass phases");
+        using var scope = new AtfExtentTestScope(scenario, "ApiLifecycleAndCombinationsTests");
+
+        scope.StartStep(ApiScenarioPhaseLayout.Setup);
+        scope.StartStep("GET /public/v2/users");
+        scope.StartStep("Validate: setup warning");
+        scope.AssertionTable([new AtfAssertion("HTTP status", "200 OK", "200 OK", true)]);
+        scope.Warning("Setup warning");
+        scope.CompleteStep(AtfReportStatus.Warning);
+        scope.CompletePhase(ApiScenarioPhaseLayout.Setup, AtfReportStatus.Pass);
+
+        scope.StartStep(ApiScenarioPhaseLayout.TestBody);
+        scope.StartStep("GET /public/v2/users");
+        scope.Fail("Body failure");
+        scope.CompletePhase(ApiScenarioPhaseLayout.TestBody, AtfReportStatus.Fail);
+
+        scope.StartStep(ApiScenarioPhaseLayout.Teardown);
+        scope.StartStep("GET /public/v2/users/1");
+        scope.StartStep("Validate: teardown status");
+        scope.AssertionTable([new AtfAssertion("HTTP status", "200 OK", "200 OK", true)]);
+        scope.CompleteStep(AtfReportStatus.Pass);
+        scope.CompletePhase(ApiScenarioPhaseLayout.Teardown, AtfReportStatus.Pass);
+        scope.CompleteScenario(AtfReportStatus.Fail);
+
+        Assert.Equal(AventStack.ExtentReports.Status.Fail, scenario.Model.Status);
+        Assert.Equal(
+            [
+                AventStack.ExtentReports.Status.Warning,
+                AventStack.ExtentReports.Status.Fail,
+                AventStack.ExtentReports.Status.Pass
+            ],
+            scenario.Model.Children.Select(child => child.Status).ToArray());
+    }
+
     [Fact(DisplayName = "Report path resolver preserves an absolute path")]
     public void ReportPathResolverPreservesAbsolutePath()
     {

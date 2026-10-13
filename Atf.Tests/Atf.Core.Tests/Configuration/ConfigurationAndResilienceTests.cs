@@ -336,7 +336,8 @@ public sealed class ConfigurationAndResilienceTests
             _ => Task.FromResult(++calls),
             value => value == 999,
             timeout: TimeSpan.Zero,
-            interval: TimeSpan.Zero);
+            interval: TimeSpan.Zero,
+            cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(result.Satisfied);
         Assert.Equal(1, result.Attempts);
@@ -377,13 +378,15 @@ public sealed class ConfigurationAndResilienceTests
             },
             _ => true,
             TimeSpan.FromMilliseconds(-1),
-            TimeSpan.Zero));
+            TimeSpan.Zero,
+            TestContext.Current.CancellationToken));
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => Polling.UntilAsync(
             _ => Task.FromResult(true),
             _ => true,
             TimeSpan.Zero,
-            TimeSpan.FromMilliseconds(-1)));
+            TimeSpan.FromMilliseconds(-1),
+            TestContext.Current.CancellationToken));
 
         Assert.False(supplierCalled);
     }

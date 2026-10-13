@@ -10,18 +10,18 @@ internal static class ReportingConfigurationValidator
     {
         if (!string.Equals(reporting.Engine, "extent", StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("This ATF is Extent-only. Reporting:Engine must be 'extent'.");
+            ConfigurationRuleViolation.Throw("ATF-REPORT-001", "Modules:Api:Config:Reporting:Engine", "This ATF is Extent-only. Engine must be 'extent'.");
         }
 
         if (reporting.AssertionMaxDisplayCharacters <= 0)
         {
-            throw new InvalidOperationException("Reporting:AssertionMaxDisplayCharacters must be positive.");
+            ConfigurationRuleViolation.Throw("ATF-REPORT-002", "Modules:Api:Config:Reporting:AssertionMaxDisplayCharacters", "AssertionMaxDisplayCharacters must be positive.");
         }
 
         if (string.IsNullOrWhiteSpace(reporting.ReportPath) ||
             !string.Equals(Path.GetExtension(reporting.ReportPath), ".html", StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("Reporting:ReportPath must be a non-empty .html path.");
+            ConfigurationRuleViolation.Throw("ATF-REPORT-003", "Modules:Api:Config:Reporting:ReportPath", "ReportPath must be a non-empty .html path.");
         }
 
         try
@@ -30,7 +30,7 @@ internal static class ReportingConfigurationValidator
         }
         catch (FormatException exception)
         {
-            throw new InvalidOperationException("Reporting:TimestampFormat is not a valid date/time format.", exception);
+            throw new AtfConfigurationException("ATF-REPORT-004", "Modules:Api:Config:Reporting:TimestampFormat", "TimestampFormat is not a valid date/time format.", exception);
         }
     }
 }

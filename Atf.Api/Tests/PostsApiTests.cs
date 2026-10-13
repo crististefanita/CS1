@@ -1,12 +1,13 @@
 using Atf.Common.Validation;
 using Atf.Api.Infrastructure;
+using Atf.Api.TestHost;
 using System.Net;
 using Xunit;
 
 namespace Atf.Api;
 
 [Collection("API ATF")]
-public sealed class PostsApiTests(ITestOutputHelper output, Atf.Reporting.Extent.ExtentCollectionFixture fixture)
+public sealed class PostsApiTests(ITestOutputHelper output, ApiTestFixture fixture)
     : ApiTestBase(output, fixture)
 {
     [Fact(DisplayName = "Posts: list returns a valid collection contract")]

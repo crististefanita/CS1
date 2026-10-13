@@ -12,21 +12,53 @@ scenario or product concern from an upper layer.
 
 ```mermaid
 flowchart TD
-    Api[Atf.Api\nreal xUnit scenarios] --> Common[Atf.Common\nmodule language]
-    Common --> Core[Atf.Core\nframework kernel]
+    Api[Atf.Api\nreal xUnit scenarios + module] --> Core[Atf.Core\nframework kernel]
     Core --> Ports[HTTP + auth + reporting ports]
     Ports --> Adapters[transport + Extent adapters]
 ```
 
 | Layer | Owns | Does not own |
 |---|---|---|
-| `Atf.Core` | configuration, URL building, authentication ports, transport, retry/polling and renderer-neutral reporting ports | product routes, schemas, business fixtures |
-| `Atf.Common` | route catalog, typed services, semantic steps, validators, fixtures, cleanup | xUnit orchestration, raw Extent markup, secrets |
+| `Atf.Core` | configuration, URL building, authentication ports, transport, retry/polling and reporting ports | product routes, schemas, business fixtures, renderer HTML/CSS |
+| `Atf.Api/Module` | route catalog, typed services, justified semantic actions, validators, fixtures, cleanup | xUnit orchestration, raw Extent markup, secrets |
 | `Atf.Api` | test classes, scenario intent, categories and live coverage | `HttpClient`, endpoint literals, report layout |
 | `Atf.Tests` | deterministic unit/component/architecture tests | live service coverage |
 
 The practical rule is: if a defect can be reproduced without a live API, it
 belongs in `Atf.Tests`; if it proves product behavior, it belongs in `Atf.Api`.
+
+### Project identity versus runtime responsibility
+
+`Atf.Api` is named like a reusable API module, but the project is currently an
+xUnit live-scenario host (`IsTestProject=true`) that also contains the scenario
+base class, collection fixture bridge and acceptance tests. The former
+`Atf.Common` root project was absorbed physically into `Atf.Api/Module`; its
+namespaces remain compatible for now. All offline test projects are grouped
+under `Atf.Tests`.
+
+```text
+Atf.Api                 = live acceptance host + API module + product scenarios
+Atf.Tests/*             = offline unit/component/architecture test projects
+Atf.Reporting.Extent    = concrete report adapter
+Atf.Api.TestHost         = live composition root for Extent
+```
+
+The non-negotiable ownership rules are:
+
+| Boundary | May own | Must not own |
+|---|---|---|
+| `Atf.Core` | ports, transport policy, configuration, resilience, neutral evidence | Extent, xUnit, product routes |
+| `Atf.Api/Module` | routes, services, justified semantic actions, validators, cleanup and module composition | xUnit lifecycle, Extent nodes, live-test policy |
+| `Atf.Reporting.Extent` | Extent tree, HTML, CSS/JS, asset inlining and report lifecycle | HTTP calls, business assertions, scenario decisions |
+| `Atf.Api.TestHost` | xUnit fixture composition and the current Extent bridge | API scenario intent, transport policy, business assertions |
+| `Atf.Api` | xUnit integration, live scenario intent, categories and acceptance coverage | route literals, transport construction, CSS/HTML manipulation |
+| `Atf.Tests/Atf.Api.Tests` | deterministic API-facing composition and evidence tests | live endpoint calls, acceptance verdicts |
+
+The highest-value naming improvement would be a later migration of the live
+host to a name such as `Atf.Api.Acceptance` or `Atf.Api.Scenarios`. It is not a
+safe opportunistic rename while active runs and report paths depend on the
+current project, so it belongs to a dedicated migration with namespace and
+artifact compatibility tests.
 
 ## 2. Runtime request pipeline
 
@@ -214,8 +246,11 @@ stateDiagram-v2
 ```
 
 - cleanup is registered when a resource is created;
+- custom teardown failure still enters the cleanup `finally` path;
 - cleanup runs in reverse registration order;
 - cleanup failures are recorded without hiding the primary failure;
+- reporting failures must not prevent a resource cleanup action; this is the
+  next hardening seam for `CleanupRegistry`;
 - a skipped write scenario remains skipped when the token is absent or writes
   are disabled;
 - class aggregation is failure-first: `Fail > Skip > Pass`;
@@ -269,7 +304,7 @@ The artifact acceptance contract is:
 flowchart TD
     Unit[unit tests\nvalue objects, policies, formatters] --> Component[component tests\nexecutor, reporter, lifecycle tree]
     Component --> Artifact[artifact contract\nHTML/CSS/JS inspection]
-    Artifact --> Browser[browser MCP\nrendered report verification]
+    Artifact --> Browser[TAB MCP\nrendered report verification]
     Browser --> Live[live API scenarios\nproduct coverage]
 ```
 
@@ -277,7 +312,7 @@ Use the cheapest proof that can detect the defect:
 
 | Concern | Test location | Proof |
 |---|---|---|
-| phase vocabulary/order | `Atf.Api.Tests/ApiScenarioPhaseLayoutTests.cs` | canonical labels and phase/request/validation ownership tree |
+| phase vocabulary/order | `Atf.Tests/Atf.Api.Tests/ApiScenarioPhaseLayoutTests.cs` | canonical labels and phase/request/validation ownership tree |
 | automatic phase closure | same test class | starting a new phase closes the prior frame |
 | HTTP/validation ownership semantics | API/Core reporting structure tests | validation is the request's next direct phase sibling; phase closes after aggregate evidence |
 | collapse and summary behaviour | `ReportingComponentTests` | generated client contract contains the browser rules |
@@ -292,7 +327,7 @@ Run the deterministic suites before a live run:
 dotnet test .\Atf.Tests\Atf.Core.Tests\Atf.Core.Tests.csproj --no-restore
 dotnet test .\Atf.Tests\Atf.Common.Tests\Atf.Common.Tests.csproj --no-restore
 dotnet test .\Atf.Api\Atf.Api.csproj --no-build --no-restore
-dotnet test .\Atf.Api.Tests\Atf.Api.Tests.csproj --no-build --no-restore
+dotnet test .\Atf.Tests\Atf.Api.Tests\Atf.Api.Tests.csproj --no-build --no-restore
 dotnet test .\Atf.Tests\Atf.Reporting.Extent.Tests\Atf.Reporting.Extent.Tests.csproj --no-build --no-restore
 ```
 
@@ -304,7 +339,7 @@ surfaces, assertion table and absence of `artifacts/reports/extent`.
 ## 9. Adding a new API module
 
 1. Add a module configuration section under `Modules:<Name>:Config`.
-2. Define relative paths and request constants in the module/common routing
+2. Define relative paths and request constants in `Atf.Api/Module/Routing`
    vocabulary; do not duplicate endpoint literals in tests.
 3. Add typed route metadata including authentication intent.
 4. Add a service and semantic step only where they improve readability.

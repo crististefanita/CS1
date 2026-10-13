@@ -25,6 +25,7 @@ public sealed class ExtentReportPathAllocatorTests
             Assert.StartsWith(root.FullName, paths.NativeDirectory, StringComparison.OrdinalIgnoreCase);
             Assert.StartsWith(".atf-render-", Path.GetFileName(paths.NativeDirectory), StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("extent", paths.NativeDirectory, StringComparison.OrdinalIgnoreCase);
+            allocator.Release(paths);
         }
         finally
         {
@@ -49,6 +50,7 @@ public sealed class ExtentReportPathAllocatorTests
             });
 
             Assert.EndsWith("api-report_20261013-141516.html", paths.PublishedPath, StringComparison.OrdinalIgnoreCase);
+            allocator.Release(paths);
         }
         finally
         {
@@ -77,6 +79,7 @@ public sealed class ExtentReportPathAllocatorTests
             Assert.Equal(
                 Path.Combine(root.FullName, "artifacts", "reports", "api-report.html"),
                 paths.PublishedPath);
+            allocator.Release(paths);
         }
         finally
         {
@@ -103,6 +106,51 @@ public sealed class ExtentReportPathAllocatorTests
 
             Assert.NotEqual(first.PublishedPath, second.PublishedPath);
             Assert.EndsWith("api-report_run-1234567812.html", second.PublishedPath, StringComparison.OrdinalIgnoreCase);
+            allocator.Release(first);
+            allocator.Release(second);
+        }
+        finally
+        {
+            TestDirectoryCleanup.DeleteEventually(root);
+        }
+    }
+
+    [Fact(DisplayName = "Path allocator keeps twenty concurrent reservations isolated")]
+    public async Task AllocatesUniquePathsUnderConcurrentReservation()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-path-concurrency-");
+        var allocator = new ExtentReportPathAllocator(
+            clock: () => new DateTime(2026, 10, 13, 14, 15, 16),
+            runIdFactory: Guid.NewGuid);
+        var settings = new ReportingSettings
+        {
+            ReportPath = Path.Combine(root.FullName, "api-report.html"),
+            TimestampEnabled = true,
+            TimestampFormat = "yyyyMMdd-HHmmss"
+        };
+        using var barrier = new Barrier(20);
+
+        try
+        {
+            var tasks = Enumerable.Range(0, 20)
+                .Select(_ => Task.Run(() =>
+                {
+                    barrier.SignalAndWait();
+                    return allocator.Allocate(settings);
+                }))
+                .ToArray();
+
+            var paths = await Task.WhenAll(tasks);
+
+            Assert.Equal(20, paths.Select(path => path.PublishedPath).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+            Assert.Equal(20, paths.Select(path => path.NativeDirectory).Distinct(StringComparer.OrdinalIgnoreCase).Count());
+
+            foreach (var path in paths)
+            {
+                allocator.Release(path);
+            }
+
+            Assert.Equal(0, ExtentReportPathAllocator.ReservedPathCount);
         }
         finally
         {

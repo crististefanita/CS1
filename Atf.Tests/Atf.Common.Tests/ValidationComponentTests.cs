@@ -22,6 +22,54 @@ public sealed class ValidationComponentTests
         Assert.Contains("1 validations passed.", reporter.Passes);
     }
 
+    [Theory(DisplayName = "Reporter failures never replace a passing validation result")]
+    [InlineData(ReportHook.StartStep)]
+    [InlineData(ReportHook.AssertionTable)]
+    [InlineData(ReportHook.Pass)]
+    [InlineData(ReportHook.CompleteStep)]
+    public void ReporterFailureDoesNotReplacePassingValidation(ReportHook hook)
+    {
+        var reporter = new ThrowingReporter(hook);
+
+        var exception = Record.Exception(() => ApiAssertions.Status(
+            reporter,
+            Response(HttpStatusCode.OK, "{}"),
+            HttpStatusCode.OK));
+
+        Assert.Null(exception);
+    }
+
+    [Theory(DisplayName = "Reporter failures never replace a hard validation failure")]
+    [InlineData(ReportHook.StartStep)]
+    [InlineData(ReportHook.AssertionTable)]
+    [InlineData(ReportHook.Fail)]
+    [InlineData(ReportHook.CompleteStep)]
+    public void ReporterFailureDoesNotReplaceHardValidationFailure(ReportHook hook)
+    {
+        var reporter = new ThrowingReporter(hook);
+
+        var exception = Assert.Throws<ApiValidationException>(() => ApiAssertions.Status(
+            reporter,
+            Response(HttpStatusCode.BadRequest, "{}"),
+            HttpStatusCode.OK));
+
+        Assert.Equal("HTTP status", exception.Rule);
+    }
+
+    [Fact(DisplayName = "Reporter failure during soft warning remains non-blocking")]
+    public void ReporterFailureDuringSoftWarningRemainsNonBlocking()
+    {
+        var reporter = new ThrowingReporter(ReportHook.Warning);
+
+        var exception = Record.Exception(() => ApiAssertions.SoftContract(
+            reporter,
+            Response(HttpStatusCode.BadRequest, "{}"),
+            "Validate: soft",
+            contract => contract.Status(HttpStatusCode.OK)));
+
+        Assert.Null(exception);
+    }
+
     [Fact(DisplayName = "StatusOneOf accepts either configured negative outcome")]
     public void StatusOneOfAcceptsConfiguredAlternative()
     {
@@ -57,6 +105,27 @@ public sealed class ValidationComponentTests
         Assert.Equal(3, reporter.Tables.Single().Count);
         Assert.All(reporter.Tables.Single(), assertion => Assert.True(assertion.Passed));
         Assert.Contains("3 validations passed.", reporter.Passes);
+    }
+
+    [Fact(DisplayName = "Soft response contract preserves failed assertion evidence as warning")]
+    public void SoftResponseContractPublishesWarningAggregate()
+    {
+        var reporter = new RecordingReporter();
+
+        ApiAssertions.SoftContract(
+            reporter,
+            Response(HttpStatusCode.OK, "{}"),
+            "Validate: soft response contract",
+            contract => contract
+                .Status(HttpStatusCode.Created)
+                .JsonPathExists("$.id"));
+
+        Assert.Single(reporter.Tables);
+        Assert.Equal(2, reporter.Tables.Single().Count);
+        Assert.All(reporter.Tables.Single(), assertion => Assert.False(assertion.Passed));
+        Assert.Equal([AtfReportStatus.Warning], reporter.CompletedStatuses);
+        Assert.Contains("Soft validation warning", reporter.Warnings.Single(), StringComparison.Ordinal);
+        Assert.Empty(reporter.Failures);
     }
 
     [Fact(DisplayName = "Aggregate response validation keeps all failure rows in one table")]
@@ -103,12 +172,11 @@ public sealed class ValidationComponentTests
         var reporter = new RecordingReporter { AssertionMaxDisplayCharacters = 32 };
         var body = "[{\"user_id\":8663020,\"title\":\"" + new string('x', 200) + "\"}]";
 
-        Assert.Throws<ApiValidationException>(() => JsonAssertions.EveryArrayItemEquals(
+        Assert.Throws<ApiValidationException>(() => ApiAssertions.Contract(
             reporter,
             Response(HttpStatusCode.OK, body),
-            "$",
-            "user_id",
-            "different"));
+            "Validate: relationship",
+            contract => contract.EveryArrayItemEquals("$", "user_id", "different")));
 
         var actual = Assert.Single(reporter.Tables.Single()).Actual;
         Assert.Equal(256, actual.Length);
@@ -121,8 +189,11 @@ public sealed class ValidationComponentTests
         var reporter = new RecordingReporter();
         var response = Response(HttpStatusCode.OK, "{\"id\":1}");
 
-        var exception = Assert.Throws<ApiValidationException>(() =>
-            JsonAssertions.JsonPathExists(reporter, response, "$.missing"));
+        var exception = Assert.Throws<ApiValidationException>(() => ApiAssertions.Contract(
+            reporter,
+            response,
+            "Validate: missing path",
+            contract => contract.JsonPathExists("$.missing")));
 
         Assert.Equal("JSONPath exists: $.missing", exception.Rule);
         Assert.Equal("<missing>", reporter.Tables.Single().Single().Actual);
@@ -135,8 +206,11 @@ public sealed class ValidationComponentTests
         var reporter = new RecordingReporter();
         var response = Response(HttpStatusCode.OK, "[{\"user_id\":7},{\"user_id\":8}]");
 
-        var exception = Assert.Throws<ApiValidationException>(() =>
-            JsonAssertions.EveryArrayItemEquals(reporter, response, "$", "user_id", "7"));
+        var exception = Assert.Throws<ApiValidationException>(() => ApiAssertions.Contract(
+            reporter,
+            response,
+            "Validate: relationship",
+            contract => contract.EveryArrayItemEquals("$", "user_id", "7")));
 
         Assert.Equal("Every $ item user_id", exception.Rule);
         Assert.False(reporter.Tables.Single().Single().Passed);
@@ -157,7 +231,11 @@ public sealed class ValidationComponentTests
             """);
             var reporter = new RecordingReporter();
 
-            JsonSchemaAssertions.Matches(reporter, Response(HttpStatusCode.OK, "{\"id\":42}"), schemaFile);
+            ApiAssertions.Contract(
+                reporter,
+                Response(HttpStatusCode.OK, "{\"id\":42}"),
+                "Validate: JSON schema",
+                contract => contract.JsonSchema(schemaFile));
 
             var row = Assert.Single(reporter.Tables.Single());
             Assert.Equal("JSON schema", row.Name);
@@ -179,10 +257,11 @@ public sealed class ValidationComponentTests
             File.WriteAllText(schemaFile, "{\"type\":\"object\",\"required\":[\"id\"]}");
             var reporter = new RecordingReporter();
 
-            Assert.Throws<ApiValidationException>(() => JsonSchemaAssertions.Matches(
+            Assert.Throws<ApiValidationException>(() => ApiAssertions.Contract(
                 reporter,
                 Response(HttpStatusCode.OK, "{\"name\":\"missing-id\"}"),
-                schemaFile));
+                "Validate: JSON schema",
+                contract => contract.JsonSchema(schemaFile)));
 
             var row = Assert.Single(reporter.Tables.Single());
             Assert.Equal("JSON schema", row.Name);
@@ -222,22 +301,52 @@ public sealed class ValidationComponentTests
         IReadOnlyDictionary<string, string>? headers = null) =>
         new(status, body, headers ?? new Dictionary<string, string>(), TimeSpan.Zero, "https://example.test");
 
-    private sealed class RecordingReporter : IAtfReporter
+    public enum ReportHook
+    {
+        StartStep,
+        AssertionTable,
+        Pass,
+        Fail,
+        Warning,
+        CompleteStep
+    }
+
+    private class RecordingReporter : IAtfReporter
     {
         public int AssertionMaxDisplayCharacters { get; init; } = ReportingDefaults.AssertionMaxDisplayCharacters;
         public List<IReadOnlyCollection<AtfAssertion>> Tables { get; } = [];
         public List<string> Failures { get; } = [];
         public List<string> Passes { get; } = [];
+        public List<string> Warnings { get; } = [];
+        public List<AtfReportStatus> CompletedStatuses { get; } = [];
 
-        public void StartStep(string title) { }
-        public void CompleteStep(AtfReportStatus status) { }
+        public virtual void StartStep(string title) { }
+        public virtual void CompleteStep(AtfReportStatus status) => CompletedStatuses.Add(status);
         public void Detail(string key, string value) { }
         public void Json(string label, string json) { }
-        public void AssertionTable(IReadOnlyCollection<AtfAssertion> assertions) => Tables.Add(assertions);
+        public virtual void AssertionTable(IReadOnlyCollection<AtfAssertion> assertions) => Tables.Add(assertions);
         public void Info(string message) { }
-        public void Pass(string message) => Passes.Add(message);
-        public void Fail(string message, Exception? exception = null) => Failures.Add(message);
-        public void Warning(string message) { }
+        public virtual void Pass(string message) => Passes.Add(message);
+        public virtual void Fail(string message, Exception? exception = null) => Failures.Add(message);
+        public virtual void Warning(string message) => Warnings.Add(message);
         public void Skip(string reason) { }
+    }
+
+    private sealed class ThrowingReporter(ReportHook hook) : RecordingReporter
+    {
+        public override void StartStep(string title) => ThrowIf(ReportHook.StartStep);
+        public override void CompleteStep(AtfReportStatus status) => ThrowIf(ReportHook.CompleteStep);
+        public override void AssertionTable(IReadOnlyCollection<AtfAssertion> assertions) => ThrowIf(ReportHook.AssertionTable);
+        public override void Pass(string message) => ThrowIf(ReportHook.Pass);
+        public override void Fail(string message, Exception? exception = null) => ThrowIf(ReportHook.Fail);
+        public override void Warning(string message) => ThrowIf(ReportHook.Warning);
+
+        private void ThrowIf(ReportHook candidate)
+        {
+            if (hook == candidate)
+            {
+                throw new InvalidOperationException($"Synthetic reporter failure: {candidate}");
+            }
+        }
     }
 }

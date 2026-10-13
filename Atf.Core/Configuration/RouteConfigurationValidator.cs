@@ -18,7 +18,7 @@ internal static class RouteConfigurationValidator
         {
             if (string.IsNullOrWhiteSpace(path) || !path.StartsWith('/'))
             {
-                throw new InvalidOperationException($"Modules:Api:Api:Routes:{name} must be a non-empty relative path starting with '/'.");
+                ConfigurationRuleViolation.Throw("ATF-ROUTE-001", $"Modules:Api:Api:Routes:{name}", "Route must be a non-empty relative path starting with '/'.");
             }
         }
 
@@ -26,8 +26,9 @@ internal static class RouteConfigurationValidator
             .FirstOrDefault(group => group.Count() > 1);
         if (duplicate is not null)
         {
-            throw new InvalidOperationException(
-                $"Modules:Api:Api:Routes contains duplicate route paths: {string.Join(", ", duplicate.Select(pair => pair.Key))}.");
+            ConfigurationRuleViolation.Throw(
+                "ATF-ROUTE-002", "Modules:Api:Api:Routes",
+                $"Routes contain duplicate route paths: {string.Join(", ", duplicate.Select(pair => pair.Key))}.");
         }
     }
 }

@@ -30,6 +30,35 @@ public sealed class ReportingLifecycleComponentTests
             Assert.NotNull(allocator.ReceivedSettings);
             Assert.Equal(settings.ReportPath, allocator.ReceivedSettings!.ReportPath);
             Assert.Equal(lifecycle.ReportPath, allocator.AllocatedPaths!.PublishedPath);
+            lifecycle.FinalizeReport();
+        }
+        finally
+        {
+            TestDirectoryCleanup.DeleteEventually(root);
+        }
+    }
+
+    [Fact(DisplayName = "Extent lifecycle delegates final artifact publication to its publisher seam")]
+    public void LifecycleUsesArtifactPublisherAbstraction()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-lifecycle-publisher-contract-");
+        try
+        {
+            var publisher = new RecordingArtifactPublisher();
+            var lifecycle = new ExtentReportLifecycle(new ExtentReportPathAllocator(), publisher);
+            var settings = new ReportingSettings
+            {
+                ReportPath = Path.Combine(root.FullName, "api-report.html"),
+                TimestampEnabled = false,
+                Engine = "extent"
+            };
+
+            lifecycle.Initialize(settings);
+            lifecycle.FinalizeReport();
+
+            Assert.NotNull(publisher.Paths);
+            Assert.Equal(lifecycle.ReportPath, publisher.Paths!.PublishedPath);
+            Assert.Equal(settings.ReportName, publisher.Settings!.ReportName);
         }
         finally
         {
@@ -71,6 +100,7 @@ public sealed class ReportingLifecycleComponentTests
             });
 
             Assert.Equal(firstPath, lifecycle.ReportPath);
+            lifecycle.FinalizeReport();
         }
         finally
         {
@@ -100,6 +130,61 @@ public sealed class ReportingLifecycleComponentTests
 
             Assert.True(File.Exists(reportPath));
             Assert.Equal(firstHtml, File.ReadAllText(reportPath));
+        }
+        finally
+        {
+            TestDirectoryCleanup.DeleteEventually(root);
+        }
+    }
+
+    [Fact(DisplayName = "Extent lifecycle rejects new scenarios after finalization")]
+    public void StartTestAfterFinalizationIsRejected()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-lifecycle-finalized-start-");
+        try
+        {
+            var lifecycle = new ExtentReportLifecycle();
+            lifecycle.Initialize(new ReportingSettings
+            {
+                ReportPath = Path.Combine(root.FullName, "api-report.html"),
+                TimestampEnabled = false,
+                Engine = "extent"
+            });
+
+            lifecycle.FinalizeReport();
+
+            var exception = Assert.Throws<InvalidOperationException>(() => lifecycle.StartTest(
+                "UsersApiTests",
+                "late scenario",
+                "must not mutate a finalized session",
+                ["api"]));
+
+            Assert.Equal("Extent reporting is finalizing or has already been finalized.", exception.Message);
+        }
+        finally
+        {
+            TestDirectoryCleanup.DeleteEventually(root);
+        }
+    }
+
+    [Fact(DisplayName = "Extent lifecycle tolerates an all-skipped run with no emitted scenario node")]
+    public void FinalizeDoesNotFailWhenExtentHasNoNativeFile()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-lifecycle-empty-");
+        try
+        {
+            var lifecycle = new ExtentReportLifecycle();
+            lifecycle.Initialize(new ReportingSettings
+            {
+                ReportPath = Path.Combine(root.FullName, "empty.html"),
+                TimestampEnabled = false,
+                Engine = "extent"
+            });
+
+            var exception = Record.Exception(lifecycle.FinalizeReport);
+
+            Assert.Null(exception);
+            Assert.False(File.Exists(lifecycle.ReportPath));
         }
         finally
         {
@@ -211,6 +296,34 @@ public sealed class ReportingLifecycleComponentTests
         Assert.False(first.TryGet("UsersApiTests", out _));
         Assert.True(second.TryGet("UsersApiTests", out var status));
         Assert.Equal(AtfReportStatus.Pass, status);
+    }
+
+    [Theory(DisplayName = "Status precedence keeps the strongest verdict: {0} then {1} => {2}")]
+    [InlineData(AtfReportStatus.Warning, AtfReportStatus.Pass, AtfReportStatus.Warning)]
+    [InlineData(AtfReportStatus.Pass, AtfReportStatus.Warning, AtfReportStatus.Warning)]
+    [InlineData(AtfReportStatus.Warning, AtfReportStatus.Fail, AtfReportStatus.Fail)]
+    [InlineData(AtfReportStatus.Fail, AtfReportStatus.Warning, AtfReportStatus.Fail)]
+    [InlineData(AtfReportStatus.Warning, AtfReportStatus.Skip, AtfReportStatus.Skip)]
+    public void StatusPrecedenceKeepsStrongestVerdict(
+        AtfReportStatus first,
+        AtfReportStatus second,
+        AtfReportStatus expected)
+    {
+        var aggregator = new ReportStatusAggregator();
+
+        Assert.Equal(first, aggregator.Record("UsersApiTests", first));
+        Assert.Equal(expected, aggregator.Record("UsersApiTests", second));
+    }
+
+    [Fact(DisplayName = "Warning then failure then pass remains a failure")]
+    public void WarningFailurePassSequenceRemainsFailure()
+    {
+        var aggregator = new ReportStatusAggregator();
+
+        aggregator.Record("UsersApiTests", AtfReportStatus.Warning);
+        aggregator.Record("UsersApiTests", AtfReportStatus.Fail);
+
+        Assert.Equal(AtfReportStatus.Fail, aggregator.Record("UsersApiTests", AtfReportStatus.Pass));
     }
 
     [Fact(DisplayName = "Report sessions keep output paths and test trees isolated")]
@@ -419,6 +532,20 @@ public sealed class ReportingLifecycleComponentTests
             ReceivedSettings = settings;
             AllocatedPaths = inner.Allocate(settings);
             return AllocatedPaths;
+        }
+
+        public void Release(ExtentReportPaths paths) => inner.Release(paths);
+    }
+
+    private sealed class RecordingArtifactPublisher : IExtentArtifactPublisher
+    {
+        public ExtentReportPaths? Paths { get; private set; }
+        public ReportingSettings? Settings { get; private set; }
+
+        public void Publish(ExtentReportPaths paths, ReportingSettings settings)
+        {
+            Paths = paths;
+            Settings = settings;
         }
     }
 }

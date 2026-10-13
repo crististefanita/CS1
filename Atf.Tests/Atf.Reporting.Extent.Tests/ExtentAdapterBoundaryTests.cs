@@ -36,6 +36,31 @@ public sealed class ExtentAdapterBoundaryTests
             reference => string.Equals(reference.Name, "ExtentReports", StringComparison.Ordinal));
     }
 
+    [Fact(DisplayName = "Scenario step frame keeps the Extent vendor behind an adapter")]
+    public void StepFrameDoesNotExposeExtentTest()
+    {
+        var extentTestType = typeof(ExtentTest);
+        var frameProperties = typeof(ExtentTestScope.StepFrame).GetProperties(
+            System.Reflection.BindingFlags.Instance |
+            System.Reflection.BindingFlags.Public |
+            System.Reflection.BindingFlags.NonPublic);
+
+        Assert.DoesNotContain(frameProperties, property =>
+            extentTestType.IsAssignableFrom(property.PropertyType));
+        Assert.Contains(frameProperties, property => property.Name == "Adapter");
+    }
+
+    [Fact(DisplayName = "Client facade composes independent navigation and disclosure controllers")]
+    public void ClientBehaviourComposesControllersWithoutUnresolvedPlaceholders()
+    {
+        var script = ExtentReportClientBehaviour.Build();
+
+        Assert.Contains("function configureNavigationOrder()", script, StringComparison.Ordinal);
+        Assert.Contains("function installCardDelegation()", script, StringComparison.Ordinal);
+        Assert.Contains("function installNavigation()", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("__ATF_", script, StringComparison.Ordinal);
+    }
+
     [Fact(DisplayName = "Request and aggregate validation are ordered siblings under TEST BODY")]
     public void ValidationIsGroupedBesideTheRequestThatProducedTheResponse()
     {

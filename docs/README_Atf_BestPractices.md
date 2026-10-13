@@ -7,6 +7,24 @@ un modul coerent, o validare credibilă și un raport util la triage.
 Scopul este să păstrăm funcționalitatea existentă, dar să facem codul mai
 OOP, mai ușor de extins și mai ușor de verificat fără rulări live inutile.
 
+### Regula de non-redesign
+
+Refactorizarea ATF nu schimbă formatul raportului. Layout-ul, culorile,
+fonturile, textele, ierarhia și interacțiunile existente sunt contracte de
+compatibilitate. Analiza de format din
+`docs/feedback/ATF_LIFECYCLE_COMBINATION_ANALYSIS_2026-10-13.md` este în afara
+acestui document și nu se modifică în refactorizarea internă. Un PR care schimbă
+doar ownership-ul intern trebuie să producă același artifact observabil.
+
+```mermaid
+flowchart LR
+    Existing[Existing report contract] --> Refactor[Internal OOP refactor]
+    Refactor --> Unit[Unit policy tests]
+    Refactor --> Component[Component seam tests]
+    Unit --> Same[Same observable report]
+    Component --> Same
+```
+
 ## 1. Modelul mental al unui test ATF
 
 Un scenariu trebuie să exprime intenția de business. Detaliile tehnice rămân
@@ -51,9 +69,9 @@ clasă, responsabilitățile sunt amestecate.
 | I/O HTTP | `IApiTransport` / adapter | să creeze noduri Extent |
 | aplicarea autentificării | `IApiAuthenticator` | să afișeze token-ul |
 | descrierea rutelor | `ApiRoutes` / `ApiRoute` | să construiască raportul |
-| acțiune semantică | `UsersSteps`, `PostsSteps` | să duplice URL-uri |
+| acțiune semantică | `UsersService`, `PostsService` | să duplice URL-uri |
 | contractul răspunsului | `ContractValidators` | să trimită request-ul |
-| agregarea observațiilor | `ResponseValidationGroup` / `ValidationTable` | să decidă layout-ul HTML |
+| agregarea observațiilor | un singur validation protocol / `ValidationTable` | să decidă layout-ul HTML |
 | evidence tehnic | `ApiExecutionReporter` | să declare că business-ul a trecut |
 | cleanup | `CleanupRegistry` | să înlocuiască validarea din body |
 | stylesheet / HTML | reporting theme/renderer | să schimbe verdictul testului |
@@ -204,7 +222,7 @@ masă de assertions.
 
 ```mermaid
 flowchart LR
-    R[un response] --> G[ResponseValidationGroup]
+    R[un response] --> G[ResponseContract]
     G --> S[status]
     G --> H[headers/content type]
     G --> J[JSONPath/schema]
@@ -236,7 +254,8 @@ Nu este recomandat:
 ```csharp
 ApiAssertions.Status(reporter, response, HttpStatusCode.OK);
 ApiAssertions.ContentType(reporter, response, "application/json");
-JsonAssertions.Exists(reporter, response, "$.id");
+ApiAssertions.Contract(reporter, response, "Validate: response", contract => contract
+    .JsonPathExists("$.id"));
 ```
 
 Cele trei verificări sunt corecte semantic, dar produc evidence fragmentată și
@@ -351,7 +370,7 @@ Pentru a evita reguli contradictorii, documentația are următoarele roluri:
 | root `README.md` | onboarding, navigare și contracte principale |
 | `docs/ATF_Architecture.md` | modelul de obiecte și dependențe |
 | `docs/README_Atf_BestPractices.md` | reguli normative de design, testare și review |
-| `docs/ATF_Quality_Assessment.md` | scoruri, riscuri și backlog; nu redefinește ierarhia |
+| `docs/ATF_Quality_Assessment.md` | riscuri și backlog; nu redefinește ierarhia |
 | module/test README-uri | ghiduri locale, fără reguli care contrazic documentul normativ |
 
 Ierarhia curentă care trebuie folosită în toate README-urile este:
@@ -410,6 +429,35 @@ prezentată fără avertisment; trebuie corectată sau marcată explicit ca isto
 
 ## 5. Reguli de testare a framework-ului
 
+### Audit alignment — 2026-10-13
+
+Feedback-ul live se recalculează la fiecare audit. Nu este suficient să mutăm
+clase sau să adăugăm interfețe. Fiecare refactor trebuie să
+reducă un motiv de schimbare și să aibă un seam testabil.
+
+Prioritățile sunt:
+
+1. evaluarea funcțională trebuie separată de publicarea diagnostică;
+2. trebuie ales un singur protocol public pentru validarea unui response;
+3. lifecycle-ul API trebuie separat pe phase, teardown și outcome fără a duplica
+   politica de precedence;
+4. `ValidationReportPublisher` trebuie păstrat ca seam best-effort între
+   evaluare și diagnostic;
+5. Extent trebuie împărțit gradual pe session, tree, evidence și artifact
+   publisher, fără clase decorative;
+6. inspectorul static trebuie separat explicit de contractul DOM/browser;
+7. forwarding-only `Steps` nu se introduc; serviciile sunt publicate direct din
+   `ApiModule` până când apare semantică reală;
+8. redaction, retry attempts, timeout și cancellation trebuie să aibă contracte
+   explicite, nu doar loguri.
+9. test projects care vor fi consolidate în `Atf.Tests` trebuie să folosească
+   aceeași generație xUnit sau să documenteze explicit incompatibilitatea și
+   criteriul de migrare.
+
+`Warning/Other` este o stare semantică mitigată, nu o dovadă completă de browser.
+`ReportArtifactInspector` verifică artifactul static; computed styles, click,
+collapse și scroll cer test DOM separat.
+
 | Nivel | Ce verifică | Ce nu verifică |
 |---|---|---|
 | unit | funcții pure, config, route building, retry, aggregation | integrarea reală a mai multor componente |
@@ -425,6 +473,36 @@ Orice bug de raportare trebuie să primească:
 3. test artifact/browser pentru HTML-ul pe care îl deschide utilizatorul.
 
 Un test live care trece nu compensează lipsa acestor dovezi offline.
+
+### 5.1 Reguli OOP de mentenanță
+
+Aceste reguli sunt criterii de review, nu recomandări estetice:
+
+1. **Fațadele coordonează, nu interpretează.** `ApiModule`,
+   `ApiScenarioLifecycleRunner` și `ExtentTestScope` pot ordona operații, dar
+   politicile de status, clasificarea și transformarea datelor trebuie să fie
+   obiecte/politici pure, testabile separat.
+2. **Un singur composition entry point public.** Constructorii alternativi
+   sunt acceptați doar ca seam-uri interne pentru teste; producția nu trebuie
+   să aibă mai multe grafuri de obiecte echivalente.
+3. **Modelele sunt renderer-neutral.** Niciun model Core/API nu trebuie să
+   cunoască HTML, CSS, Extent, selectorii sau viewport-ul.
+4. **Static doar pentru funcții pure, constante și preseturi imutabile.**
+   Registries globale, lock-uri și cache-uri statice cer ownership explicit,
+   resetabil și test de paralelism.
+5. **Interfețele trebuie justificate de consumatori reali.** Nu se extrage o
+   interfață doar pentru a muta codul sau pentru a simula testabilitatea.
+6. **Testele se separă după contract.** O clasă de test care depășește aproximativ
+   500 de linii este semnal de review; split-ul se face pe Overview, disclosure,
+   theme, artifact și lifecycle, nu arbitrar după numărul de metode.
+7. **O clasă are un motiv dominant de schimbare.** Dacă același defect cere
+   schimbări simultane în transport, verdict și layout, boundary-ul este greșit.
+8. **Toolchain-ul este parte din arhitectură.** xUnit v2/v3 nu se amestecă
+   accidental între proiecte; versiunea, runner-ul și lifecycle semantics trebuie
+   să fie aliniate înainte de consolidarea testelor.
+
+Refactorizarea este elegantă numai când reduce coupling-ul și lasă în urmă
+teste mai mici și mai explicative; numărul de clase nu este un obiectiv.
 
 ## 6. Checklist de review — feedback agresiv, dar constructiv
 
