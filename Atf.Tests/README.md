@@ -96,8 +96,8 @@ Atf.Api.Tests                52/52
 ```
 
 Acest rezultat dovedește contractele de componentă, nu și randarea DOM în
-browser. Reporter failure isolation, lifecycle precedence și soft-warning
-propagation sunt acum protejate de teste de componentă. Rămân necesare
+browser. Izolarea failure-ului reporterului, precedența lifecycle-ului și
+propagarea soft-warning sunt acum protejate de teste de componentă. Rămân necesare
 eliminarea leak-urilor din path/lock registries și un contract browser pentru
 click, collapse, scroll și computed styles. Pentru soft assert, rândul
 `RESULT = Fail` rămâne vizibil semantic, xUnit nu eșuează, iar scenariul este
@@ -113,8 +113,8 @@ iar un test static de HTML nu trebuie prezentat ca dovadă de randare browser.
 | Strat | Owner | Exemplu de contract |
 |---|---|---|
 | unit | `Atf.Core.Tests` / `Atf.Common.Tests` | reguli pure, config, retry, redaction, evaluare tabel |
-| component | `Atf.Api.Tests` / Extent tests | lifecycle, tree ownership, reporter failure, status precedence |
-| artifact | `Atf.Reporting.Extent.Tests` | HTML autonom, tokens, roles, JSON block, assertion table |
+| componentă | `Atf.Api.Tests` / teste Extent | lifecycle, ownership arbore, failure reporter, precedență status |
+| artifact | `Atf.Reporting.Extent.Tests` | HTML autonom, tokenuri, roluri, bloc JSON, tabel assertions |
 | browser | contract DOM separat | click, collapse, scroll, computed styles, overflow |
 | live | `Atf.Api` | business contract, auth și comportament al serviciului țintă |
 
@@ -182,7 +182,7 @@ Regula de design este: lifecycle-ul decide *când* se publică informația, comp
 
 ```mermaid
 flowchart TD
-    C[Module configuration] --> R[Route catalog]
+    C[Configurație modul] --> R[Catalog rute]
     R --> Q[Semantic ApiRequest]
     Q --> E[ApiExecutor]
     E --> T[Transport + auth + retry]
@@ -211,9 +211,9 @@ Un test ATF este sănătos când testează un contract observabil la nivelul pot
 
 ```mermaid
 flowchart TB
-    L[Live API scenarios\nAtf.Api]
-    C[Module component tests\nAtf.Common.Tests -> Atf.Api/Module]
-    U[Kernel + reporting contract tests\nAtf.Core.Tests]
+    L[Scenarii API live\nAtf.Api]
+    C[Teste de componentă ale modulului\nAtf.Common.Tests -> Atf.Api/Module]
+    U[Teste de contract kernel + raportare\nAtf.Core.Tests]
     U --> C --> L
 ```
 
@@ -229,10 +229,10 @@ reutilizarea oarbă a unui count de container sau a unei valori copiate în READ
 
 ```mermaid
 flowchart TD
-    Unit[Unit tests: lifecycle + validator status] --> Component[Component tests: Extent tree]
+    Unit[Teste unitare: lifecycle + status validator] --> Component[Teste componentă: arbore Extent]
     Component --> Artifact[Single-file HTML inspector]
     Artifact --> Browser[Browser MCP render check]
-    Browser --> Evidence[GET, aggregate validation, JSON and tables visible at the right level]
+    Browser --> Evidence[GET, validare agregată, JSON și tabele la nivelul corect]
 ```
 
 Testele unitare dovedesc protocolul de deschidere/închidere, testele de componentă
