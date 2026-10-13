@@ -13,7 +13,7 @@ namespace Atf.Reporting.Extent;
 public sealed class ExtentReportLifecycle : IAtfReportSession
 {
     private readonly object _sync = new();
-    private readonly Lifecycle.ExtentReportPathAllocator _pathAllocator;
+    private readonly Lifecycle.IExtentReportPathAllocator _pathAllocator;
     private ExtentReports? _reports;
     private ExtentSparkReporter? _reporter;
     private ExtentTestHierarchy? _hierarchy;
@@ -30,7 +30,7 @@ public sealed class ExtentReportLifecycle : IAtfReportSession
     {
     }
 
-    internal ExtentReportLifecycle(Lifecycle.ExtentReportPathAllocator pathAllocator)
+    internal ExtentReportLifecycle(Lifecycle.IExtentReportPathAllocator pathAllocator)
     {
         _pathAllocator = pathAllocator ?? throw new ArgumentNullException(nameof(pathAllocator));
     }

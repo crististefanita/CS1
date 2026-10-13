@@ -9,7 +9,12 @@ namespace Atf.Reporting.Extent.Lifecycle;
 /// makes concurrent sessions deterministic and keeps the adapter focused on
 /// report orchestration.
 /// </summary>
-internal sealed class ExtentReportPathAllocator
+internal interface IExtentReportPathAllocator
+{
+    ExtentReportPaths Allocate(ReportingSettings settings);
+}
+
+internal sealed class ExtentReportPathAllocator : IExtentReportPathAllocator
 {
     private static readonly object Sync = new();
     private static readonly HashSet<string> ReservedPaths = new(StringComparer.OrdinalIgnoreCase);

@@ -2,6 +2,7 @@ using Atf.Core.Configuration;
 using Atf.Core.Reporting;
 using Atf.Core.Reporting.Artifacts;
 using Atf.Core.Reporting.Phases;
+using Atf.Reporting.Extent.Lifecycle;
 using AventStack.ExtentReports;
 using System.Reflection;
 
@@ -9,6 +10,142 @@ namespace Atf.Reporting.Extent.Tests;
 
 public sealed class ReportingLifecycleComponentTests
 {
+    [Fact(DisplayName = "Extent lifecycle delegates output identity to the path allocator contract")]
+    public void LifecycleUsesPathAllocatorAbstraction()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-lifecycle-allocator-contract-");
+        try
+        {
+            var allocator = new RecordingPathAllocator(new ExtentReportPathAllocator());
+            var lifecycle = new ExtentReportLifecycle(allocator);
+            var settings = new ReportingSettings
+            {
+                ReportPath = Path.Combine(root.FullName, "api-report.html"),
+                TimestampEnabled = false,
+                Engine = "extent"
+            };
+
+            lifecycle.Initialize(settings);
+
+            Assert.NotNull(allocator.ReceivedSettings);
+            Assert.Equal(settings.ReportPath, allocator.ReceivedSettings!.ReportPath);
+            Assert.Equal(lifecycle.ReportPath, allocator.AllocatedPaths!.PublishedPath);
+        }
+        finally
+        {
+            TestDirectoryCleanup.DeleteEventually(root);
+        }
+    }
+
+    [Fact(DisplayName = "Extent lifecycle requires initialization before exposing a report path")]
+    public void ReportPathRequiresInitialization()
+    {
+        var lifecycle = new ExtentReportLifecycle();
+
+        var exception = Assert.Throws<InvalidOperationException>(() => _ = lifecycle.ReportPath);
+
+        Assert.Equal("Extent reporting has not been initialized.", exception.Message);
+    }
+
+    [Fact(DisplayName = "Extent lifecycle initializes only once until the current session is finalized")]
+    public void InitializeIsIdempotentForActiveSession()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-lifecycle-idempotent-");
+        try
+        {
+            var lifecycle = new ExtentReportLifecycle();
+            var settings = new ReportingSettings
+            {
+                ReportPath = Path.Combine(root.FullName, "api-report.html"),
+                TimestampEnabled = false,
+                Engine = "extent"
+            };
+
+            lifecycle.Initialize(settings);
+            var firstPath = lifecycle.ReportPath;
+            lifecycle.Initialize(new ReportingSettings
+            {
+                ReportPath = Path.Combine(root.FullName, "a-different-report.html"),
+                TimestampEnabled = false,
+                Engine = "extent"
+            });
+
+            Assert.Equal(firstPath, lifecycle.ReportPath);
+        }
+        finally
+        {
+            TestDirectoryCleanup.DeleteEventually(root);
+        }
+    }
+
+    [Fact(DisplayName = "Extent lifecycle finalization is idempotent and keeps the published artifact")]
+    public void FinalizeIsIdempotent()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-lifecycle-finalize-");
+        try
+        {
+            var lifecycle = new ExtentReportLifecycle();
+            lifecycle.Initialize(new ReportingSettings
+            {
+                ReportPath = Path.Combine(root.FullName, "api-report.html"),
+                TimestampEnabled = false,
+                Engine = "extent"
+            });
+            using (lifecycle.StartTest("UsersApiTests", "GET users", "idempotent finalization", ["api"])) { }
+
+            lifecycle.FinalizeReport();
+            var reportPath = lifecycle.ReportPath;
+            var firstHtml = File.ReadAllText(reportPath);
+            lifecycle.FinalizeReport();
+
+            Assert.True(File.Exists(reportPath));
+            Assert.Equal(firstHtml, File.ReadAllText(reportPath));
+        }
+        finally
+        {
+            TestDirectoryCleanup.DeleteEventually(root);
+        }
+    }
+
+    [Fact(DisplayName = "Extent lifecycle can be reused after finalization")]
+    public void LifecycleCanStartANewSessionAfterFinalization()
+    {
+        var root = Directory.CreateTempSubdirectory("atf-lifecycle-reuse-");
+        try
+        {
+            var lifecycle = new ExtentReportLifecycle();
+            lifecycle.Initialize(new ReportingSettings
+            {
+                ReportPath = Path.Combine(root.FullName, "first.html"),
+                TimestampEnabled = false,
+                Engine = "extent"
+            });
+            using (lifecycle.StartTest("UsersApiTests", "FIRST SESSION", "first", ["api"])) { }
+            lifecycle.FinalizeReport();
+            var firstPath = lifecycle.ReportPath;
+
+            lifecycle.Initialize(new ReportingSettings
+            {
+                ReportPath = Path.Combine(root.FullName, "second.html"),
+                TimestampEnabled = false,
+                Engine = "extent"
+            });
+            using (lifecycle.StartTest("UsersApiTests", "SECOND SESSION", "second", ["api"])) { }
+            lifecycle.FinalizeReport();
+            var secondPath = lifecycle.ReportPath;
+
+            Assert.NotEqual(firstPath, secondPath);
+            Assert.Contains("FIRST SESSION", File.ReadAllText(firstPath), StringComparison.Ordinal);
+            Assert.DoesNotContain("SECOND SESSION", File.ReadAllText(firstPath), StringComparison.Ordinal);
+            Assert.Contains("SECOND SESSION", File.ReadAllText(secondPath), StringComparison.Ordinal);
+            Assert.DoesNotContain("FIRST SESSION", File.ReadAllText(secondPath), StringComparison.Ordinal);
+        }
+        finally
+        {
+            TestDirectoryCleanup.DeleteEventually(root);
+        }
+    }
+
     [Fact(DisplayName = "Collection fixture loads module configuration and initializes the report lifecycle")]
     public void FixtureInitializesInjectedLifecycle()
     {
@@ -270,6 +407,19 @@ public sealed class ReportingLifecycleComponentTests
         public void Flush() { }
 
         public void FinalizeReport() => FinalizeCount++;
+    }
+
+    private sealed class RecordingPathAllocator(ExtentReportPathAllocator inner) : IExtentReportPathAllocator
+    {
+        public ReportingSettings? ReceivedSettings { get; private set; }
+        public ExtentReportPaths? AllocatedPaths { get; private set; }
+
+        public ExtentReportPaths Allocate(ReportingSettings settings)
+        {
+            ReceivedSettings = settings;
+            AllocatedPaths = inner.Allocate(settings);
+            return AllocatedPaths;
+        }
     }
 }
 

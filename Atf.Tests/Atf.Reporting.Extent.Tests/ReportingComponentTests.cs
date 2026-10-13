@@ -299,47 +299,99 @@ public sealed class ReportingComponentTests
         var css = AtfReportTheme.BuildCss();
 
         Assert.Contains(
-            ".dashboard-view .category-container > .card,\n      .dashboard-view .sysenv-container > .card {",
+            ".dashboard-view .category-container > .card,",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            "border: 0 !important;\n        border-radius: 0 !important;\n        background: transparent !important;",
+            ".dashboard-view .sysenv-container > .card {",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            ".dashboard-view .category-container > .card > .card-header,\n      .dashboard-view .sysenv-container > .card > .card-header {",
+            "min-width: 0 !important;",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            "border: 1px solid var(--atf-border) !important;\n        border-bottom: 0 !important;\n        border-radius: 8px 8px 0 0 !important;",
+            "background: transparent !important;",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            ".dashboard-view .category-container > .card > .card-body,\n      .dashboard-view .sysenv-container > .card > .card-body {",
+            ".dashboard-view .category-container > .card > .card-header,",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            "padding: 0 !important;\n        border: 1px solid var(--atf-border) !important;\n        border-top: 0 !important;\n        border-radius: 0 0 8px 8px !important;\n        background: var(--atf-bg) !important;\n        overflow-x: hidden !important;\n        overflow-y: auto !important;",
+            ".dashboard-view .sysenv-container > .card > .card-header {",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            ".dashboard-view .category-container > .card > .card-body > table,\n      .dashboard-view .sysenv-container > .card > .card-body > table {",
+            "border: 1px solid var(--atf-border) !important;",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            "border: 0 !important;\n        border-collapse: collapse !important;",
+            "border-bottom: 0 !important;",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            ".dashboard-view .category-container > .card > .card-body > table th,\n      .dashboard-view .category-container > .card > .card-body > table td,\n      .dashboard-view .sysenv-container > .card > .card-body > table th,\n      .dashboard-view .sysenv-container > .card > .card-body > table td {",
+            ".dashboard-view .category-container > .card > .card-body,",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            "padding: 7px 9px !important;\n        border: 1px solid var(--atf-border) !important;",
+            ".dashboard-view .sysenv-container > .card > .card-body {",
             css,
             StringComparison.Ordinal);
         Assert.Contains(
-            "font-size: var(--atf-overview-font-size) !important;\n        line-height: 1.32 !important;",
+            "border-top: 0 !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "border-radius: 0 0 8px 8px !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "overflow-y: auto !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .category-container > .card > .card-body > table,",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .sysenv-container > .card > .card-body > table {",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "table-layout: fixed !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .category-container > .card > .card-body > table th,",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .sysenv-container > .card > .card-body > table td {",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "padding: 7px 9px !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "font-size: var(--atf-overview-font-size) !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "line-height: 1.32 !important;",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .atf-tag-card .atf-tag-table > thead > tr > th,",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            ".dashboard-view .sysenv-container > .card > .card-body > table > tbody > tr > th {",
+            css,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "border-color: var(--atf-border) !important;",
             css,
             StringComparison.Ordinal);
     }

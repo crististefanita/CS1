@@ -20,9 +20,10 @@ public sealed class ExtentReportPathAllocatorTests
             });
 
             Assert.Equal(Path.Combine(root.FullName, "api-report.html"), paths.PublishedPath);
-            Assert.Equal(Path.Combine(root.FullName, ".atf-render-" + Path.GetFileName(paths.NativeDirectory), "api-report.html"), paths.NativePath);
+            Assert.Equal(Path.Combine(paths.NativeDirectory, "api-report.html"), paths.NativePath);
             Assert.True(Directory.Exists(paths.NativeDirectory));
             Assert.StartsWith(root.FullName, paths.NativeDirectory, StringComparison.OrdinalIgnoreCase);
+            Assert.StartsWith(".atf-render-", Path.GetFileName(paths.NativeDirectory), StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("extent", paths.NativeDirectory, StringComparison.OrdinalIgnoreCase);
         }
         finally

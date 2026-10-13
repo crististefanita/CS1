@@ -639,6 +639,22 @@ public static class AtfReportTheme
       .dashboard-view .sysenv-container > .card > .card-body > table tbody tr:nth-child(odd) td {
         background: __ATF_WHITE018__ !important;
       }
+      /* The embedded Extent stylesheet has a more specific .table rule for
+         cell line-height and border colour. Reassert one shared cell contract
+         at equal-or-higher specificity so native Overview and ATF audit rows
+         cannot drift apart when the vendor stylesheet changes. */
+      .dashboard-view .atf-tag-card .atf-tag-table > thead > tr > th,
+      .dashboard-view .atf-tag-card .atf-tag-table > tbody > tr > td,
+      .dashboard-view .atf-tag-card .atf-tag-table > tbody > tr > th,
+      .dashboard-view .category-container > .card > .card-body > table > thead > tr > th,
+      .dashboard-view .category-container > .card > .card-body > table > tbody > tr > td,
+      .dashboard-view .category-container > .card > .card-body > table > tbody > tr > th,
+      .dashboard-view .sysenv-container > .card > .card-body > table > thead > tr > th,
+      .dashboard-view .sysenv-container > .card > .card-body > table > tbody > tr > td,
+      .dashboard-view .sysenv-container > .card > .card-body > table > tbody > tr > th {
+        line-height: 1.32 !important;
+        border-color: var(--atf-border) !important;
+      }
       .test-contents > .mt-4 > .accordion > .card {
         background: transparent !important;
         border-color: var(--atf-border) !important;
