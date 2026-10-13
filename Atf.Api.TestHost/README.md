@@ -20,13 +20,13 @@ Direcția dependențelor este intenționată:
 
 ```mermaid
 flowchart LR
-    Api[Atf.Api acceptance scenarios] --> Port[IAtfApiReportSession]
+    Api[scenarii de acceptanță Atf.Api] --> Port[IAtfApiReportSession]
     Host[Atf.Api.TestHost] --> Port
     Host --> Extent[Atf.Reporting.Extent]
-    Extent --> Html[Single self-contained HTML artifact]
+    Extent --> Html[artifact HTML autonom, într-un singur fișier]
 ```
 
-Acest proiect este singurul layer de compoziție al host-ului live care selectează
+Acest proiect este singurul strat de compoziție al host-ului live care selectează
 Extent. Un renderer viitor poate înlocui `ApiTestFixture` fără să schimbe
 scenariile API, pașii, transportul sau validarea contractelor.
 

@@ -11,8 +11,8 @@ dovadă că suita normală de acceptanță este sănătoasă.
 
 ## Contract de audit
 
-Failure demos verify observability, not business correctness. Fiecare demo trebuie
-să păstreze schematic în raport:
+Demonstrațiile de failure verifică observabilitatea, nu corectitudinea de business.
+Fiecare demo trebuie să păstreze schematic în raport:
 
 ```text
 test -> failing phase/request -> relevant exception/evidence -> final Fail
@@ -40,7 +40,7 @@ consolidarea în `Atf.Tests`.
 
 ```mermaid
 flowchart LR
-    Run[ATF_ENABLE_FAILURE_DEMOS=true] --> Suite[Failure demo project]
+    Run[ATF_ENABLE_FAILURE_DEMOS=true] --> Suite[proiect demonstrații failure]
     Suite --> Setup[SETUP exception]
     Suite --> Contract[Contract assertion failure]
     Suite --> Direct[Direct xUnit assertion]
@@ -61,5 +61,5 @@ dotnet test .\Atf.Tests\Atf.Api.FailureDemos\Atf.Api.FailureDemos.csproj --no-re
 $env:ATF_ENABLE_FAILURE_DEMOS = $null
 ```
 
-Quality gate-ul normal este `Atf.Api`; nu referă acest proiect ca fixture de test
+Poarta normală de calitate este `Atf.Api`; nu referi acest proiect ca fixture de test
 și, prin urmare, rămâne verde când suita de diagnostic nu este solicitată.
