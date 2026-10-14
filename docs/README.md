@@ -21,6 +21,13 @@ flowchart TD
     Tests -. protejează .-> Extent
 ```
 
+## Convenție de lectură
+
+Orientarea rapidă, contractele și criteriile de acceptare rămân vizibile.
+Detaliile de implementare, matricile și procedurile secundare sunt grupate în
+blocuri colapsabile `<details>` pentru a păstra documentele scanabile fără să
+elimine informația normativă.
+
 ## Harta documentației
 
 | Document | Scop |

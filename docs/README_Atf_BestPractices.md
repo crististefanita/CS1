@@ -54,6 +54,9 @@ Un test care descrie direct `HttpClient`, string-uri de endpoint, markup Extent
 și cinci assert-uri dispersate nu mai este un test de domeniu; a devenit o a
 doua implementare a framework-ului în interiorul scenariului.
 
+<details>
+<summary>Reguli obligatorii: OOP, adnotări, validări și lifecycle</summary>
+
 ## 2. Reguli obligatorii
 
 ### 2.1 O clasă, o responsabilitate clară
@@ -346,6 +349,8 @@ Numele testului, route metadata, tag-urile și operation type trebuie să răspu
 rapid la întrebările „ce request a eșuat?”, „ce contract verificam?” și „ce
 politică de auth s-a folosit?”. Nu adăugăm timestamp-uri în identitatea logică a
 testului și nu folosim tag-uri generice care nu permit filtrare sau navigare.
+
+</details>
 
 ## 3. Lifecycle recomandat pentru un scenariu
 

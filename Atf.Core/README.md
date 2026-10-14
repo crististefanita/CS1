@@ -97,6 +97,9 @@ este cel mai ușor loc în care pot fi observate.
 | `SensitiveDataRedactor` | politică de boundary | Igienizează evidence structurat și liber înainte de a ajunge la reporter |
 | `AtfAssertion` | model de evidence | Transportă numele assertion-ului, expected, actual și verdictul fără prezentare |
 
+<details>
+<summary>Detalii despre execuție HTTP, configurare și reziliență</summary>
+
 ## Secvența schimbului HTTP
 
 ```mermaid
@@ -302,6 +305,8 @@ headerele de delay în ordine, respinge delay-urile inutilizabile, folosește
 fallback, limitează delay-ul și se oprește la bugetul de retry.
 `Polling.UntilAsync` folosește un deadline și returnează ultima valoare, numărul
 de attempt-uri, durata scursă și un flag de satisfacere.
+
+</details>
 
 ## Contractul de raportare
 

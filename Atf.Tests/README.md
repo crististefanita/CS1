@@ -29,6 +29,9 @@ Citește acest README în ordinea: ce testează fiecare proiect → boundary-ul
 testului → piramida unit/component/artifact → reguli de rulare → criteriul de
 finalizare. Un test trebuie să apere un contract, nu să repete implementarea.
 
+<details>
+<summary>Organizarea soluției și traseul de orientare</summary>
+
 ## Organizare
 
 | Proiect | Tip dominant | Ce protejează |
@@ -84,6 +87,8 @@ Regula de ownership este simplă: `Core` nu cunoaște domeniul,
 `Atf.Api/Module` nu cunoaște runnerul sau markup-ul Extent, iar `Api` nu
 construiește transportul. Dacă o
 modificare poate fi verificată fără serviciu, ea aparține testelor de sub `Atf.Tests`.
+
+</details>
 
 ## Contracte observabile și dovada lor
 

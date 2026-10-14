@@ -199,6 +199,9 @@ Nu introducem `Atf.Shared`, `Atf.Contracts`, `Atf.Framework` sau directoare
 `Common`/`Utils` fără un boundary consumat de cel puțin două module reale.
 Reducem numărul de directoare, nu responsabilitățile și nu testele.
 
+<details>
+<summary>Detalii de execuție, contract și verificare</summary>
+
 ## Pipeline runtime
 
 ```mermaid
@@ -456,6 +459,8 @@ un backlog copiat în README:
 Orice abatere nouă se adaugă numai în documentul de feedback potrivit, cu owner,
 seam, test și criteriu de acceptare. Astfel README-ul rămâne explicație de
 arhitectură, nu jurnal de lucru.
+
+</details>
 
 ## Documentație și surse normative
 

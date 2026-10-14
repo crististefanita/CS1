@@ -378,6 +378,9 @@ runner, în rădăcina clasei și în nodul scenariului; nu este convertit nicio
 în return/Pass normal. Aceasta este o regulă de contract a testului, nu o
 conveniență de raportare.
 
+<details>
+<summary>Inventar, acoperire și acceptanță detaliată</summary>
+
 ## Inventarul testelor
 
 - `UsersApiTests`: contracte pentru colecție/item user și autentificare negativă.
@@ -512,6 +515,8 @@ de framework în `Atf.Api`.
 Layer-ul live este intenționat subțire. Un scenariu nou trebuie introdus numai
 când adaugă acoperire business; un defect de kernel sau modul aparține în
 `Atf.Tests`, astfel încât să poată rula fără serviciu.
+
+</details>
 
 ## Ownership-ul failure-ului
 

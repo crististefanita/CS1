@@ -66,6 +66,9 @@ Port Core -> scope Extent -> arbore Extent + HTML evidence -> temă/compoziție
            -> asset-uri inline -> un fișier .html -> verificări artifact
 ```
 
+<details>
+<summary>Ownership and internal adapter seams</summary>
+
 ## Ownership clar
 
 | Componentă | Face | Nu face |
@@ -240,6 +243,8 @@ pentru schimbarea view-ului și ordinea claselor/scenariilor.
 Nu mutăm ownership-ul evidence-ului în JavaScript ca să reparăm un defect de
 layout: C# produce structura semantică, theme-ul produce CSS, iar client
 behaviour doar reconciliază DOM-ul Extent deja randat.
+
+</details>
 
 ## Contractul arborelui API
 
